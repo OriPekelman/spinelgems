@@ -1,6 +1,7 @@
 require "json"
 require "fileutils"
 require "time"
+require "thread"
 
 module Bundler
   module Spinel
@@ -37,11 +38,18 @@ module Bundler
 
       def initialize(path: ENV.fetch("SPINEL_COMPAT_LEDGER", DEFAULT_PATH))
         @path = path
+        @write_mutex = Mutex.new
       end
 
+      # Thread-safe: the survey probes gems in parallel and records from many
+      # threads. One `write` of the whole line under O_APPEND is a single
+      # atomic syscall, so a concurrent `each`/`lookup` reader never sees a
+      # torn line; the mutex just serialises writers among themselves.
       def record(verdict)
         FileUtils.mkdir_p(File.dirname(@path))
-        File.open(@path, "a") { |f| f.puts(verdict.to_line) }
+        @write_mutex.synchronize do
+          File.open(@path, "a") { |f| f.write("#{verdict.to_line}\n") }
+        end
         verdict
       end
 

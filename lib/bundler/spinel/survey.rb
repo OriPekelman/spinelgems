@@ -1,4 +1,5 @@
 require "open3"
+require "set"
 
 module Bundler
   module Spinel
@@ -49,8 +50,21 @@ module Bundler
       end
 
       # Aggregate a markdown report from ledger verdicts for `names` at this rev.
+      #
+      # Reads straight from the ledger — no network. The just-run probes already
+      # recorded a verdict (with its resolved version) per surveyed gem at this
+      # rev, so re-resolving each gem's latest version online would only repeat
+      # work and serialise a 1k-name survey behind 1k `gem list -r` calls. We
+      # take the *last* current-rev entry per gem: append-only means a re-probe
+      # supersedes, and the survey probes a gem at one (latest) version per run.
       def report(names)
-        verdicts = names.filter_map { |n| latest_in_ledger(n) }
+        wanted = names.to_set
+        rev = @engine.rev
+        latest = {}
+        @ledger.each do |v|
+          latest[v.gem] = v if v.rev == rev && wanted.include?(v.gem)
+        end
+        verdicts = latest.values
         counts = Hash.new(0)
         reasons = Hash.new(0)
         verdicts.each do |v|
@@ -68,16 +82,13 @@ module Bundler
         return cached if cached
 
         dir = @fetcher.fetch(name, version)
-        # Probe runs spinel; serialise nothing but the ledger append (inside record).
-        @mutex.synchronize { @probe.probe(name, version, dir) }
+        # Probe runs spinel (CPU-bound, GVL released) — this is the whole point
+        # of the thread pool, so it must NOT hold @mutex. The only shared write
+        # is the ledger append, which Ledger#record serialises internally.
+        @probe.probe(name, version, dir)
       rescue StandardError => e
         @mutex.synchronize { warn "\n[survey] #{name}: #{e.message}" }
         nil
-      end
-
-      def latest_in_ledger(name)
-        v = latest_version(name)
-        v && @ledger.lookup(name, v, @engine.rev)
       end
 
       def latest_version(name)

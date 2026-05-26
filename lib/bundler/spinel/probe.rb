@@ -1,5 +1,6 @@
 require "open3"
 require "tmpdir"
+require "timeout"
 
 module Bundler
   module Spinel
@@ -37,6 +38,13 @@ module Bundler
       UNRESOLVED_REQUIRE = /require "([^"]+)" could not be resolved/.freeze
       ANALYZE_FAILED = /\b(analyze failed|fatal)\b/i.freeze
 
+      # Spinel's analyze pass can spin for minutes on pathological inputs (no
+      # internal bound). In a wholesale survey that's indistinguishable from a
+      # hang, so we cap each compile and treat an overrun as its own reject
+      # reason — `analyze-timeout` is itself a useful roadmap signal (which gems
+      # blow up the analyzer). Override with SPINEL_COMPILE_TIMEOUT (seconds).
+      COMPILE_TIMEOUT = Integer(ENV.fetch("SPINEL_COMPILE_TIMEOUT", "60"))
+
       # token => reason. Tokens Spinel cannot honour and may silently no-op.
       RISK_TOKENS = {
         /\beval\s*\(/                  => "eval",
@@ -71,6 +79,9 @@ module Bundler
           if !sig[:calls].empty?
             # Genuine unsupported call(s): unambiguous, forward-compatible reject.
             ["rejected", sig[:calls].map { |s| "unresolved:#{s}" }]
+          elsif sig[:timed_out]
+            # Analyzer ran past the cap — pathological for Spinel, not the gem.
+            ["rejected", ["analyze-timeout"]]
           elsif sig[:analyze_failed] || !sig[:exit_ok]
             ["rejected", ["analyze-failed"]]
           elsif !static_only_risks(risks).empty?
@@ -90,23 +101,51 @@ module Bundler
       # Compile the gem's lib entrypoints as a Spinel program; classify stderr.
       def compile_signal(dir, gem_name)
         entries = entrypoints(dir, gem_name)
-        return { calls: [], requires: [], analyze_failed: true, exit_ok: false } if entries.empty?
+        return { calls: [], requires: [], analyze_failed: true, exit_ok: false, timed_out: false } if entries.empty?
 
         calls = []
         requires = []
         analyze_failed = false
         exit_ok = true
+        timed_out = false
         Dir.mktmpdir do |tmp|
           entries.each do |f|
-            out, st = Open3.capture2e(@engine.bin, "-c", f, "-o", File.join(tmp, "out.c"))
-            exit_ok &&= st.success?
+            out, ok, hit_timeout = run_spinel(f, File.join(tmp, "out.c"))
+            exit_ok &&= ok
+            timed_out ||= hit_timeout
             analyze_failed ||= out =~ ANALYZE_FAILED ? true : false
             out.scan(UNRESOLVED_CALL) { |m| calls << m[0] }
             out.scan(UNRESOLVED_REQUIRE) { |m| requires << m[0] }
           end
         end
         { calls: calls.uniq, requires: requires.uniq,
-          analyze_failed: analyze_failed, exit_ok: exit_ok }
+          analyze_failed: analyze_failed, exit_ok: exit_ok, timed_out: timed_out }
+      end
+
+      # Run `spinel -c FILE -o OUT_C` with a wall-clock cap. Returns
+      # [combined_output, exit_ok, timed_out]. The compiler is a shell script
+      # that forks spinel_analyze, so on timeout we KILL the whole process group
+      # (pgroup: true makes the child its own group leader) — killing just the
+      # spinel pid would orphan the spinning analyzer.
+      def run_spinel(file, out_c)
+        Open3.popen2e(@engine.bin, "-c", file, "-o", out_c, pgroup: true) do |stdin, out_io, wait_thr|
+          stdin.close
+          output = +""
+          reader = Thread.new { output << out_io.read }
+          begin
+            Timeout.timeout(COMPILE_TIMEOUT) { wait_thr.value }
+            reader.join
+            [output, wait_thr.value.success?, false]
+          rescue Timeout::Error
+            begin
+              Process.kill("-KILL", wait_thr.pid)
+            rescue StandardError
+              nil
+            end
+            reader.join
+            [output, false, true]
+          end
+        end
       end
 
       # Risks from the static source scan (exclude the `needs:` require notes).

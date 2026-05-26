@@ -20,6 +20,7 @@ module Bundler
         when "engine"  then cmd_engine
         when "probe"   then cmd_probe(argv)
         when "verify"  then cmd_verify(argv)
+        when "vendor"  then cmd_vendor(argv)
         when "check"   then cmd_check(argv)
         when "serve"   then cmd_serve(argv)
         when "build-index" then cmd_build_index(argv)
@@ -75,6 +76,17 @@ module Bundler
         v = Verifier.new(engine, Ledger.new).verify(name, version, gem_dir, smoke: smoke && File.expand_path(smoke))
         print_verdict(v)
         v.verified? ? 0 : 1
+      end
+
+      def cmd_vendor(argv)
+        into = (i = argv.index("--into")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : "vendor/spinel"
+        lock = argv.shift || "Gemfile.lock"
+        raise Error, "no #{lock}; run `bundle lock` first" unless File.exist?(lock)
+
+        res = Vendorer.new.vendor(lock, into: into)
+        @out.puts "vendored #{res[:count]} gem(s) -> #{res[:into]}"
+        @out.puts "  require_relative \"#{res[:into]}/deps\" from your Spinel entrypoint"
+        0
       end
 
       def cmd_check(argv)
@@ -197,7 +209,11 @@ module Bundler
             spinel-compat engine                 show detected compiler + engine rev
             spinel-compat probe NAME [VERSION]    probe one gem, record a verdict
             spinel-compat verify NAME [--smoke F]  differential CRuby-vs-Spinel run -> verified
+            spinel-compat vendor [LOCK] [--into D] place deps where Spinel finds them + deps.rb
             spinel-compat check [LOCK] [--strict] gate a Gemfile.lock (exit 1 if rejected)
+            spinel-compat survey GEM... | --list F  wholesale review -> reason histogram
+            spinel-compat serve --store DIR        curated source (only vetted gems)
+            spinel-compat build-index --store DIR --out DIR   static curated index
             spinel-compat ledger [--rev REV]      dump recorded verdicts
             spinel-compat reprobe                 re-probe known gems under current rev
 

@@ -1,74 +1,80 @@
 # bundler-spinel
 
-Resolution-time gem-compatibility gating for the [Spinel](https://github.com/matz/spinel)
-Ruby AOT compiler.
+**Use a standard `Gemfile` for your [Spinel](https://github.com/matz/spinel)
+project — for now.** Spinel-compiled projects have no shared way to declare or
+exchange dependencies, so each vendors by hand. Rather than design a package
+manager, borrow a format everyone already knows and revisit later. See
+[RFC.md](RFC.md) for the proposal.
 
-Spinel compiles a whole Ruby program to native C — no gems, no eval, no
-metaprogramming — and when it meets unsupported Ruby it *silently emits a no-op*
-rather than failing. Bundler, meanwhile, can't gate on engine compatibility
-(`bundle lock` ignores `engine: "spinel"`; there's no `required_ruby_engine`
-gemspec field). So an incompatible dependency normally fails late — at compile
-time, or never.
+`bundler-spinel` is a small Bundler plugin that makes that practical in two ways:
 
-`bundler-spinel` makes it fail **at `bundle lock` time**, with feature-named
-reasons, against a **forward-compatible** ledger keyed on the Spinel revision.
-A gem rejected today is re-probed automatically when you upgrade Spinel.
+1. **Makes it work** — places resolved dependencies where Spinel can actually
+   find them. Spinel has no load path and inlines `require_relative`, so a dep
+   has to be *placed* and wired. `spinel-compat vendor` does that from a lockfile.
+2. **Gates** — Spinel silently emits a no-op for unsupported Ruby (exit 0), so
+   "it compiled" ≠ "it works". The plugin probes gems and flags incompatible ones
+   at `bundle lock` time, with reasons that name the missing feature — nicer than
+   a silent miscompile. Verdicts are forward-compatible (keyed on the Spinel rev).
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the model.
+## The Gemfile convention
+
+```ruby
+source "https://rubygems.org"
+ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
+
+gem "tep", git: "https://…/tep.git"   # siblings via path:/git: (replaces rsync)
+gem "some_pure_ruby_lib"
+```
+
+`bundle lock` resolves normally (it ignores the engine marker); the marker guards
+`bundle install` (exit 18 under CRuby). Nothing here is novel — that's the point.
 
 ## Quick start
 
 ```sh
-exe/spinel-compat engine                 # show detected compiler + engine rev
-exe/spinel-compat probe rake              # probe one gem; record a verdict
-exe/spinel-compat probe tep --dir ~/sites/tep   # probe a path:/git: sibling
-exe/spinel-compat check Gemfile.lock      # gate a lockfile (exit 1 if rejected)
-exe/spinel-compat ledger                  # dump recorded verdicts
-exe/spinel-compat reprobe                 # re-probe known gems under current rev
+# 1. make it work — place deps where Spinel finds them
+bundle lock
+exe/spinel-compat vendor                 # -> vendor/spinel/<gem>/lib + vendor/spinel/deps.rb
+#    then `require_relative "vendor/spinel/deps"` from your Spinel entrypoint
+
+# 2. gate — flag what Spinel can't compile, early
+exe/spinel-compat check Gemfile.lock     # exit 1 if any gem is rejected
 ```
 
-Verdicts: `✓ clean` · `★ verified` · `~ risky` · `✗ rejected`.
-
-```
-$ exe/spinel-compat check Gemfile.lock
-  ✗ rake  13.4.2  rejected — analyze-failed, risk:eval, risk:method_missing
-————————————————————————————————————————————————
-REJECTED under git:0adca86+dirty:
-  ✗ rake 13.4.2 — analyze-failed
-$ echo $?
-1
-```
-
-## As a Bundler plugin
+As a Bundler plugin:
 
 ```sh
-bundle plugin install bundler-spinel --git https://…   # or --path ~/sites/bundler-spinel
-bundle spinel-lock      # `bundle lock`, then gate the result at resolution time
+bundle plugin install bundler-spinel --git https://…   # or --path .
+bundle spinel-lock      # bundle lock, then report incompatible gems
 bundle spinel-check     # gate an existing Gemfile.lock
 ```
 
-Declare the engine in your Gemfile so `bundle install` also guards (exit 18):
+## The rest of the toolbelt
 
-```ruby
-ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
+```sh
+exe/spinel-compat engine                 # detected compiler + engine rev
+exe/spinel-compat probe rake [--dir P]   # probe one gem (or a local/sibling dir)
+exe/spinel-compat verify NAME --smoke F  # differential CRuby-vs-Spinel run -> verified
+exe/spinel-compat survey --list F        # wholesale review -> reason histogram
+exe/spinel-compat serve --store DIR      # curated source (only vetted gems)
+exe/spinel-compat ledger / reprobe       # inspect / re-probe under current rev
 ```
+
+Verdicts: `✓ clean` · `★ verified` · `~ risky` · `✗ rejected`.
 
 ## Environment
 
 - `SPINEL_DIR` — path to the Spinel checkout (default `~/spinel`; falls back to a `spinel` on `PATH`).
 - `SPINEL_COMPAT_LEDGER` — ledger path (default `ledger/compat.jsonl`).
 
-## Status
+## Status & honesty
 
-Working: probe engine, forward-compat ledger, `spinel-compat` CLI, lock-time
-gate + Bundler plugin command, the `verified` differential harness, and the
-curated source (`serve`, Bundler-resolvable). Designed (stub + ARCHITECTURE.md):
-platform-variant opt-in. The upstream proposal + asks of Spinel are in
-[RFC.md](RFC.md).
+Working: the Gemfile convention, `vendor` (placement), the lock-time gate +
+Bundler plugin, the probe + forward-compat ledger, the `verified` differential
+harness, the curated source (`serve`), and the wholesale `survey`.
 
-The compile probe is a **lower bound** — Spinel has no load path, so multi-file
+The probe is a **lower bound** — Spinel's lack of a load path means multi-file
 plain-`require` gems under-probe, and silent miscompiles are invisible to it.
 Trust `verified` (smoke runs identically under CRuby and Spinel), not `clean`,
-for the curated source. The curated source gates a clean env (CI); the lock-time
-gate is the backstop on dev machines (Bundler also resolves locally-installed
-gems).
+where it matters. Empirically most third-party gems reject today, so the weight
+is on your own vetted gems and `path:`/`git:` siblings — not a rubygems mirror.

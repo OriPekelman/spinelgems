@@ -1,153 +1,120 @@
-# RFC: Dependency management for Spinel-compiled Ruby
+# RFC: Use a Gemfile for Spinel projects (for now)
 
-**Status:** draft (for discussion on a Spinel issue)
+**Status:** draft (for discussion)
 **Author:** Ori Pekelman
-**Prototype:** [`bundler-spinel`](./README.md) — working MVP, see [ARCHITECTURE.md](./ARCHITECTURE.md)
+**Prototype:** [`bundler-spinel`](./README.md) — working, see [ARCHITECTURE.md](./ARCHITECTURE.md)
 
 ## Summary
 
-Spinel compiles whole Ruby programs to native C. It has no package layer, and —
-by design — no gems, eval, or metaprogramming. Today every project that targets
-Spinel (Tep, Toy, Roundhouse …) invents its own ad-hoc vendoring. This RFC proposes a
-dependency story that **reuses Bundler's resolver and lockfile** and adds a thin,
-**forward-compatible compatibility ledger**, so that incompatible dependencies
-fail at **`bundle lock` time** rather than at compile time (where Spinel silently
-emits a no-op) or never. It also proposes four small, optional Spinel hooks that
-would make compatibility detection first-class instead of inferred.
+Spinel-compiled projects have no shared way to declare or exchange dependencies,
+so each one vendors by hand. This RFC proposes a deliberately small, temporary
+answer that requires **no new design**:
 
-We deliberately make **no new dependency-format design choices**: a Spinel
-project declares deps in a standard `Gemfile`.
+1. **Declare dependencies in a standard `Gemfile`.** Mark the project with
+   `ruby "3.x", engine: "spinel", engine_version: "0.0.0"`. That's the whole
+   convention. It buys a familiar manifest, `path:`/`git:` sources for sibling
+   projects, and Bundler's resolver + lockfile — for free.
 
-## Motivation — two facts that make the naive path dangerous
+2. **A small Bundler plugin** ([`bundler-spinel`](./README.md)) that does two
+   things: **(a) makes it work** — places resolved dependencies where Spinel can
+   actually find them; and **(b) gates** — flags gems Spinel can't compile early,
+   so the experience is nicer than a silent miscompile.
 
-These are empirical (verified, Bundler 2.7.2 / CRuby 3.4.6):
+The point is to **postpone the big discussion**. Spinel isn't near a release, and
+there's no expectation it adopts any particular dependency-management design. But
+projects need *some* interop today — so let's borrow a format everyone knows and
+revisit later, rather than design a package manager now.
 
-1. **Bundler can't gate engine compatibility.** There is no `required_ruby_engine`
-   gemspec field; `required_ruby_version` is engine-blind; you can't fabricate a
-   platform variant for a gem you don't publish. The Gemfile directive
-   `ruby "3.3", engine: "spinel", engine_version: "0.0.0"` is a *post-resolution*
-   check: `bundle lock` ignores it (exit 0, resolves fine); only `bundle install`
-   fires the guard (exit 18, "Your Ruby engine is ruby, but your Gemfile specified
-   spinel"). Using `ruby "3.x-spinel"` is strictly worse — it parses to a fake
-   prerelease and yields the same install-only timing with a worse message.
+## Motivation
 
-2. **Spinel doesn't fail loudly on unsupported Ruby.** It prints
-   `warning: … cannot resolve call to 'eval' … (emitting 0)` to stderr and
-   degrades the call to a no-op, exiting **0**. Some constructs (`define_method`,
-   and *silent miscompiles* such as local-var-name collapse and Int-`0`-as-`nil`)
-   produce no warning at all. So **"it compiled" ≠ "it works."**
+Interop is already happening, ad-hoc. Roundhouse (a separate author's project)
+vendors part of Tep; our own projects carry a mix of rsync'd copies and hand-
+maintained concatenation. Every project reinvents "get this other code into a
+shape Spinel will compile." A shared, boring convention removes that duplication
+without anyone committing to a long-term model.
 
-Net: an incompatible dependency is invisible to resolution and may be invisible
-at compile time too. We need to move the decision to resolution time and ground
-it in actually running Spinel.
+Two facts make a thin tool worthwhile (both verified — Bundler 2.7.2 / CRuby):
 
-Empirical reality check: of the small pure-Ruby gems we probed (`rake`, `paint`,
-`colorator`, `tomlrb`, `version_gem`, `ruby2_keywords`), **all rejected** — some
-for genuine metaprogramming, some inflated by Spinel's lack of a load path (see
-Ask #4). The compatible *third-party* ecosystem is effectively empty today. That
-reframes the goal: the load-bearing artifacts are **your own vetted gems** and
-**`path:`/`git:` siblings** (e.g. Tep), not a filtered mirror of rubygems.
+- **Bundler already does the right thing with the engine marker.** `bundle lock`
+  ignores `engine: "spinel"` and resolves normally (exit 0); only `bundle
+  install` fires the guard ("Your Ruby engine is ruby, but your Gemfile specified
+  spinel", exit 18). So the convention costs nothing and fails loudly in the
+  right place.
 
-## Design (external, built today)
+- **Spinel doesn't fail loudly on unsupported Ruby.** It prints
+  `warning: … cannot resolve call to 'eval' … (emitting 0)` and degrades the call
+  to a no-op, exiting **0**; some constructs (and silent miscompiles) warn not at
+  all. So "it compiled" ≠ "it works" — which is why a little gating help is worth
+  having.
 
-One **append-only ledger** keyed on `(gem, version, engine_rev)`. Three consumers,
-all views over it:
+## Proposal 1 — the Gemfile convention
 
-- **Lock-time gate** (`bundle spinel-lock`): `bundle lock`, then verdict-check
-  every locked gem; exit non-zero on any `rejected`, with feature-named reasons.
-- **Curated source** (`spinel-compat serve`): a Compact Index source serving only
-  vetted gems. `bundle lock` against it resolves only vetted gems; absent →
-  resolution failure (exit 7). Caveat: Bundler also considers locally-installed
-  gems, so this gates a clean env (CI); the gate above is the dev-machine backstop.
-- **Platform-variant opt-in** (designed): mark `verified` gems with a `spinel`
-  platform, JRuby-style, so stock platform resolution prefers them.
+A Spinel project's `Gemfile`:
 
-**Verdict ladder** (Spinel's failure modes aren't exit codes, so one signal is
-insufficient):
+```ruby
+source "https://rubygems.org"
+ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
 
-| Verdict | Earned by | Trusted by |
-|---|---|---|
-| `rejected` | `cannot resolve call to 'X'`, or analyze-failed / non-zero exit | gate fails the lock |
-| `risky` | compiles clean, but static scan found silently-degraded constructs | gate allows; `--strict` fails |
-| `clean` | compiles clean, no risky constructs | gate allows |
-| `verified` | `clean` **and** a smoke runs identically under CRuby and Spinel | curated source + platform badge |
+gem "tep", git: "https://…/tep.git"   # sibling projects via path:/git:
+gem "some_pure_ruby_lib"              # third-party, if it compiles
+```
 
-The `verified` rung is differential testing and is the only thing that catches
-silent miscompiles. Demonstrated: a `h[k].nil? ? -1 : v` lookup over a stored `0`
-probes `clean` but verify catches `rejected:miscompile` (`cruby="-1" spinel="0"`).
+Nothing here is novel — that's the point. `bundle lock` produces a normal
+lockfile; siblings resolve through `path:`/`git:` sources (replacing rsync /
+manual vendoring); third-party gems resolve from rubygems.org. The engine marker
+documents the target and guards `bundle install`.
 
-### Forward compatibility is the core property
+## Proposal 2 — the Bundler plugin
 
-Spinel ships **no version** (`spinel --version` prints usage; `git describe` is a
-bare SHA). We key every verdict on the Spinel **revision** (git SHA of the
-checkout, else a binary hash). Upgrade Spinel → new rev → cache miss → automatic
-re-probe. A `rejected` verdict is *never* permanent: it says "rejected as of this
-rev, because of these named features." When a feature lands, the next probe
-clears it — no hand-maintained blocklist. `reprobe` sweeps known gems under a new
-rev to surface what newly passes.
+### (a) Make it work — placement
 
-## Asks of Spinel (the upstream proposal)
+Spinel has no load path (plain `require "x"` resolves only against
+`<spinel>/lib`) and inlines `require_relative`. So a resolved dependency has to
+be *placed* where Spinel will follow it. The plugin vendors each locked gem's
+`lib/` into a project dir and generates a `require_relative` manifest:
 
-The external tool works by *inferring* what Spinel can do. Four small, optional
-hooks would make it robust and first-class. Ranked by leverage:
+```
+spinel-compat vendor            # reads Gemfile.lock
+# -> vendor/spinel/<gem>/lib/…  and  vendor/spinel/deps.rb
+```
 
-1. **A non-zero exit / structured report for unsupported constructs.** Today
-   `eval`, `send`, `method_missing`, `define_method` all compile to a no-op with
-   an exit-0 warning. A `spinel --check FILE` (or `--strict`) that exits non-zero
-   and emits machine-readable diagnostics (JSON: `{unsupported:[{call,loc}], …}`)
-   would replace stderr-scraping with a contract. **This is the highest-leverage
-   ask** — it turns "compiled" into a real signal.
+A Spinel program then just `require_relative "vendor/spinel/deps"`. This is the
+reusable form of what projects already do by hand (concatenation scripts, partial
+vendoring).
 
-2. **A stable engine identity.** `spinel --version` (or `--print-rev`) emitting a
-   monotonic id. We currently hash the binary / read the git SHA; an official id
-   lets the ledger key and the `engine_version:` Gemfile directive line up.
+### (b) Gating — a nicer experience
 
-3. **A capability manifest.** `spinel --capabilities` listing supported builtins /
-   constructs, so a probe can do set-difference (gem's required features − engine
-   capabilities) instead of compile-and-grep, and `reprobe` can target only gems
-   whose rejection reasons name newly-added capabilities.
+Because Spinel silently no-ops unsupported Ruby, the plugin probes gems (compile
++ static scan, optionally a differential CRuby-vs-Spinel run) and flags ones that
+won't work — at `bundle lock` time, with reasons that name the missing feature:
 
-4. **A load path.** Plain `require "x"` resolves only against `<spinel>/lib`, so a
-   gem's own split files and stdlib deps don't resolve and the probe under-counts
-   (e.g. `tomlrb` rejects partly because its `require "tomlrb/parser"` is unfollowed).
-   An `-I DIR` / `--lib-path` would let multi-file gems and stdlib shims resolve,
-   making real probing possible — and would help every Spinel consumer, not just
-   this tool.
+```
+bundle spinel-lock     # bundle lock, then report incompatible gems
+```
 
-None are required for the external tool to function; each removes a class of
-inference and false verdicts.
+Verdicts are **forward-compatible**: each is keyed on the Spinel revision (Spinel
+ships no version, so we key on the git rev / binary hash, scoped by platform).
+Upgrade Spinel → re-probe → a gem rejected today clears the moment the feature it
+needed lands. No hand-maintained blocklist.
 
-## Dogfooding
+Gating is advisory by design — placement and compatibility are different jobs.
+The plugin makes the failure visible and early; it doesn't try to be a wall.
 
-The curated source should be served by **Tep** — which itself compiles via
-Spinel. The dependency-manager's source then *is* a Spinel program. The MVP is
-CRuby/WEBrick; porting to Tep both validates the approach and exercises Spinel on
-digest + JSONL parsing (good probe targets). See ARCHITECTURE.md §"Dogfooding".
+## Open questions (for discussion, not asks)
 
-## Application to the sibling projects
+These are things we ran into, offered as discussion points — not feature
+requests, and not assuming Spinel wants any of them:
 
-- **Tep** — the prime *vetted gem*: it exists to compile via Spinel, has no
-  external gem deps (its HTTP/JSON/socket layers are in-house C+Ruby). `verify`
-  it with a boot-a-handler smoke; publish to the curated source. Replaces the
-  rsync-into-`_tep_lib` vendoring that Toy does today with `gem "tep", git:`.
-- **Toy** — a *consumer*. Its `lib/` is its own code (already Spinel-compiled for
-  the demos); ggml stays FFI (vendored C, not a gem). Its Gemfile is the engine
-  directive + `gem "tep"` from the curated/git source. The hand-ordered
-  concatenation in `prep/build_tep_app.sh` (a workaround for Tep dropping external
-  `require_relative`) is exactly what a real dependency layer removes.
-- **Tao** — currently a *CRuby* sibling (ML-homelab, minitest, no Gemfile,
-  consumes Toy's JSONL events). It is the clean boundary case: not Spinel-targeted,
-  so it keeps a normal Gemfile with **no** engine directive — the directive is
-  precisely what separates Spinel-targeted projects from CRuby ones. If/when Tao
-  grows a Spinel-compiled component, it becomes a consumer like Toy.
+- **Signalling unsupported constructs.** Today they're silent no-ops at exit 0.
+  Would a non-zero exit or a structured (e.g. JSON) diagnostic — perhaps behind a
+  `--check`/`--strict` flag — be in scope or interest? It's the difference
+  between inferring compatibility from stderr and reading it from a contract.
+- **A stable engine identity.** We key verdicts on a git rev / binary hash for
+  now. If Spinel ever wanted to expose a version/rev, the ledger and the
+  `engine_version:` marker could line up — but there's no rush.
+- **Resolving `require` beyond `<spinel>/lib`.** A load-path notion would let
+  multi-file gems and stdlib shims resolve (and would make probing more
+  accurate). Possibly useful well beyond this tool; possibly out of scope.
 
-## Proposal to Roundhouse
-
-Toy's `lowerer-design.md` envisions a Roundhouse-style preprocessor (Sam Ruby's
-typed-accessor refactoring) that lowers Ruby to typed forms *before* Spinel sees
-them. That lowerer is a build stage; `bundler-spinel` is the stage before it. We
-propose Tep adopt the pipeline **resolve+vet (bundler-spinel) → lower (Roundhouse)
-→ compile (Spinel)**, with the compat ledger as the shared contract: the lowerer
-need only handle inputs that the ledger has marked compilable, and a lowering that
-changes compatability is itself a probe target. This keeps each stage honest
-about what the next can accept.
+None of these are needed for the convention or the plugin to be useful today.
+They're just where the seams are, if there's ever appetite to smooth them.

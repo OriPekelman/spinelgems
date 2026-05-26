@@ -77,7 +77,17 @@ So `clean` means "no problem *found cheaply*," not "correct." Only `verified` �
 compiling the gem's test suite and running it — is trustworthy, which is exactly
 why the curated whitelist and the platform badge require it.
 
-## Three consumers, all views over the ledger
+## Placement — "make it work" (the primary job)
+
+Independent of the ledger: `spinel-compat vendor` reads a `Gemfile.lock`, copies
+each gem's `lib/` into `vendor/spinel/<name>/`, and writes `vendor/spinel/deps.rb`
+(a `require_relative` manifest in lock order). A Spinel program does
+`require_relative "vendor/spinel/deps"`. This is the reusable form of the
+hand-vendoring projects do today, and the reason the convention is usable at all
+given Spinel has no load path. Gating is layered on top but advisory — placement
+and compatibility are different jobs.
+
+## Gating consumers, all views over the ledger
 
 ### 1. Lock-time gate — `bundle spinel-lock` (BUILT)
 `bundle lock` (resolves, ignoring the engine directive), then `check` resolves a
@@ -140,6 +150,9 @@ lib/bundler/spinel/
   ledger.rb        # append-only JSONL verdict store, keyed on (gem,version,rev)
   gem_fetcher.rb   # gem fetch + unpack (source, not install), cached
   probe.rb         # compile signal + static risk scan -> verdict
+  verifier.rb      # differential CRuby-vs-Spinel smoke -> verified
+  vendorer.rb      # place lockfile deps where Spinel finds them + deps.rb
+  survey.rb        # parallel wholesale review -> reason histogram
   checker.rb       # Gemfile.lock -> per-gem verdict -> pass/fail gate
   cli.rb           # `spinel-compat` dispatcher
   command.rb       # Bundler plugin command (bundle spinel-lock / -check)

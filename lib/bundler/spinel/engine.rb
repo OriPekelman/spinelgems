@@ -1,5 +1,6 @@
 require "open3"
 require "digest"
+require "rbconfig"
 
 module Bundler
   module Spinel
@@ -33,9 +34,20 @@ module Bundler
                      "(set SPINEL_DIR or pass --spinel-dir)"
       end
 
-      # Short, human-facing engine id, e.g. "git:0adca86" or "git:0adca86+dirty".
+      # Short, human-facing engine id, platform-scoped:
+      #   "git:0adca86/arm64-darwin"  or  "git:0adca86+dirty/aarch64-linux".
+      # Platform matters because verdicts that depend on the C compile + runtime
+      # (analyze-failed, miscompile, build-error, verified) are not portable
+      # across targets — only `unresolved:X` (pure analysis) is. So the same
+      # Spinel commit built on the Mac and on the gx10 are *distinct* ledger revs.
       def rev
-        @rev ||= compute_rev
+        @rev ||= "#{compute_rev}/#{platform}"
+      end
+
+      def platform
+        cpu = RbConfig::CONFIG["host_cpu"]
+        os  = RbConfig::CONFIG["host_os"].sub(/\d.*\z/, "").sub(/darwin.*/, "darwin")
+        "#{cpu}-#{os}"
       end
 
       # The label a Gemfile declares via `engine_version:`. Advisory only — the

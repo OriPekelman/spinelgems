@@ -44,7 +44,7 @@ exe/spinel-compat check Gemfile.lock     # exit 1 if any gem is rejected
 As a Bundler plugin:
 
 ```sh
-bundle plugin install bundler-spinel --git https://…   # or --path .
+bundle plugin install bundler-spinel --git https://github.com/OriPekelman/spinelgems.git   # or --path .
 bundle spinel-lock      # bundle lock, then report incompatible gems
 bundle spinel-check     # gate an existing Gemfile.lock
 ```
@@ -67,7 +67,7 @@ Verdicts: `✓ clean` · `★ verified` · `~ risky` · `✗ rejected`.
 - `SPINEL_DIR` — path to the Spinel checkout (default `~/spinel`; falls back to a `spinel` on `PATH`).
 - `SPINEL_COMPAT_LEDGER` — ledger path (default `ledger/compat.jsonl`).
 
-## Status & honesty
+## Status
 
 Working: the Gemfile convention, `vendor` (placement), the lock-time gate +
 Bundler plugin, the probe + forward-compat ledger, the `verified` differential

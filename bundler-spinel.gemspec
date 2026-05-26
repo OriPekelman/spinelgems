@@ -8,10 +8,19 @@ Gem::Specification.new do |s|
                   "Spinel and gates `bundle lock` on a forward-compatible, " \
                   "engine-rev-keyed compatibility ledger."
   s.authors     = ["Ori Pekelman"]
+  s.email       = ["ori@pekelman.com"]
   s.license     = "MIT"
+  s.homepage    = "https://github.com/OriPekelman/spinelgems"
   s.required_ruby_version = ">= 3.0"
 
-  s.files = Dir["lib/**/*.rb", "exe/*", "plugins.rb", "*.md"]
+  s.metadata = {
+    "source_code_uri"       => "https://github.com/OriPekelman/spinelgems",
+    "bug_tracker_uri"       => "https://github.com/OriPekelman/spinelgems/issues",
+    "changelog_uri"         => "https://github.com/OriPekelman/spinelgems/blob/main/CHANGELOG.md",
+    "rubygems_mfa_required" => "true",
+  }
+
+  s.files = Dir["lib/**/*.rb", "exe/*", "plugins.rb", "*.md", "LICENSE"]
   s.bindir      = "exe"
   s.executables = ["spinel-compat"]
   s.require_paths = ["lib"]

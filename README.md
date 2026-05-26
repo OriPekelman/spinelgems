@@ -1,5 +1,9 @@
 # bundler-spinel
 
+> ⚠️ **Pre-release / experimental** (`0.0.1.pre`). The CLI surface, the verdict
+> vocabulary, and the ledger format may all change before `0.0.1`. Install with
+> `--pre`. (`spinelgems.org` is not live yet.)
+
 **Use a standard `Gemfile` for your [Spinel](https://github.com/matz/spinel)
 project — for now.** Spinel-compiled projects have no shared way to declare or
 exchange dependencies, so each vendors by hand. Rather than design a package

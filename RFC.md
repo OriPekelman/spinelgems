@@ -8,7 +8,7 @@
 
 Spinel compiles whole Ruby programs to native C. It has no package layer, and —
 by design — no gems, eval, or metaprogramming. Today every project that targets
-Spinel (Tep, Toy, …) invents its own ad-hoc vendoring. This RFC proposes a
+Spinel (Tep, Toy, Roundhouse …) invents its own ad-hoc vendoring. This RFC proposes a
 dependency story that **reuses Bundler's resolver and lockfile** and adds a thin,
 **forward-compatible compatibility ledger**, so that incompatible dependencies
 fail at **`bundle lock` time** rather than at compile time (where Spinel silently
@@ -25,7 +25,7 @@ These are empirical (verified, Bundler 2.7.2 / CRuby 3.4.6):
 1. **Bundler can't gate engine compatibility.** There is no `required_ruby_engine`
    gemspec field; `required_ruby_version` is engine-blind; you can't fabricate a
    platform variant for a gem you don't publish. The Gemfile directive
-   `ruby "3.3", engine: "spinel", engine_version: "0.0.1"` is a *post-resolution*
+   `ruby "3.3", engine: "spinel", engine_version: "0.0.0"` is a *post-resolution*
    check: `bundle lock` ignores it (exit 0, resolves fine); only `bundle install`
    fires the guard (exit 18, "Your Ruby engine is ruby, but your Gemfile specified
    spinel"). Using `ruby "3.x-spinel"` is strictly worse — it parses to a fake

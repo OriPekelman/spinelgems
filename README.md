@@ -50,12 +50,12 @@ bundle spinel-check     # gate an existing Gemfile.lock
 Declare the engine in your Gemfile so `bundle install` also guards (exit 18):
 
 ```ruby
-ruby "3.3.0", engine: "spinel", engine_version: "0.0.1"
+ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
 ```
 
 ## Environment
 
-- `SPINEL_DIR` — path to the Spinel checkout (default `~/sites/spinel`).
+- `SPINEL_DIR` — path to the Spinel checkout (default `~/spinel`; falls back to a `spinel` on `PATH`).
 - `SPINEL_COMPAT_LEDGER` — ledger path (default `ledger/compat.jsonl`).
 
 ## Status

@@ -18,9 +18,13 @@ module Bundler
     class Engine
       attr_reader :dir, :bin
 
-      def initialize(dir: ENV.fetch("SPINEL_DIR", File.expand_path("~/sites/spinel")))
+      def initialize(dir: ENV.fetch("SPINEL_DIR", File.expand_path("~/spinel")))
         @dir = dir
-        @bin = File.join(dir, "spinel")
+        # Prefer a checkout at `dir` (gives a git rev); otherwise fall back to a
+        # `spinel` on PATH (installed binary — rev becomes a binary hash). This
+        # makes the default work for most setups without configuration.
+        local = File.join(dir, "spinel")
+        @bin = File.executable?(local) ? local : (which("spinel") || local)
       end
 
       def available?
@@ -73,6 +77,12 @@ module Bundler
         return "missing" unless available?
 
         "bin:#{Digest::SHA256.file(@bin).hexdigest[0, 12]}"
+      end
+
+      def which(cmd)
+        ENV.fetch("PATH", "").split(File::PATH_SEPARATOR)
+           .map { |p| File.join(p, cmd) }
+           .find { |f| File.executable?(f) && !File.directory?(f) }
       end
 
       def capture(*cmd)

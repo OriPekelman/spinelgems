@@ -25,6 +25,7 @@ module Bundler
         when "build-index" then cmd_build_index(argv)
         when "ledger"  then cmd_ledger(argv)
         when "reprobe" then cmd_reprobe(argv)
+        when "survey"  then cmd_survey(argv)
         when nil, "-h", "--help", "help" then usage; 0
         else
           @err.puts "unknown command: #{cmd}"; usage; 2
@@ -144,6 +145,31 @@ module Bundler
           @err.puts "  ! #{name} #{version}: #{e.message}"
         end
         @out.puts "re-probed #{flips} gem(s) under #{engine.rev}"
+        0
+      end
+
+      # Wholesale review: probe a list of gems in parallel, then emit a report
+      # (the rejection-reason histogram prioritises Spinel's roadmap).
+      def cmd_survey(argv)
+        jobs = (i = argv.index("--jobs")) ? argv.delete_at(i + 1).to_i.tap { argv.delete_at(i) } : 4
+        out_file = (j = argv.index("--out")) ? argv.delete_at(j + 1).tap { argv.delete_at(j) } : nil
+        list = (k = argv.index("--list")) ? argv.delete_at(k + 1).tap { argv.delete_at(k) } : nil
+        names = if list
+                  File.readlines(File.expand_path(list)).map(&:strip).reject { |l| l.empty? || l.start_with?("#") }
+                else
+                  argv.dup
+                end
+        raise Error, "usage: spinel-compat survey GEM... | --list FILE [--jobs N] [--out report.md]" if names.empty?
+
+        survey = Survey.new(jobs: jobs)
+        survey.run(names)
+        report = survey.report(names)
+        if out_file
+          File.write(File.expand_path(out_file), report)
+          @out.puts "wrote #{out_file} (#{names.size} gems)"
+        else
+          @out.puts report
+        end
         0
       end
 

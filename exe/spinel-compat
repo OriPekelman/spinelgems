@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require_relative "../lib/bundler/spinel/cli"
+
+exit Bundler::Spinel::CLI.new.run(ARGV)

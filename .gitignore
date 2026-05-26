@@ -1,0 +1,5 @@
+*.gem
+/tmp/
+/.bundle/
+Gemfile.lock
+/ledger/*.jsonl

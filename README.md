@@ -61,9 +61,14 @@ ruby "3.3.0", engine: "spinel", engine_version: "0.0.1"
 ## Status
 
 Working: probe engine, forward-compat ledger, `spinel-compat` CLI, lock-time
-gate + Bundler plugin command. Designed (stubs + ARCHITECTURE.md): curated
-RubyGems proxy/whitelist, platform-variant opt-in.
+gate + Bundler plugin command, the `verified` differential harness, and the
+curated source (`serve`, Bundler-resolvable). Designed (stub + ARCHITECTURE.md):
+platform-variant opt-in. The upstream proposal + asks of Spinel are in
+[RFC.md](RFC.md).
 
 The compile probe is a **lower bound** — Spinel has no load path, so multi-file
 plain-`require` gems under-probe, and silent miscompiles are invisible to it.
-Trust `verified` (gem tests run through Spinel), not `clean`, for the whitelist.
+Trust `verified` (smoke runs identically under CRuby and Spinel), not `clean`,
+for the curated source. The curated source gates a clean env (CI); the lock-time
+gate is the backstop on dev machines (Bundler also resolves locally-installed
+gems).

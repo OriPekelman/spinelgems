@@ -19,7 +19,9 @@ module Bundler
         case cmd
         when "engine"  then cmd_engine
         when "probe"   then cmd_probe(argv)
+        when "verify"  then cmd_verify(argv)
         when "check"   then cmd_check(argv)
+        when "serve"   then cmd_serve(argv)
         when "ledger"  then cmd_ledger(argv)
         when "reprobe" then cmd_reprobe(argv)
         when nil, "-h", "--help", "help" then usage; 0
@@ -56,6 +58,23 @@ module Bundler
         v.rejected? ? 1 : 0
       end
 
+      def cmd_verify(argv)
+        dir = (i = argv.index("--dir")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
+        smoke = (j = argv.index("--smoke")) ? argv.delete_at(j + 1).tap { argv.delete_at(j) } : nil
+        name = argv.shift or raise Error, "usage: spinel-compat verify NAME [VERSION] [--dir PATH] [--smoke FILE]"
+        engine = Engine.new
+        if dir
+          version = argv.shift || "path"
+          gem_dir = File.expand_path(dir)
+        else
+          version = argv.shift || latest_version(name)
+          gem_dir = GemFetcher.new.fetch(name, version)
+        end
+        v = Verifier.new(engine, Ledger.new).verify(name, version, gem_dir, smoke: smoke && File.expand_path(smoke))
+        print_verdict(v)
+        v.verified? ? 0 : 1
+      end
+
       def cmd_check(argv)
         strict = argv.delete("--strict")
         lock = argv.shift || "Gemfile.lock"
@@ -74,6 +93,15 @@ module Bundler
           res.risky.each { |v| @err.puts "  ~ #{v.gem} #{v.version} — risky: #{v.risks.join(', ')}" } if strict
           1
         end
+      end
+
+      def cmd_serve(argv)
+        require_relative "proxy"
+        store = (i = argv.index("--store")) ? argv[i + 1] : raise(Error, "serve needs --store DIR (vetted .gem files)")
+        port = (j = argv.index("--port")) ? argv[j + 1].to_i : 9292
+        min = (k = argv.index("--min")) ? argv[k + 1].to_sym : :verified
+        Proxy.new(store: File.expand_path(store), min_verdict: min).serve(port: port)
+        0
       end
 
       def cmd_ledger(argv)
@@ -131,6 +159,7 @@ module Bundler
 
             spinel-compat engine                 show detected compiler + engine rev
             spinel-compat probe NAME [VERSION]    probe one gem, record a verdict
+            spinel-compat verify NAME [--smoke F]  differential CRuby-vs-Spinel run -> verified
             spinel-compat check [LOCK] [--strict] gate a Gemfile.lock (exit 1 if rejected)
             spinel-compat ledger [--rev REV]      dump recorded verdicts
             spinel-compat reprobe                 re-probe known gems under current rev

@@ -79,21 +79,38 @@ why the curated whitelist and the platform badge require it.
 
 ## Three consumers, all views over the ledger
 
-### 1. Lock-time gate — `bundle spinel-lock` (built)
+### 1. Lock-time gate — `bundle spinel-lock` (BUILT)
 `bundle lock` (resolves, ignoring the engine directive), then `check` resolves a
 verdict for every locked gem (ledger hit, or probe-on-miss) and exits non-zero on
-any `rejected`. This is the headline: resolution-time failure with feature-named
-reasons.
+any `rejected`. The headline: resolution-time failure with feature-named reasons.
+Also the **backstop** for consumer #2's leak (below): it re-checks every gem in
+the *resulting* lock against the ledger regardless of where it resolved from.
 
-### 2. Curated source / proxy (designed — `proxy.rb` stub)
-A read-through RubyGems proxy that serves only gems whose verdict for the pinned
-engine rev is acceptable. Point `source` at it and `bundle lock` resolves *only
-against vetted gems* — incompatibility becomes a plain "no compatible version"
-resolution failure, no plugin needed. The "whitelist" is not a separate file: it
-is the acceptable-verdict subset of the ledger at a pinned rev. Permissive mode
-(probe-on-first-serve, refuse `rejected`) grows it lazily; strict mode serves
-only `verified`. `path:`/`git:` sibling sources (e.g. `gem "tep", path: …`) are
-the degenerate one-gem curated source and probe in place via `probe --dir`.
+### 1b. The `verified` rung — `spinel-compat verify` (BUILT)
+Differential testing: run a smoke program once under CRuby and once Spinel-
+compiled, diff stdout. The only signal that catches Spinel's **silent
+miscompiles** — they emit no warning and exit 0, so the cheap probe calls them
+`clean`, but a differential run diverges. Proven: a method doing `h[k].nil? ? -1
+: v` over a stored `0` is `clean` to the probe but caught as `rejected:miscompile`
+by verify (`L2 cruby="-1" spinel="0"` — the Int-0-as-nil footgun). The smoke is
+the unit of trust, so `verified` is opt-in and smoke-supplied.
+
+### 2. Curated source / proxy — `spinel-compat serve` (BUILT, MVP)
+A Compact Index source serving only vetted gems from a local store of .gem
+artifacts (`--min verified|clean|risky`). Proven end-to-end: `bundle lock` against
+it resolves a vetted gem (exit 0) and fails on an absent one (exit 7, "could not
+find gem … in repository … or installed locally"). The "whitelist" is not a file:
+it's the acceptable-verdict subset of the ledger at the pinned rev. `path:`/`git:`
+siblings (`gem "tep", path: …`) are the degenerate one-gem curated source and
+probe in place via `probe --dir`.
+
+**Leak caveat (important):** Bundler *also* considers locally-installed gems
+("…or installed locally"). In a polluted environment an unvetted-but-installed
+gem can resolve and even be mis-attributed to the source. So the curated source
+gates a **clean** environment (CI); pair it with consumer #1 as a backstop for
+dev machines. Read-through filtering of upstream rubygems is a documented
+extension; empirically the third-party ecosystem is ~all-rejected today, so the
+local-store mode is what carries weight.
 
 ### 3. Platform-variant opt-in (designed — `platform.rb` stub)
 The bridge from "our ledger says verified" to "stock Bundler selects it,"
@@ -102,6 +119,18 @@ is republished (to the curated source) under a `spinel` platform token — likel
 `<cpu>-spinel-<engine_rev>` so the badge is rev-scoped — and Bundler's normal
 platform resolution prefers it. Opt-in because earning the badge means someone
 ran the gem's tests through a Spinel-compiled harness.
+
+## Dogfooding — the curated source served by Tep
+
+The MVP proxy is CRuby/WEBrick (fast to prove Bundler resolves against it). The
+target is to serve the same Compact Index endpoints from **Tep** — the Sinatra-
+flavoured framework that *itself compiles via Spinel*. Then the Spinel
+dependency-manager's source is a Spinel program: the system vets its own
+substrate. Tep already has the pieces (`sphttp` server, routing, an HTTP client
+for upstream fetch); the open questions are Spinel support for the bits the proxy
+needs — MD5/SHA256 (digest), and reading the JSONL ledger — which are themselves
+good probe targets. Serving `/names`, `/versions`, `/info/<gem>`, `/gems/<file>`
+is plain text + file bytes, well within Tep's range.
 
 ## Layout
 

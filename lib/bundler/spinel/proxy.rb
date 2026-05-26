@@ -46,6 +46,24 @@ module Bundler
         end
       end
 
+      # Write the curated source as a *static* Compact Index tree:
+      #   out/names  out/versions  out/info/<gem>  out/gems/<file>.gem
+      # All digest/JSON happens here, offline, in CRuby. The result is plain
+      # text + file bytes — so the dogfood server (Tep/Spinel, which has neither
+      # digest nor JSON — probed 2026-05-26) only has to serve static files.
+      def write_static(out)
+        require "fileutils"
+        FileUtils.mkdir_p(File.join(out, "info"))
+        FileUtils.mkdir_p(File.join(out, "gems"))
+        File.write(File.join(out, "names"), names_body)
+        File.write(File.join(out, "versions"), versions_body)
+        catalog.each_key { |name| File.write(File.join(out, "info", name), info_body(name)) }
+        catalog.values.flat_map(&:values).each do |e|
+          FileUtils.cp(e[:path], File.join(out, "gems", File.basename(e[:path])))
+        end
+        out
+      end
+
       def serve(port: 9292, quiet: true)
         server = WEBrick::HTTPServer.new(
           Port: port,

@@ -22,6 +22,7 @@ module Bundler
         when "verify"  then cmd_verify(argv)
         when "check"   then cmd_check(argv)
         when "serve"   then cmd_serve(argv)
+        when "build-index" then cmd_build_index(argv)
         when "ledger"  then cmd_ledger(argv)
         when "reprobe" then cmd_reprobe(argv)
         when nil, "-h", "--help", "help" then usage; 0
@@ -101,6 +102,16 @@ module Bundler
         port = (j = argv.index("--port")) ? argv[j + 1].to_i : 9292
         min = (k = argv.index("--min")) ? argv[k + 1].to_sym : :verified
         Proxy.new(store: File.expand_path(store), min_verdict: min).serve(port: port)
+        0
+      end
+
+      def cmd_build_index(argv)
+        require_relative "proxy"
+        store = (i = argv.index("--store")) ? argv[i + 1] : raise(Error, "build-index needs --store DIR")
+        out = (j = argv.index("--out")) ? argv[j + 1] : raise(Error, "build-index needs --out DIR")
+        min = (k = argv.index("--min")) ? argv[k + 1].to_sym : :verified
+        dir = Proxy.new(store: File.expand_path(store), min_verdict: min).write_static(File.expand_path(out))
+        @out.puts "wrote static curated index to #{dir} (serve it as a `source`)"
         0
       end
 

@@ -28,6 +28,7 @@ module Bundler
 
       def vendor(lockfile = "Gemfile.lock", into: "vendor/spinel", warn_incompatible: true)
         parsed = Bundler::LockfileParser.new(File.read(lockfile))
+        lock_dir = File.dirname(File.expand_path(lockfile))
         into = File.expand_path(into)
         FileUtils.mkdir_p(into)
 
@@ -35,7 +36,7 @@ module Bundler
         parsed.specs.each do |spec|
           name = spec.name
           version = spec.version.to_s
-          src = @fetcher.fetch(name, version)
+          src = resolve_source(spec, lock_dir)
           dest = File.join(into, name)
           place(src, dest)
           manifest << require_target(name, dest)
@@ -44,6 +45,24 @@ module Bundler
 
         write_manifest(into, manifest)
         { into: into, count: manifest.size }
+      end
+
+      # path:/git: lockfile sources (toy ↔ tep is the headline case)
+      # point at a local tree; we don't go through `gem fetch`. For GEM
+      # sources we fall back to the cache-backed RubyGems fetcher.
+      # Issue: OriPekelman/spinelgems#3.
+      def resolve_source(spec, lock_dir)
+        src = spec.source
+        if src.respond_to?(:path) && src.path
+          path = src.path.to_s
+          # Bundler stores PATH as relative-to-lockfile; resolve to abs.
+          path = File.expand_path(path, lock_dir) unless File.absolute_path?(path)
+          unless File.directory?(path)
+            raise Error, "path: source for #{spec.name} not found: #{path}"
+          end
+          return path
+        end
+        @fetcher.fetch(spec.name, spec.version.to_s)
       end
 
       private

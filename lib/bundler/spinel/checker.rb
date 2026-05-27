@@ -21,15 +21,13 @@ module Bundler
       def check(lockfile = "Gemfile.lock", strict: false)
         @engine.ensure!
         parsed = Bundler::LockfileParser.new(File.read(lockfile))
+        lock_dir = File.dirname(File.expand_path(lockfile))
         rejected = []
         risky = []
         verdicts = []
 
         parsed.specs.each do |spec|
-          # path:/git: sources (e.g. a sibling like tep) probe in place; the
-          # GEM source fetches. We only have name+version here, so prototype
-          # handles the rubygems case; path/git probing is a documented TODO.
-          v = verdict_for(spec.name, spec.version.to_s)
+          v = verdict_for(spec, lock_dir)
           next unless v # skipped (unfetchable / TODO source)
 
           verdicts << v
@@ -43,11 +41,24 @@ module Bundler
 
       private
 
-      def verdict_for(name, version)
+      # path:/git: sources probe in place (the local checkout); GEM
+      # sources go through the cache-backed fetcher. Closes the TODO
+      # noted in OriPekelman/spinelgems#3.
+      def verdict_for(spec, lock_dir)
+        name = spec.name
+        version = spec.version.to_s
         cached = @ledger.lookup(name, version, @engine.rev)
         return cached if cached
 
-        dir = @fetcher.fetch(name, version)
+        dir =
+          if spec.source.respond_to?(:path) && spec.source.path
+            path = spec.source.path.to_s
+            path = File.expand_path(path, lock_dir) unless File.absolute_path?(path)
+            File.directory?(path) or raise Error, "path: source for #{name} not found: #{path}"
+            path
+          else
+            @fetcher.fetch(name, version)
+          end
         @probe.probe(name, version, dir)
       rescue Error => e
         warn "[spinel-compat] skipped #{name} #{version}: #{e.message}"

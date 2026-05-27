@@ -8,7 +8,9 @@
 project — for now.** Spinel-compiled projects have no shared way to declare or
 exchange dependencies, so each vendors by hand. Rather than design a package
 manager, borrow a format everyone already knows and revisit later. See
-[RFC.md](RFC.md) for the proposal.
+[RFC.md](RFC.md) for the proposal, and [docs/adoption.md](docs/adoption.md) for a
+project's how-to — adopting the convention *and* breaking a project into
+extractable libraries (so a consumer depends on just the slice it needs).
 
 `bundler-spinel` is a small Bundler plugin that makes that practical in two ways:
 

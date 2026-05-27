@@ -90,7 +90,8 @@ module Bundler
 
         case @min_verdict
         when :verified then v.verified?
-        when :clean    then v.verified? || v.clean?
+        when :loaded   then v.verified? || v.loaded?
+        when :clean    then v.verified? || v.loaded? || v.clean?
         when :risky    then !v.rejected?
         else false
         end

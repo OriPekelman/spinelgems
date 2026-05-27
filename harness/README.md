@@ -14,7 +14,7 @@ bundle lock                                   # resolves; ignores the engine mar
 spinel main.rb -o main.bin && ./main.bin      # require_relative "vendor/spinel/deps"
 ```
 
-This proves Proposal 1 (Gemfile) + 2a (vendor placement): `bundle lock` resolves
+Proves Proposal 1 (Gemfile) + 2a (vendor placement): `bundle lock` resolves
 normally, `vendor` places each gem's `lib/` and writes a lock-ordered `deps.rb`,
 and a Spinel program that `require_relative`s it compiles and runs — identically
 to CRuby. (`vendor` also *advises* when a gem is rejected for the current engine
@@ -22,37 +22,67 @@ rev; placement still happens — placement and gating are different jobs.)
 
 ## Phase 2 — the `verified` testing ground
 
-Per-gem smokes under `smoke/<gem>.rb`. `spinel-compat verify <gem> --smoke
-smoke/<gem>.rb` runs the smoke once under CRuby (the reference) and once
-Spinel-compiled, and diffs stdout: match → `verified`, divergence →
-`rejected:miscompile`.
+Per-gem smokes under `smoke/<gem>.rb`. `spinel-compat verify <gem> [--smoke
+smoke/<gem>.rb]` runs the smoke once under CRuby (the reference, with the gem's
+`lib/` on the load path) and once Spinel-compiled, then diffs stdout. The verdict
+depends on whether a behaviour smoke was supplied:
 
-```sh
-for s in smoke/*.rb; do
-  g=$(basename "$s" .rb)
-  ../exe/spinel-compat verify "$g" --smoke "$s"
-done
-```
+| run | match | mismatch | no build |
+|---|---|---|---|
+| `--smoke FILE` (drives the API) | **`verified`** | `rejected:miscompile` | `rejected` |
+| require-only (default) | **`loaded`** | — | `rejected` |
 
 `run.sh` automates both phases.
 
-## What we found (engine git:2183a92+dirty, aarch64-linux)
+### Why `loaded` ≠ `verified` (the refinement)
 
-The whole point of the `verified` rung, demonstrated:
+`loaded` means "compiles and **loads** identically under CRuby and Spinel" — it
+*ran*, but its logic wasn't exercised. That is **not** trustworthy: a gem can
+load fine and still silently miscompile in logic the require-only smoke never
+touched. Only `verified` — a behaviour smoke that drives the gem's real API and
+matches — earns trust (and a curated-source slot). The harness proved the gap is
+real, so the rung is split.
 
-- **Require-only "verified" (loads + compiles identically) is NOT trustworthy.**
-  ~22 popular `clean` gems load cleanly under Spinel, but exercising their actual
-  behaviour exposes **silent miscompiles**:
+## What we found (engine `git:2183a92+dirty/aarch64-linux-gnu`)
+
+Over the surveyed ledger (15,673 gems): **1 verified · 64 loaded · 2219 clean ·
+1474 risky · 11915 rejected.**
+
+- **Behaviour-`verified`: `opentelemetry-semantic_conventions`** — a constants
+  library, so verifying its constants *is* verifying its function. The only
+  popular gem to clear the bar so far.
+- **`loaded` is not enough — silent miscompiles, caught only by behaviour:**
   - `strings-ansi`: `sanitize(...)` → CRuby `"RED and bold text"`, **Spinel `"0"`**.
   - `semantic_puppet`: `Version "1.2.3" < "1.10.0"` → CRuby `true`, **Spinel `false`**.
+  - `tty-which`: `exist?("sh")` → CRuby `true`, **Spinel `0`**.
 - **Most popular gems reject at compile time** on missing runtime: `String#scan`,
   `Thread::Mutex`, `StringScanner#[]`, variadic methods (`notify_observers`),
-  some regex-literal codegen, self-referential class types (`AST::Node`).
+  some regex-literal codegen, self-referential class types (`AST::Node`),
+  and `to_words`/`cantor`-style logic.
 - **Multi-file plain-`require` gems can't verify** — they need a load path Spinel
-  doesn't have (the verifier gives CRuby `-I lib` so this shows up as a clean
+  doesn't have (the verifier gives CRuby `-I lib`, so this surfaces as a clean
   `rejected`, not a broken smoke).
 
-Net: **0 popular gems are behaviour-`verified` yet.** `clean` (and even
-require-only `verified`) massively overstate compatibility; only a behaviour
-smoke through this harness is trustworthy. That's the case for the curated
-source serving *only* behaviour-verified gems — and a precise roadmap for Spinel.
+Net: `clean` and even `loaded` massively overstate compatibility; only a
+behaviour smoke is trustworthy — exactly why the curated source serves
+`verified` only. And every rejection names a feature: a precise Spinel roadmap.
+
+## Catalog considerations (spinelgems.org)
+
+The catalog renders these verdicts; a few things follow from the above:
+
+- **Default the catalog's "min verdict" to `verified`, not `clean`.** `clean`
+  (and `loaded`) are cheap lower bounds that this harness shows are wrong often
+  enough that surfacing them as "compatible" would mislead. The chips let a
+  visitor opt into the weaker tiers, but the headline count and the Compact Index
+  store should be `verified`-only.
+- **Show `loaded` distinctly (○), never folded into `verified` (★).** They mean
+  different things; the silent-miscompile examples above are the reason.
+- **The Compact Index serves `--min verified`.** With one verified gem today the
+  store is nearly empty — honest: the curated source promises *behaviour-vetted*
+  gems, and there is exactly one. It grows as smokes are added here.
+- **Popularity sort + the downloads floor stay.** They make the catalog browsable
+  but are orthogonal to trust — a 1B-download gem can still be `rejected`.
+- **Verdicts are rev-scoped.** The catalog states the engine rev; a new Spinel
+  re-probes and a gem rejected today can flip. The catalog is a snapshot, not a
+  verdict for all time.

@@ -53,7 +53,13 @@ Spinel's failure modes aren't exit codes, so one signal isn't enough:
 | `rejected` | unsupported **call** (`cannot resolve call to 'X'` → `unresolved:X`), or `analyze failed` / non-zero exit | gate fails the lock |
 | `risky` | compiles clean, but static scan found constructs Spinel degrades silently (`define_method`, `eval`, `send`, `method_missing`, C-ext…) | gate allows; `--strict` fails |
 | `clean` | compiles clean, no risky constructs | gate allows |
-| `verified` | `clean` **and** the gem's own tests pass through a Spinel-compiled harness | curated whitelist + platform badge |
+| `loaded` | `clean` **and** a require-only differential run loads identically under CRuby and Spinel — but its logic was never exercised, so a silent miscompile there is still possible | gate allows; **not** trusted by the curated source |
+| `verified` | `loaded` **and** a behaviour smoke (drives the gem's API) runs identically under CRuby and a Spinel-compiled harness | curated whitelist + platform badge |
+
+The `loaded`/`verified` split is empirical: gems that load identically still
+silently miscompile in untested logic (`strings-ansi`'s `sanitize` → `"0"`,
+`semantic_puppet`'s `1.2.3 < 1.10.0` → `false`). Only a behaviour smoke catches
+it — see `harness/`.
 
 Two probe signals feed this:
 

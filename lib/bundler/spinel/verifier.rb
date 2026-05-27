@@ -9,14 +9,17 @@ module Bundler
     # and exit 0, so the cheap probe can't see them, but a differential run does:
     # CRuby and the miscompiled binary diverge.
     #
-    #   match    -> verified  (CRuby and Spinel agree on this smoke)
-    #   mismatch -> rejected  (reason: miscompile, with a short diff)
-    #   no build -> rejected  (reason: build-error / run-error)
+    #   match, behaviour smoke -> verified  (CRuby and Spinel agree on real use)
+    #   match, require-only     -> loaded    (loads+runs identically; logic untested)
+    #   mismatch                -> rejected  (reason: miscompile, with a short diff)
+    #   no build                -> rejected  (reason: build-error / run-error)
     #
-    # The smoke is the unit of trust. A require-only default smoke catches
-    # load-time divergence; pass `--smoke FILE` (a snippet that drives the gem's
-    # API and prints deterministic output) to verify behaviour. Verification is
-    # only as good as the smoke — which is why it's opt-in and human-supplied.
+    # The smoke is the unit of trust. The require-only default smoke only proves
+    # the gem loads identically (`loaded`); pass `--smoke FILE` (a snippet that
+    # drives the gem's API and prints deterministic output) to actually verify
+    # behaviour (`verified`). Verification is only as good as the smoke — which is
+    # why it's opt-in and human-supplied. (A `loaded` gem can still silently
+    # miscompile in logic the require-only smoke never ran — observed in practice.)
     class Verifier
       HARNESS = "__spinel_verify.rb".freeze
 
@@ -33,7 +36,7 @@ module Bundler
         ruby_out, _, ruby_ok = run_ruby(harness, dir)
         spin_out, spin_err, spin_ok = run_spinel(harness)
 
-        verdict, reasons = classify(ruby_ok, spin_ok, ruby_out, spin_out, spin_err)
+        verdict, reasons = classify(ruby_ok, spin_ok, ruby_out, spin_out, spin_err, behavior: !smoke.nil?)
         @ledger.record(@ledger.build(
           gem: gem_name, version: version, rev: @engine.rev,
           verdict: verdict, reasons: reasons, probe: "verify"
@@ -44,7 +47,11 @@ module Bundler
 
       private
 
-      def classify(ruby_ok, spin_ok, ruby_out, spin_out, spin_err)
+      # behavior: true when a real --smoke drove the gem's API (→ `verified` on
+      # match); false for the require-only default smoke (→ `loaded` on match —
+      # it loaded+ran identically, but its logic wasn't exercised, so a silent
+      # miscompile in that logic is still possible).
+      def classify(ruby_ok, spin_ok, ruby_out, spin_out, spin_err, behavior:)
         unless ruby_ok
           # Smoke is broken under plain Ruby — can't draw a conclusion.
           return ["risky", ["smoke-error:cruby"]]
@@ -52,7 +59,7 @@ module Bundler
         return ["rejected", ["build-or-run-error"] + spin_err.lines.grep(/error|fatal/i).first(2).map(&:strip)] unless spin_ok
 
         if ruby_out == spin_out
-          ["verified", []]
+          [behavior ? "verified" : "loaded", []]
         else
           ["rejected", ["miscompile", "diff:#{first_diff(ruby_out, spin_out)}"]]
         end
@@ -63,12 +70,23 @@ module Bundler
       # natively. (Plain `require "gem/part"` gems still under-resolve; that's the
       # documented load-path limitation.)
       def harness_source(gem_name, dir, smoke)
-        entry = File.exist?(File.join(dir, "lib", "#{gem_name}.rb")) ? "lib/#{gem_name}" : nil
+        entry = entrypoint(gem_name, dir)
         body = smoke ? File.read(smoke) : %{puts "spinel-verify: loaded #{gem_name}"}
         src = +""
         src << %{require_relative "#{entry}"\n} if entry
         src << body << "\n"
         src
+      end
+
+      # The gem's conventional entry file. Try lib/<gem>.rb, then the require path
+      # a dashed name maps to (lib/<a>/<b>.rb for "a-b") — so dashed/nested gems
+      # like opentelemetry-semantic_conventions actually load, instead of the
+      # require-only smoke silently loading nothing and looking like it passed.
+      def entrypoint(gem_name, dir)
+        [gem_name, gem_name.tr("-", "/")].uniq.each do |cand|
+          return "lib/#{cand}" if File.exist?(File.join(dir, "lib", "#{cand}.rb"))
+        end
+        nil
       end
 
       # CRuby is the reference: give it the gem's own lib/ on the load path so a

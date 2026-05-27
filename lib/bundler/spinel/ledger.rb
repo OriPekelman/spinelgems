@@ -25,8 +25,14 @@ module Bundler
         # Compiles clean but uses constructs Spinel degrades silently
         # (define_method/eval/…): allowed by default, fails under --strict.
         def risky? = verdict == "risky"
-        # Compiles clean AND the gem's own tests pass through a Spinel-compiled
-        # harness. The only verdict that earns a whitelist slot / platform badge.
+        # Compiles AND loads identically under a differential CRuby-vs-Spinel run,
+        # but with no behaviour smoke — so silent miscompiles in its *logic* are
+        # still possible. Stronger than `clean` (it actually ran), weaker than
+        # `verified`. Not trustworthy enough for the curated source on its own.
+        def loaded? = verdict == "loaded"
+        # Compiles clean AND a behaviour smoke runs identically under CRuby and a
+        # Spinel-compiled harness. The only verdict that earns a whitelist slot /
+        # platform badge — catches the silent miscompiles `loaded` can't.
         def verified? = verdict == "verified"
 
         def to_line = JSON.generate(to_h.transform_keys(&:to_s))

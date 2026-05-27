@@ -6,7 +6,7 @@ module Bundler
     # Bundler plugin command. Keeps all logic in the library classes.
     class CLI
       VERDICT_GLYPH = {
-        "clean" => "✓", "verified" => "★", "risky" => "~", "rejected" => "✗"
+        "clean" => "✓", "loaded" => "○", "verified" => "★", "risky" => "~", "rejected" => "✗"
       }.freeze
 
       def initialize(out: $stdout, err: $stderr)
@@ -78,7 +78,7 @@ module Bundler
         end
         v = Verifier.new(engine, Ledger.new).verify(name, version, gem_dir, smoke: smoke && File.expand_path(smoke))
         print_verdict(v)
-        v.verified? ? 0 : 1
+        (v.verified? || v.loaded?) ? 0 : 1
       end
 
       def cmd_vendor(argv)

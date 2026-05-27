@@ -1,6 +1,6 @@
 :root {
   --fg: #1a1a1a; --muted: #666; --bg: #fff; --accent: #7b2d8e; --rule: #e5e5e5;
-  --verified: #6b21a8; --clean: #15803d; --risky: #b45309; --rejected: #b91c1c;
+  --verified: #6b21a8; --loaded: #2563eb; --clean: #15803d; --risky: #b45309; --rejected: #b91c1c;
   --code-bg: #f6f6f7;
 }
 * { box-sizing: border-box; }
@@ -32,6 +32,7 @@ footer a, .lede a, .note a { color: var(--accent); }
 /* verdict colours */
 .v { font-weight: 600; white-space: nowrap; }
 .v.verified { color: var(--verified); }
+.v.loaded   { color: var(--loaded); }
 .v.clean    { color: var(--clean); }
 .v.risky    { color: var(--risky); }
 .v.rejected { color: var(--rejected); }
@@ -48,7 +49,7 @@ table.ladder td.v { width: 8rem; }
 }
 .chip span { color: var(--muted); font-variant-numeric: tabular-nums; }
 .chip.on { border-color: var(--accent); background: #f7eefb; }
-.chip.verified { color: var(--verified); } .chip.clean { color: var(--clean); }
+.chip.verified { color: var(--verified); } .chip.loaded { color: var(--loaded); } .chip.clean { color: var(--clean); }
 .chip.risky { color: var(--risky); } .chip.rejected { color: var(--rejected); }
 #q { flex: 1; min-width: 12rem; padding: .35rem .6rem; border: 1px solid var(--rule); border-radius: 6px; font-size: .9rem; }
 table#catalog { border-collapse: collapse; width: 100%; font-size: .9rem; }

@@ -64,7 +64,10 @@ exe/spinel-compat serve --store DIR      # curated source (only vetted gems)
 exe/spinel-compat ledger / reprobe       # inspect / re-probe under current rev
 ```
 
-Verdicts: `✓ clean` · `★ verified` · `~ risky` · `✗ rejected`.
+Verdicts: `✗ rejected` · `~ risky` · `✓ clean` · `○ loaded` · `★ verified`.
+`clean` compiles; `loaded` also *runs* a require-only differential; `verified`
+also passes a behaviour smoke. Trust `verified` — `clean`/`loaded` are cheap
+lower bounds (a `loaded` gem can still silently miscompile in untested logic).
 
 ## Environment
 

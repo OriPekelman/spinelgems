@@ -24,8 +24,8 @@ module Bundler
     class Site
       SRC = File.expand_path("../../../site", __dir__) # the repo's site/ source dir
 
-      VERDICT_ORDER = %w[verified clean risky rejected].freeze
-      GLYPH = { "verified" => "★", "clean" => "✓", "risky" => "~", "rejected" => "✗" }.freeze
+      VERDICT_ORDER = %w[verified loaded clean risky rejected].freeze
+      GLYPH = { "verified" => "★", "loaded" => "○", "clean" => "✓", "risky" => "~", "rejected" => "✗" }.freeze
 
       # Default downloads floor for the catalog's "hide low-signal gems" toggle —
       # weeds out test / security-researcher / throwaway gems (the exfil PoC has

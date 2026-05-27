@@ -30,7 +30,7 @@ module Bundler
         harness = File.join(dir, HARNESS)
         File.write(harness, harness_source(gem_name, dir, smoke))
 
-        ruby_out, _, ruby_ok = run_ruby(harness)
+        ruby_out, _, ruby_ok = run_ruby(harness, dir)
         spin_out, spin_err, spin_ok = run_spinel(harness)
 
         verdict, reasons = classify(ruby_ok, spin_ok, ruby_out, spin_out, spin_err)
@@ -71,8 +71,13 @@ module Bundler
         src
       end
 
-      def run_ruby(file)
-        out, err, st = Open3.capture3("ruby", file)
+      # CRuby is the reference: give it the gem's own lib/ on the load path so a
+      # gem's internal plain `require "<gem>/part"` resolves naturally. Spinel
+      # gets no such help (no load path is its real constraint) — so a gem that
+      # *needs* the load path diverges and is correctly rejected, rather than
+      # failing under CRuby too and looking like a broken smoke.
+      def run_ruby(file, dir)
+        out, err, st = Open3.capture3("ruby", "-I", File.join(dir, "lib"), file)
         [out, err, st.success?]
       end
 

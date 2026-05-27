@@ -1,0 +1,7 @@
+source "https://rubygems.org"
+ruby "3.2.3", engine: "spinel", engine_version: "0.0.0"
+
+# No-dependency, load-verified gems (a clean Phase-1 structure check).
+gem "inflection"
+gem "pr_geohash"
+gem "hike"

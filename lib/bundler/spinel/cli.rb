@@ -24,6 +24,7 @@ module Bundler
         when "check"   then cmd_check(argv)
         when "serve"   then cmd_serve(argv)
         when "build-index" then cmd_build_index(argv)
+        when "build-site"  then cmd_build_site(argv)
         when "ledger"  then cmd_ledger(argv)
         when "reprobe" then cmd_reprobe(argv)
         when "survey"  then cmd_survey(argv)
@@ -128,6 +129,19 @@ module Bundler
         0
       end
 
+      # Build the spinelgems.org static deploy tree: presentation + ledger-driven
+      # catalog, plus the Compact Index (apex double-duty) when a --store is given.
+      def cmd_build_site(argv)
+        require_relative "site"
+        out = (j = argv.index("--out")) ? argv[j + 1] : raise(Error, "build-site needs --out DIR")
+        store = (i = argv.index("--store")) ? File.expand_path(argv[i + 1]) : nil
+        min = (k = argv.index("--min")) ? argv[k + 1].to_sym : :verified
+        dir = Site.new.build(File.expand_path(out), store: store, min_verdict: min)
+        @out.puts "built spinelgems.org site -> #{dir}" \
+                  "#{store ? " (+ Compact Index from #{store})" : ' (presentation + catalog; pass --store DIR to add the Compact Index)'}"
+        0
+      end
+
       def cmd_ledger(argv)
         rev = (i = argv.index("--rev")) ? argv[i + 1] : nil
         Ledger.new.each do |v|
@@ -217,6 +231,7 @@ module Bundler
             spinel-compat survey GEM... | --list F  wholesale review -> reason histogram
             spinel-compat serve --store DIR        curated source (only vetted gems)
             spinel-compat build-index --store DIR --out DIR   static curated index
+            spinel-compat build-site --out DIR [--store DIR]  static site (presentation + catalog [+ index])
             spinel-compat ledger [--rev REV]      dump recorded verdicts
             spinel-compat reprobe                 re-probe known gems under current rev
 

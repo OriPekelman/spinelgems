@@ -177,8 +177,11 @@ module Bundler
         survey.run(names)
         report = survey.report(names)
         if out_file
-          File.write(File.expand_path(out_file), report)
-          @out.puts "wrote #{out_file} (#{names.size} gems)"
+          out_path = File.expand_path(out_file)
+          File.write(out_path, report)
+          tsv_path = File.join(File.dirname(out_path), "candidates.tsv")
+          File.write(tsv_path, survey.candidates_tsv(names))
+          @out.puts "wrote #{out_file} + candidates.tsv (#{names.size} gems)"
         else
           @out.puts report
         end

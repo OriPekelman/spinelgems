@@ -12,6 +12,22 @@ module Bundler
     # cores. Verdicts are cached in the ledger, so a survey is resumable and
     # re-runnable; only ledger writes are serialised.
     class Survey
+      # Metaprogramming / reflection constructs Spinel treats as out of scope.
+      # Mirrors Probe::RISK_TOKENS' reason vocabulary: whether a construct shows
+      # up as a static risk (`send`) or as an unresolved call (`unresolved:send`),
+      # it's bucketed as metaprog and kept *out* of the candidate-call list — the
+      # point of that list is calls Spinel could plausibly learn, not ones it
+      # deliberately won't.
+      METAPROG = %w[
+        eval instance_eval class_eval define_method method_missing
+        respond_to_missing const_missing send public_send objectspace
+        tracepoint binding
+      ].freeze
+
+      # How many candidate calls to show inline in the report. The full ranked
+      # list always goes to candidates.tsv; 0 shows the whole list inline too.
+      REPORT_CALLS = Integer(ENV.fetch("SPINEL_REPORT_CALLS", "200"))
+
       def initialize(engine: Engine.new, ledger: Ledger.new, jobs: 4)
         @engine = engine
         @ledger = ledger
@@ -58,23 +74,61 @@ module Bundler
       # take the *last* current-rev entry per gem: append-only means a re-probe
       # supersedes, and the survey probes a gem at one (latest) version per run.
       def report(names)
-        wanted = names.to_set
-        rev = @engine.rev
-        latest = {}
-        @ledger.each do |v|
-          latest[v.gem] = v if v.rev == rev && wanted.include?(v.gem)
-        end
-        verdicts = latest.values
-        counts = Hash.new(0)
-        reasons = Hash.new(0)
-        verdicts.each do |v|
-          counts[v.verdict] += 1
-          (v.reasons + v.risks).each { |r| reasons[normalize(r)] += 1 }
-        end
-        render(verdicts.size, counts, reasons)
+        n, counts, reasons = aggregate(names)
+        render(n, counts, reasons)
+      end
+
+      # The full ranked candidate-call list as TSV (`count\tcall`, header first) —
+      # the long-tail companion to the report's top-N inline table. Written to
+      # candidates.tsv so the whole roadmap signal survives, not just the head.
+      def candidates_tsv(names)
+        _, _, reasons = aggregate(names)
+        rows = candidate_calls(reasons).map { |call, c| "#{c}\t#{call}" }
+        (["count\tcall"] + rows).join("\n") + "\n"
       end
 
       private
+
+      # One ledger pass → [distinct-gem count, verdict histogram, reason
+      # histogram] at the current rev. A verdict dedups its own reasons, so a
+      # reason's count is "how many gems hit it" (not raw occurrences).
+      def aggregate(names)
+        wanted = names.to_set
+        rev = @engine.rev
+        latest = {}
+        @ledger.each { |v| latest[v.gem] = v if v.rev == rev && wanted.include?(v.gem) }
+        counts = Hash.new(0)
+        reasons = Hash.new(0)
+        latest.each_value do |v|
+          counts[v.verdict] += 1
+          (v.reasons + v.risks).each { |r| reasons[r] += 1 }
+        end
+        [latest.size, counts, reasons]
+      end
+
+      # Ranked [call, count] of unresolved core/stdlib calls — the candidate
+      # features. Metaprogramming and `require` are excluded (out of scope); the
+      # `unresolved:` prefix is stripped. Count desc, then name asc.
+      def candidate_calls(reasons)
+        reasons.each_with_object(Hash.new(0)) do |(r, c), acc|
+          acc[r.sub(/\Aunresolved:/, "")] += c if category(r) == "call"
+        end.sort_by { |call, c| [-c, call] }
+      end
+
+      # Bucket a reason/risk for the roadmap histogram.
+      #   loadpath   no load path: `unresolved:require` + every `needs:<lib>`
+      #   metaprog   reflection Spinel won't support (Probe::RISK_TOKENS' vocab)
+      #   robustness analyzer failed / timed out — a compiler-hardening signal
+      #   cext       a C-extension gem, uncompilable
+      #   call       an unresolved core/stdlib call — a candidate feature
+      def category(reason)
+        return "loadpath"   if reason.start_with?("needs:") || reason == "unresolved:require"
+        return "robustness" if reason == "analyze-failed" || reason == "analyze-timeout"
+        return "cext"       if reason == "c-extension"
+
+        base = reason.sub(/\Aunresolved:/, "")
+        METAPROG.include?(base) ? "metaprog" : "call"
+      end
 
       def probe_one(name)
         version = latest_version(name) or return nil
@@ -98,13 +152,15 @@ module Bundler
         out[/#{Regexp.escape(name)} \(([^,)]+)/, 1]
       end
 
-      # Collapse `unresolved:foo`/`risk:bar`/`needs:baz` into ranked buckets.
-      def normalize(reason)
-        reason
-      end
-
       def render(n, counts, reasons)
-        ok = (counts["clean"] + counts["verified"])
+        ok = counts["clean"] + counts["verified"]
+        cats = Hash.new(0)
+        reasons.each { |r, c| cats[category(r)] += c }
+        cands = candidate_calls(reasons)
+        cand_occ = cands.sum { |_, c| c }
+        limit = REPORT_CALLS.zero? ? cands.size : REPORT_CALLS
+        shown = [limit, cands.size].min
+
         lines = []
         lines << "# Spinel gem-compatibility survey"
         lines << ""
@@ -113,13 +169,40 @@ module Bundler
         lines << "- compatible (clean+verified): **#{ok}** (#{pct(ok, n)})  ·  " \
                  "risky: #{counts['risky']}  ·  rejected: #{counts['rejected']}"
         lines << ""
-        lines << "## Top blockers (what to teach Spinel next)"
+        lines << "## Candidate features — unresolved calls Spinel could learn"
         lines << ""
-        lines << "| count | reason |"
+        lines << "_Core/stdlib method calls only; metaprogramming and `require` " \
+                 "excluded as known out-of-scope. The top is the real signal; the " \
+                 "long tail is mostly calls unresolved only because their defining " \
+                 "`require` wasn't followed._"
+        lines << ""
+        lines << "| count | call |"
         lines << "|---|---|"
-        reasons.sort_by { |_, c| -c }.first(25).each { |r, c| lines << "| #{c} | `#{r}` |" }
+        cands.first(shown).each { |call, c| lines << "| #{c} | `#{call}` |" }
         lines << ""
-        lines.join("\n")
+        footer = "Showing #{shown} of **#{cands.size}** distinct candidate calls " \
+                 "(#{cand_occ} occurrences)."
+        footer += " Set `SPINEL_REPORT_CALLS=0` for the full list." if shown < cands.size
+        lines << footer
+        lines << ""
+        lines << "## Blockers by category"
+        lines << ""
+        lines << "| occurrences | category |"
+        lines << "|---|---|"
+        lines << "| #{cats['call']} | candidate core/stdlib calls (above) |"
+        lines << "| #{cats['metaprog']} | metaprogramming / reflection — out of scope |"
+        lines << "| #{cats['loadpath']} | no load path: `require` + `needs:` — probe limitation |"
+        lines << "| #{cats['robustness']} | analyzer failed / timed out — compiler hardening |"
+        lines << "| #{cats['cext']} | C extensions — uncompilable |"
+        lines << ""
+        lines << "## All blockers (top 100)"
+        lines << ""
+        lines << "| count | reason | category |"
+        lines << "|---|---|---|"
+        reasons.sort_by { |r, c| [-c, r] }.first(100).each do |r, c|
+          lines << "| #{c} | `#{r}` | #{category(r)} |"
+        end
+        lines.join("\n") + "\n"
       end
 
       def pct(a, b)

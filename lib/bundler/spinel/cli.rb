@@ -28,6 +28,7 @@ module Bundler
         when "ledger"  then cmd_ledger(argv)
         when "reprobe" then cmd_reprobe(argv)
         when "survey"  then cmd_survey(argv)
+        when "enrich"  then cmd_enrich(argv)
         when nil, "-h", "--help", "help" then usage; 0
         else
           @err.puts "unknown command: #{cmd}"; usage; 2
@@ -129,6 +130,26 @@ module Bundler
         0
       end
 
+      # Fetch rubygems.org metadata (description, downloads, last-update, …) for a
+      # gem list (or the ledger at this rev) into a meta.jsonl sidecar.
+      def cmd_enrich(argv)
+        require_relative "enricher"
+        out = (j = argv.index("--out")) ? File.expand_path(argv[j + 1]) : raise(Error, "enrich needs --out FILE")
+        jobs = (i = argv.index("--jobs")) ? argv.delete_at(i + 1).to_i.tap { argv.delete_at(i) } : 8
+        list = (k = argv.index("--list")) ? argv[k + 1] : nil
+        names = if list
+                  File.readlines(File.expand_path(list)).map(&:strip).reject { |l| l.empty? || l.start_with?("#") }
+                else
+                  rev = Engine.new.rev
+                  seen = {}
+                  Ledger.new.each { |v| seen[v.gem] = true if v.rev == rev }
+                  seen.keys
+                end
+        Enricher.new(out: out, jobs: jobs).run(names)
+        @out.puts "wrote #{out} (#{names.size} gems)"
+        0
+      end
+
       # Build the spinelgems.org static deploy tree: presentation + ledger-driven
       # catalog, plus the Compact Index (apex double-duty) when a --store is given.
       def cmd_build_site(argv)
@@ -136,7 +157,11 @@ module Bundler
         out = (j = argv.index("--out")) ? argv[j + 1] : raise(Error, "build-site needs --out DIR")
         store = (i = argv.index("--store")) ? File.expand_path(argv[i + 1]) : nil
         min = (k = argv.index("--min")) ? argv[k + 1].to_sym : :verified
-        dir = Site.new.build(File.expand_path(out), store: store, min_verdict: min)
+        ledger_path = (l = argv.index("--ledger")) ? argv[l + 1] : "survey-out/compat.jsonl"
+        meta_path = (m = argv.index("--meta")) ? argv[m + 1] : "survey-out/meta.jsonl"
+        site = Site.new(ledger: Ledger.new(path: File.expand_path(ledger_path)),
+                        meta_path: File.expand_path(meta_path))
+        dir = site.build(File.expand_path(out), store: store, min_verdict: min)
         @out.puts "built spinelgems.org site -> #{dir}" \
                   "#{store ? " (+ Compact Index from #{store})" : ' (presentation + catalog; pass --store DIR to add the Compact Index)'}"
         0

@@ -1,6 +1,7 @@
 require "open3"
 require "tmpdir"
 require "timeout"
+require "ripper"
 
 module Bundler
   module Spinel
@@ -172,10 +173,29 @@ module Bundler
         risks << "c-extension" if Dir[File.join(dir, "ext", "**", "*.{c,cpp,cc,h}")].any?
 
         Dir[File.join(dir, "lib", "**", "*.rb")].each do |f|
-          src = File.read(f)
+          src = code_only(File.read(f))
           RISK_TOKENS.each { |re, reason| risks << reason if src =~ re }
         end
         risks.uniq
+      end
+
+      # Lexer token types whose text is *not code* — comments and the contents of
+      # string / heredoc / regexp / %w literals. Dropping them before the risk
+      # scan stops a construct merely *named* in a comment or string from firing
+      # a false `risky` (OriPekelman/spinelgems#1).
+      NONCODE_TOKENS = %i[on_comment on_embdoc on_embdoc_beg on_embdoc_end
+                          on_tstring_content].freeze
+
+      # Source with comments + literal contents stripped, for the risk scan.
+      # Ripper.lex is tolerant; if it can't lex (returns nil / raises) we fall
+      # back to the raw source rather than under-report.
+      def code_only(src)
+        toks = Ripper.lex(src)
+        return src if toks.nil? || toks.empty?
+
+        toks.map { |(_pos, type, tok, _state)| NONCODE_TOKENS.include?(type) ? "" : tok }.join
+      rescue StandardError
+        src
       end
     end
   end

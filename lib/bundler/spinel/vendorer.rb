@@ -28,11 +28,13 @@ module Bundler
         @fetcher = GemFetcher.new
       end
 
-      def vendor(lockfile = "Gemfile.lock", into: "vendor/spinel", warn_incompatible: true, ext_overrides: {})
+      def vendor(lockfile = "Gemfile.lock", into: "vendor/spinel", warn_incompatible: true,
+                 ext_overrides: {}, ext_disable: [])
         parsed = Bundler::LockfileParser.new(File.read(lockfile))
         lock_dir = File.dirname(File.expand_path(lockfile))
         into = File.expand_path(into)
         FileUtils.mkdir_p(into)
+        disable = (ext_disable + ENV["SPINEL_EXT_DISABLE"].to_s.split(",")).map(&:strip).reject(&:empty?)
 
         manifest = []
         exts = 0
@@ -42,7 +44,7 @@ module Bundler
           src = resolve_source(spec, lock_dir)
           dest = File.join(into, name)
           place(src, dest)
-          exts += wire_extensions(src, dest, ext_overrides)
+          exts += wire_extensions(src, dest, ext_overrides, disable)
           manifest << require_target(name, dest)
           note_compat(name, version) if warn_incompatible
         end
@@ -81,12 +83,18 @@ module Bundler
       end
 
       # Build + wire any C extensions the gem declares in spinel-ext.json
-      # (OriPekelman/spinelgems#2; see docs/c-ext.md). For each entry: compile
-      # its .c to a .o under the vendored dir (or use a prebuilt override), then
-      # substitute its @PLACEHOLDER@ in the placed Ruby with "<.o> <libs>", so the
-      # gem's `ffi_cflags "@PLACEHOLDER@"` directive links it. Returns the count
-      # wired. A no-op for gems without the manifest.
-      def wire_extensions(src, dest, overrides)
+      # (OriPekelman/spinelgems#2; see docs/c-ext.md). Each entry substitutes its
+      # @PLACEHOLDER@ in the placed Ruby — so the gem's `ffi_cflags "@PLACEHOLDER@"`
+      # links it — with, in order:
+      #   - the gem's own `.o` (category A): a prebuilt override, else compile the
+      #     declared `source` .c;
+      #   - system libs (category B): resolved from `pkg_config` at the *consumer's*
+      #     environment (with `pkg_config_fallback`), not a hardcoded -l;
+      #   - any static `libs`.
+      # An `optional` entry the consumer opted out of (`name` in `disable` /
+      # SPINEL_EXT_DISABLE) substitutes its `disabled_cflags` instead (category C).
+      # Returns the count wired. A no-op for gems without the manifest.
+      def wire_extensions(src, dest, overrides, disable)
         manifest = File.join(src, "spinel-ext.json")
         return 0 unless File.exist?(manifest)
 
@@ -95,17 +103,48 @@ module Bundler
           placeholder = e["placeholder"]
           next unless placeholder
 
-          obj = overrides[placeholder] || ENV[ext_env_key(placeholder)] || compile_ext(src, dest, e)
-          next unless obj
+          if e["optional"] && disable.include?(e["name"].to_s)
+            substitute_placeholder(dest, placeholder, e["disabled_cflags"].to_s)
+            wired += 1
+            next
+          end
 
-          repl = [obj, *Array(e["libs"])].join(" ").strip
-          substitute_placeholder(dest, placeholder, repl)
+          parts = []
+          if (obj = overrides[placeholder] || ENV[ext_env_key(placeholder)])
+            parts << obj
+          elsif e["source"]
+            built = compile_ext(src, dest, e) or next # compile failed: leave placeholder
+            parts << built
+          end
+          if e["pkg_config"]
+            pc = pkg_config_flags(e) or next # required pkg-config missing: leave placeholder
+            parts << pc
+          end
+          parts.concat(Array(e["libs"]))
+
+          substitute_placeholder(dest, placeholder, parts.join(" ").strip)
           wired += 1
         end
         wired
       rescue JSON::ParserError => e
         warn "[vendor] #{File.basename(dest)}: ignoring bad spinel-ext.json (#{e.message})"
         0
+      end
+
+      # System libs/cflags for an entry, resolved at the consumer's environment:
+      # `pkg-config --cflags --libs <name>`, else `pkg_config_fallback`, else nil
+      # (leave the placeholder so the build fails loud — we never silently drop a
+      # required system dependency).
+      def pkg_config_flags(entry)
+        out, st = Open3.capture2e("pkg-config", "--cflags", "--libs", entry["pkg_config"].to_s)
+        return out.strip if st.success?
+
+        fallback = entry["pkg_config_fallback"].to_s
+        return fallback unless fallback.empty?
+
+        warn "[vendor] pkg-config #{entry['pkg_config']} failed, no fallback — " \
+             "#{entry['placeholder']} left unresolved (build will fail loud)"
+        nil
       end
 
       # `cc <cflags> -c <gem>/<source> -o <dest>/<base>.o`. The .o is a

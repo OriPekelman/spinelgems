@@ -91,10 +91,16 @@ module Bundler
           k, v = pair.split("=", 2)
           ext_overrides[k] = File.expand_path(v) if k && v
         end
+        # --no-ext NAME : opt out of an optional C extension (repeatable; also SPINEL_EXT_DISABLE).
+        ext_disable = []
+        while (d = argv.index("--no-ext"))
+          ext_disable << argv.delete_at(d + 1).to_s
+          argv.delete_at(d)
+        end
         lock = argv.shift || "Gemfile.lock"
         raise Error, "no #{lock}; run `bundle lock` first" unless File.exist?(lock)
 
-        res = Vendorer.new.vendor(lock, into: into, ext_overrides: ext_overrides)
+        res = Vendorer.new.vendor(lock, into: into, ext_overrides: ext_overrides, ext_disable: ext_disable)
         ext = res[:extensions].to_i
         @out.puts "vendored #{res[:count]} gem(s)#{ext.positive? ? " (+#{ext} C ext)" : ''} -> #{res[:into]}"
         @out.puts "  require_relative \"#{res[:into]}/deps\" from your Spinel entrypoint"

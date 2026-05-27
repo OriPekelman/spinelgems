@@ -1,0 +1,46 @@
+# spinelgems.org on Upsun — one app, apex double-duty.
+#
+# Build renders the static tree (presentation + ledger/metadata catalog) from
+# the committed survey-out/ snapshot — no Spinel, no network. The app then serves
+# that static site AND the machine Compact Index from a single process on $PORT,
+# so https://spinelgems.org/ is the website and the same origin is a usable
+# RubyGems `source`. (The Compact Index is empty until a --store of vetted .gem
+# files exists — see the dogfood plan; the human site works standalone.)
+
+applications:
+  spinelgems:
+    type: "ruby:3.3"
+    source:
+      root: "/"
+
+    # WEBrick is a bundled gem (not default) since Ruby 3.0; the server needs it.
+    dependencies:
+      ruby:
+        webrick: "*"
+
+    hooks:
+      build: |
+        set -e
+        ruby exe/spinel-compat build-site --out public
+
+    web:
+      # All requests go to our combined server; it serves public/ statically and
+      # mounts the Compact Index endpoints over the top.
+      commands:
+        start: "ruby exe/spinel-compat server --public public --port $PORT"
+      upstream:
+        socket_family: tcp
+      locations:
+        "/":
+          passthru: true
+
+    # No persistent state: the catalog/index are built from committed data.
+    mounts: {}
+
+routes:
+  "https://{default}/":
+    type: upstream
+    upstream: "spinelgems:http"
+  "https://www.{default}/":
+    type: redirect
+    to: "https://{default}/"

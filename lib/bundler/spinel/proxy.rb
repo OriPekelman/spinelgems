@@ -77,6 +77,11 @@ module Bundler
         server.start
       end
 
+      # Mount the Compact Index endpoints onto an existing WEBrick server, so a
+      # combined server (Server) can serve the human site statically and the
+      # curated source from the same process — the apex double-duty layout.
+      def mount_on(server) = mount(server)
+
       private
 
       def acceptable?(name, version)

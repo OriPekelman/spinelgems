@@ -25,6 +25,7 @@ module Bundler
         when "serve"   then cmd_serve(argv)
         when "build-index" then cmd_build_index(argv)
         when "build-site"  then cmd_build_site(argv)
+        when "server"      then cmd_server(argv)
         when "ledger"  then cmd_ledger(argv)
         when "reprobe" then cmd_reprobe(argv)
         when "survey"  then cmd_survey(argv)
@@ -167,6 +168,18 @@ module Bundler
         0
       end
 
+      # Serve the static site + (with --store) the Compact Index from one process
+      # — what the deploy host runs. Port defaults to $PORT (Upsun) then 9292.
+      def cmd_server(argv)
+        require_relative "server"
+        pub = (i = argv.index("--public")) ? argv[i + 1] : "public"
+        port = (j = argv.index("--port")) ? argv[j + 1].to_i : Integer(ENV.fetch("PORT", "9292"))
+        store = (k = argv.index("--store")) ? File.expand_path(argv[k + 1]) : nil
+        min = (m = argv.index("--min")) ? argv[m + 1].to_sym : :verified
+        Server.new(public_dir: File.expand_path(pub), store: store, min_verdict: min).run(port: port)
+        0
+      end
+
       def cmd_ledger(argv)
         rev = (i = argv.index("--rev")) ? argv[i + 1] : nil
         Ledger.new.each do |v|
@@ -257,6 +270,7 @@ module Bundler
             spinel-compat serve --store DIR        curated source (only vetted gems)
             spinel-compat build-index --store DIR --out DIR   static curated index
             spinel-compat build-site --out DIR [--store DIR]  static site (presentation + catalog [+ index])
+            spinel-compat server --public DIR [--store DIR]   serve site + Compact Index (one process; $PORT)
             spinel-compat ledger [--rev REV]      dump recorded verdicts
             spinel-compat reprobe                 re-probe known gems under current rev
 

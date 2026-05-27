@@ -87,3 +87,18 @@ plain-`require` gems under-probe, and silent miscompiles are invisible to it.
 Trust `verified` (smoke runs identically under CRuby and Spinel), not `clean`,
 where it matters. Empirically most third-party gems reject today, so the weight
 is on your own vetted gems and `path:`/`git:` siblings — not a rubygems mirror.
+
+## Related
+
+[`rubocop_spinel`](https://github.com/gurgeous/rubocop_spinel) (gurgeous) — a
+RuboCop extension whose cops flag Spinel-unsupported Ruby (`class << self`,
+`Thread.new`, …) at **author time**, AST-based and tracked against Spinel by PR.
+It's complementary: it lints *your own code as you write it*, while
+bundler-spinel gates *dependencies* at resolution time and adds the differential
+`verified` rung — which catches **silent miscompiles a static linter can't see**
+(a gem can lint clean and still produce wrong output under Spinel; see
+[`harness/`](harness/README.md)). Its AST-based cop set is also a cleaner
+static-risk signal than our regex scan (no comment/string false-positives — cf.
+the same fix in our probe), so it's a candidate to *feed* the probe's static
+signal. Use both: `rubocop_spinel` while authoring, bundler-spinel to gate +
+verify what you depend on.

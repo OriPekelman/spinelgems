@@ -1,6 +1,8 @@
 require "bundler"
 require "bundler/lockfile_parser"
 require "fileutils"
+require "open3"
+require "json"
 
 module Bundler
   module Spinel
@@ -26,25 +28,27 @@ module Bundler
         @fetcher = GemFetcher.new
       end
 
-      def vendor(lockfile = "Gemfile.lock", into: "vendor/spinel", warn_incompatible: true)
+      def vendor(lockfile = "Gemfile.lock", into: "vendor/spinel", warn_incompatible: true, ext_overrides: {})
         parsed = Bundler::LockfileParser.new(File.read(lockfile))
         lock_dir = File.dirname(File.expand_path(lockfile))
         into = File.expand_path(into)
         FileUtils.mkdir_p(into)
 
         manifest = []
+        exts = 0
         parsed.specs.each do |spec|
           name = spec.name
           version = spec.version.to_s
           src = resolve_source(spec, lock_dir)
           dest = File.join(into, name)
           place(src, dest)
+          exts += wire_extensions(src, dest, ext_overrides)
           manifest << require_target(name, dest)
           note_compat(name, version) if warn_incompatible
         end
 
         write_manifest(into, manifest)
-        { into: into, count: manifest.size }
+        { into: into, count: manifest.size, extensions: exts }
       end
 
       # path:/git: lockfile sources (toy ↔ tep is the headline case)
@@ -74,6 +78,64 @@ module Bundler
           s = File.join(src, sub)
           FileUtils.cp_r(s, dest) if File.directory?(s)
         end
+      end
+
+      # Build + wire any C extensions the gem declares in spinel-ext.json
+      # (OriPekelman/spinelgems#2; see docs/c-ext.md). For each entry: compile
+      # its .c to a .o under the vendored dir (or use a prebuilt override), then
+      # substitute its @PLACEHOLDER@ in the placed Ruby with "<.o> <libs>", so the
+      # gem's `ffi_cflags "@PLACEHOLDER@"` directive links it. Returns the count
+      # wired. A no-op for gems without the manifest.
+      def wire_extensions(src, dest, overrides)
+        manifest = File.join(src, "spinel-ext.json")
+        return 0 unless File.exist?(manifest)
+
+        wired = 0
+        JSON.parse(File.read(manifest)).each do |e|
+          placeholder = e["placeholder"]
+          next unless placeholder
+
+          obj = overrides[placeholder] || ENV[ext_env_key(placeholder)] || compile_ext(src, dest, e)
+          next unless obj
+
+          repl = [obj, *Array(e["libs"])].join(" ").strip
+          substitute_placeholder(dest, placeholder, repl)
+          wired += 1
+        end
+        wired
+      rescue JSON::ParserError => e
+        warn "[vendor] #{File.basename(dest)}: ignoring bad spinel-ext.json (#{e.message})"
+        0
+      end
+
+      # `cc <cflags> -c <gem>/<source> -o <dest>/<base>.o`. The .o is a
+      # host-specific build artifact, placed alongside the vendored Ruby.
+      def compile_ext(src, dest, entry)
+        source = File.join(src, entry["source"].to_s)
+        unless File.exist?(source)
+          warn "[vendor] ext source not found for #{entry['placeholder']}: #{entry['source']}"
+          return nil
+        end
+
+        obj = File.join(dest, "#{File.basename(entry['source'], '.*')}.o")
+        cmd = [ENV.fetch("CC", "cc"), *Array(entry["cflags"]), "-c", source, "-o", obj]
+        out, st = Open3.capture2e(*cmd)
+        return obj if st.success?
+
+        warn "[vendor] ext compile failed (#{entry['placeholder']}): #{out.lines.last(2).join.strip}"
+        nil
+      end
+
+      def substitute_placeholder(dest, placeholder, repl)
+        Dir[File.join(dest, "**", "*.rb")].each do |f|
+          body = File.read(f)
+          File.write(f, body.gsub(placeholder, repl)) if body.include?(placeholder)
+        end
+      end
+
+      # @TEP_SPHTTP_O@ -> SPINEL_EXT_TEP_SPHTTP_O
+      def ext_env_key(placeholder)
+        "SPINEL_EXT_" + placeholder.gsub(/[^A-Za-z0-9]+/, "_").gsub(/\A_|_\z/, "")
       end
 
       # The relative path a Spinel program require_relatives. Spinel inlines it

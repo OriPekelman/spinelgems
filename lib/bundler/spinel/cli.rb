@@ -83,11 +83,20 @@ module Bundler
 
       def cmd_vendor(argv)
         into = (i = argv.index("--into")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : "vendor/spinel"
+        # --ext @PLACEHOLDER@=/abs/x.o : reuse a prebuilt .o instead of recompiling (repeatable).
+        ext_overrides = {}
+        while (e = argv.index("--ext"))
+          pair = argv.delete_at(e + 1).to_s
+          argv.delete_at(e)
+          k, v = pair.split("=", 2)
+          ext_overrides[k] = File.expand_path(v) if k && v
+        end
         lock = argv.shift || "Gemfile.lock"
         raise Error, "no #{lock}; run `bundle lock` first" unless File.exist?(lock)
 
-        res = Vendorer.new.vendor(lock, into: into)
-        @out.puts "vendored #{res[:count]} gem(s) -> #{res[:into]}"
+        res = Vendorer.new.vendor(lock, into: into, ext_overrides: ext_overrides)
+        ext = res[:extensions].to_i
+        @out.puts "vendored #{res[:count]} gem(s)#{ext.positive? ? " (+#{ext} C ext)" : ''} -> #{res[:into]}"
         @out.puts "  require_relative \"#{res[:into]}/deps\" from your Spinel entrypoint"
         0
       end

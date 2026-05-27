@@ -46,13 +46,14 @@ A Spinel entrypoint does `require_relative "vendor/spinel/deps"`.
    dep, a consumer's `bundle lock` drags a native gem into the lock and the gate
    rejects it. Move such deps to `add_development_dependency`.
 
-3. **C extensions are the project's build concern; `vendor` only places Ruby.**
-   `spinel-compat vendor` copies `lib/`. A gem with a C extension (tep's
-   `sphttp`/`sqlite`/`pg`, carried as `.c` → `.o` with `@TEP_*@` placeholders)
-   still needs those `.o` linked at build time. Keep a thin post-vendor step that
-   substitutes the placeholders / links the prebuilt `.o` (this is what toy's
-   `prep/sync_tep.rb` does today; it shrinks to just that substitution once the
-   Ruby placement is handled by `vendor`).
+3. **C extensions: declare them in `spinel-ext.json`; `vendor` wires them.**
+   A gem with a C extension (tep's `sphttp`/`sqlite`/`pg`, carried as `.c` → `.o`
+   linked via an `ffi_cflags "@TEP_*@"` directive) ships a `spinel-ext.json`
+   manifest; `spinel-compat vendor` then compiles each `.c` to a `.o` under the
+   vendored dir and substitutes the placeholder with its path — so the gem links
+   with no hand-rolled step (this subsumes toy's `prep/sync_tep.rb` substitution).
+   Reuse a prebuilt `.o` with `--ext @TEP_SPHTTP_O@=/abs/x.o` (or
+   `SPINEL_EXT_TEP_SPHTTP_O=…`). See [c-ext.md](c-ext.md).
 
 4. **Prefer `require_relative` inside a gem; avoid plain `require "gem/part"`.**
    Spinel has no load path — it follows `require_relative` (and inlines it) but

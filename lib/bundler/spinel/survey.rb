@@ -149,7 +149,12 @@ module Bundler
         out, st = Open3.capture2e("gem", "list", "-r", "-e", name)
         return nil unless st.success?
 
-        out[/#{Regexp.escape(name)} \(([^,)]+)/, 1]
+        # `gem list -r` groups platform variants in one version cell, e.g.
+        # "nokogiri (1.19.3 ruby java aarch64-linux-gnu …)". Take just the version
+        # number (first token) so `gem fetch -v` doesn't choke on the platform
+        # words (BadRequirementError) and silently skip every native gem.
+        cap = out[/#{Regexp.escape(name)} \(([^,)]+)/, 1]
+        cap && cap.strip.split(/\s+/).first
       end
 
       def render(n, counts, reasons)

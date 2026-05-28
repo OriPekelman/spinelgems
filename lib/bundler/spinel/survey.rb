@@ -28,11 +28,17 @@ module Bundler
       # list always goes to candidates.tsv; 0 shows the whole list inline too.
       REPORT_CALLS = Integer(ENV.fetch("SPINEL_REPORT_CALLS", "200"))
 
-      def initialize(engine: Engine.new, ledger: Ledger.new, jobs: 4, refresh: false)
+      def initialize(engine: Engine.new, ledger: Ledger.new, jobs: 4, refresh: false, skip_known: nil)
         @engine = engine
         @ledger = ledger
         @jobs = jobs
         @refresh = refresh
+        # Resume fast-path: when a gem already has *any* verdict at this rev,
+        # short-circuit `probe_one` so we skip the per-gem `latest_version`
+        # (a `gem list -r` HTTPS roundtrip × ~190k = hours of pure waste on a
+        # restart). Defaults to !refresh — refresh means re-probe everything,
+        # which by definition wants the fresh latest_version too.
+        @skip_known = skip_known.nil? ? !refresh : skip_known
         @fetcher = GemFetcher.new
         @probe = Probe.new(@engine, @ledger)
         @mutex = Mutex.new
@@ -132,6 +138,13 @@ module Bundler
       end
 
       def probe_one(name)
+        # Resume fast-path: if we already have any verdict for this gem at
+        # this rev, treat it as cached without re-resolving the latest version
+        # (saves the ~190k `gem list -r` calls a no-op restart would otherwise
+        # make). Verdict freshness is handled by `--refresh`, which both
+        # disables this short-circuit and forces a re-probe below.
+        return nil if @skip_known && known_set.include?(name)
+
         version = latest_version(name) or return nil
         unless @refresh
           cached = @ledger.lookup(name, version, @engine.rev)
@@ -146,6 +159,18 @@ module Bundler
       rescue StandardError => e
         @mutex.synchronize { warn "\n[survey] #{name}: #{e.message}" }
         nil
+      end
+
+      # Set of gem names already probed at the current engine rev. Built once
+      # per Survey instance (a single ledger pass, ~27MB at 84k entries → ~30ms);
+      # process-sharded runs each build their own copy, which is fine.
+      def known_set
+        @known_set ||= begin
+          rev = @engine.rev
+          set = Set.new
+          @ledger.each { |v| set << v.gem if v.rev == rev }
+          set
+        end
       end
 
       def latest_version(name)

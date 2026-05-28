@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catalog — SpinelGems</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header><a class="brand" href="./">SpinelGems</a>
+  <nav><a href="./">Home</a> <a href="catalog.html">Catalog</a>
+    <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav>
+</header>
+<main>
+<h1>Spinel-compatible gems</h1>
+<p class="lede">Compatibility ledger as of <code>git:a03bb49+dirty/aarch64-linux-gnu</code> — <strong>189.7k</strong> gems surveyed, ranked by downloads in each tier. Trust <strong>★ verified</strong> (a behaviour smoke matched CRuby), not <strong>✓ clean</strong> (a cheap lower bound) or <strong>○ loaded</strong> (require-only differential — logic untested, can still silently miscompile). Verdicts are forward-compatible: keyed on the Spinel revision, a gem rejected today clears the moment the feature it needs lands.</p>
+<div class="filters">
+  <a href="catalog-verified.html" class="chip verified on">★ verified <span>20</span></a>
+  <a href="catalog-loaded.html" class="chip loaded on">○ loaded <span>375</span></a>
+  <a href="catalog-clean.html" class="chip clean on">✓ clean <span>34.9k</span></a>
+  <a href="catalog-risky.html" class="chip risky on">~ risky <span>12.5k</span></a>
+  <a href="catalog-rejected.html" class="chip rejected on">✗ rejected <span>142.0k</span></a>
+</div>
+<p class="meta">Raw data: <a href="https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/compat.jsonl">compat.jsonl</a> · <a href="https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/candidates.tsv">candidates.tsv</a> · <a href="https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/report.md">report.md</a></p>
+
+</main>
+<footer>Pre-release · verdicts keyed on the Spinel engine revision · <a href="./">spinelgems.org</a></footer>
+
+</body>
+</html>

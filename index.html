@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpinelGems — dependencies for Spinel projects</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header><a class="brand" href="./">SpinelGems</a>
+  <nav><a href="./">Home</a> <a href="catalog.html">Catalog</a>
+    <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav>
+</header>
+
+<main>
+  <p class="banner">⚠️ Pre-release / experimental. The CLI surface, the verdict
+  vocabulary, and the ledger format may all change. This site is not yet live.</p>
+
+  <h1>Dependencies for <a href="https://github.com/matz/spinel">Spinel</a> projects</h1>
+
+  <p class="lede">Spinel-compiled projects have no shared way to declare or
+  exchange dependencies, so each vendors by hand. Rather than design a package
+  manager, <strong>borrow a format everyone already knows</strong> — a standard
+  <code>Gemfile</code> — and revisit later.</p>
+
+  <h2>The convention</h2>
+  <pre><code>source "https://rubygems.org"
+ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
+
+gem "tep", git: "https://…/tep.git"   # siblings via path:/git: (replaces rsync)
+gem "some_pure_ruby_lib"</code></pre>
+  <p><code>bundle lock</code> resolves normally (it ignores the engine marker);
+  the marker guards <code>bundle install</code>. Nothing here is novel — that's
+  the point.</p>
+
+  <h2>The plugin does two things</h2>
+  <ol>
+    <li><strong>Makes it work.</strong> Spinel has no load path and inlines
+      <code>require_relative</code>, so a dependency has to be <em>placed</em>
+      where Spinel will follow it. <code>spinel-compat vendor</code> does that
+      from a lockfile.</li>
+    <li><strong>Gates.</strong> Spinel silently emits a no-op for unsupported
+      Ruby (exit 0), so “it compiled” ≠ “it works”. The plugin probes gems and
+      flags incompatible ones at <code>bundle lock</code> time, with reasons that
+      name the missing feature.</li>
+  </ol>
+
+  <h2>The verdict ladder</h2>
+  <table class="ladder">
+    <tr><td class="v verified">★ verified</td><td>compiles clean <em>and</em> the gem's own tests pass through a Spinel-compiled harness — the only verdict to trust where it matters</td></tr>
+    <tr><td class="v clean">✓ clean</td><td>compiles clean, no risky constructs found cheaply</td></tr>
+    <tr><td class="v risky">~ risky</td><td>compiles, but uses constructs Spinel degrades silently (<code>define_method</code>, <code>eval</code>, <code>send</code>…)</td></tr>
+    <tr><td class="v rejected">✗ rejected</td><td>an unsupported call, or analyze failed — the gate fails the lock</td></tr>
+  </table>
+  <p><a class="cta" href="catalog.html">Browse Spinel-compatible gems →</a></p>
+
+  <h2>Quick start</h2>
+  <pre><code># make it work — place deps where Spinel finds them
+bundle lock
+spinel-compat vendor                 # -> vendor/spinel/&lt;gem&gt;/lib + deps.rb
+
+# gate — flag what Spinel can't compile, early
+spinel-compat check Gemfile.lock     # exit 1 if any gem is rejected</code></pre>
+
+  <p class="note">The probe is a <strong>lower bound</strong> — Spinel's lack of
+  a load path means multi-file plain-<code>require</code> gems under-probe, and
+  silent miscompiles are invisible to it. Trust <code>verified</code>, not
+  <code>clean</code>, where it matters.</p>
+</main>
+
+<footer>Pre-release · verdicts keyed on the Spinel engine revision ·
+  <a href="https://github.com/OriPekelman/spinelgems">source &amp; RFC</a></footer>
+</body>
+</html>

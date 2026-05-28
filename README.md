@@ -92,6 +92,19 @@ is on your own vetted gems and `path:`/`git:` siblings — not a rubygems mirror
 
 ## Related
 
+> ⚠️ Two unrelated projects share the name **"Spinel"**: bundler-spinel targets
+> **[matz/spinel](https://github.com/matz/spinel)** (Matz's Ruby→C AOT
+> compiler). It has **no relationship** to **[Spinel Cooperative](https://github.com/spinel-coop)**
+> (André Arko's group, creator of Bundler).
+
+[`spinel-coop/rv`](https://github.com/spinel-coop/rv) — Spinel Cooperative's
+Rust-based unified replacement for `rvm` / `rbenv` / `bundler` / `rubygems`.
+Different layer: it accelerates the *CRuby* toolchain (install rubies + lock +
+install gems, fast). It's **compatible**, not competing — `rv` produces a
+standard `Gemfile.lock`, so `spinel-compat vendor` / `check` work over its
+output identically to Bundler's. Use `rv` for your everyday Ruby/Bundler
+workflow if you like; spinelgems still gates the Spinel-target build on top.
+
 [`rubocop_spinel`](https://github.com/gurgeous/rubocop_spinel) (gurgeous) — a
 RuboCop extension whose cops flag Spinel-unsupported Ruby (`class << self`,
 `Thread.new`, …) at **author time**, AST-based and tracked against Spinel by PR.

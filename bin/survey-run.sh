@@ -22,6 +22,11 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 if command -v nproc >/dev/null 2>&1; then JOBS="$(nproc)"; else JOBS="$(sysctl -n hw.ncpu 2>/dev/null || echo 4)"; fi
 
 mkdir -p "$OUT"
+# Default to a per-run ledger (clean snapshot). To share across runs (cross-run
+# cache-hits — only probe gems not yet seen at this rev), point SPINEL_COMPAT_LEDGER
+# at the canonical ledger before invoking, e.g.:
+#   SPINEL_COMPAT_LEDGER=$PWD/ledger/compat.jsonl bin/survey-run.sh ...
+# Force re-probe even on cache hits with `spinel-compat survey --refresh`.
 export SPINEL_COMPAT_LEDGER="${SPINEL_COMPAT_LEDGER:-$OUT/compat.jsonl}"
 
 # Snapshot the Spinel checkout so a parallel rebuild can't mix revs into a long

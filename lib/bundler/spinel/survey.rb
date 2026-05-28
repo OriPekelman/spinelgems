@@ -28,10 +28,11 @@ module Bundler
       # list always goes to candidates.tsv; 0 shows the whole list inline too.
       REPORT_CALLS = Integer(ENV.fetch("SPINEL_REPORT_CALLS", "200"))
 
-      def initialize(engine: Engine.new, ledger: Ledger.new, jobs: 4)
+      def initialize(engine: Engine.new, ledger: Ledger.new, jobs: 4, refresh: false)
         @engine = engine
         @ledger = ledger
         @jobs = jobs
+        @refresh = refresh
         @fetcher = GemFetcher.new
         @probe = Probe.new(@engine, @ledger)
         @mutex = Mutex.new
@@ -132,8 +133,10 @@ module Bundler
 
       def probe_one(name)
         version = latest_version(name) or return nil
-        cached = @ledger.lookup(name, version, @engine.rev)
-        return cached if cached
+        unless @refresh
+          cached = @ledger.lookup(name, version, @engine.rev)
+          return cached if cached
+        end
 
         dir = @fetcher.fetch(name, version)
         # Probe runs spinel (CPU-bound, GVL released) — this is the whole point

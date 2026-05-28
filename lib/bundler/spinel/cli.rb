@@ -27,6 +27,7 @@ module Bundler
         when "build-site"  then cmd_build_site(argv)
         when "server"      then cmd_server(argv)
         when "ledger"  then cmd_ledger(argv)
+        when "diff"    then cmd_diff(argv)
         when "reprobe" then cmd_reprobe(argv)
         when "survey"  then cmd_survey(argv)
         when "enrich"  then cmd_enrich(argv)
@@ -166,6 +167,46 @@ module Bundler
         0
       end
 
+      # Per-gem verdict diff between two revs in the ledger — see what improved
+      # or regressed between two surveys. Revs match by prefix (the leading
+      # `git:<sha>` is enough); pass --names to list the gems per transition.
+      #
+      #   spinel-compat diff git:2183a92 git:a03bb49 [--names]
+      def cmd_diff(argv)
+        names_flag = !!argv.delete("--names")
+        rev_a = argv.shift or raise Error, "usage: spinel-compat diff REV_A REV_B [--names]"
+        rev_b = argv.shift or raise Error, "usage: spinel-compat diff REV_A REV_B [--names]"
+
+        a = {}
+        b = {}
+        Ledger.new.each do |v|
+          a[v.gem] = v.verdict if v.rev.start_with?(rev_a)
+          b[v.gem] = v.verdict if v.rev.start_with?(rev_b)
+        end
+        raise Error, "no entries match REV_A=#{rev_a}" if a.empty?
+        raise Error, "no entries match REV_B=#{rev_b}" if b.empty?
+
+        both = a.keys & b.keys
+        unchanged = 0
+        transitions = Hash.new { |h, k| h[k] = [] }
+        both.each do |g|
+          if a[g] == b[g] then unchanged += 1
+          else transitions["#{a[g]} -> #{b[g]}"] << g
+          end
+        end
+
+        @out.puts "rev A: #{rev_a} (#{a.size} gems)"
+        @out.puts "rev B: #{rev_b} (#{b.size} gems)"
+        @out.puts "common: #{both.size} · unchanged: #{unchanged} · changed: #{both.size - unchanged}"
+        @out.puts "only in A: #{(a.keys - b.keys).size} · only in B: #{(b.keys - a.keys).size}"
+        @out.puts
+        transitions.sort_by { |_, gs| -gs.size }.each do |t, gs|
+          @out.printf("%-26s %d\n", t, gs.size)
+          gs.sort.each { |g| @out.puts "    #{g}" } if names_flag
+        end
+        0
+      end
+
       # Build the spinelgems.org static deploy tree: presentation + ledger-driven
       # catalog, plus the Compact Index (apex double-duty) when a --store is given.
       def cmd_build_site(argv)
@@ -233,14 +274,19 @@ module Bundler
         jobs = (i = argv.index("--jobs")) ? argv.delete_at(i + 1).to_i.tap { argv.delete_at(i) } : 4
         out_file = (j = argv.index("--out")) ? argv.delete_at(j + 1).tap { argv.delete_at(j) } : nil
         list = (k = argv.index("--list")) ? argv.delete_at(k + 1).tap { argv.delete_at(k) } : nil
+        # --refresh: ignore cache hits in the ledger and re-probe every gem.
+        # Default (no flag) reuses any existing verdict at the current engine rev
+        # — so pointing SPINEL_COMPAT_LEDGER at the canonical ledger gives a
+        # cross-run incremental survey (only new gems get the compile cost).
+        refresh = !!argv.delete("--refresh")
         names = if list
                   File.readlines(File.expand_path(list)).map(&:strip).reject { |l| l.empty? || l.start_with?("#") }
                 else
                   argv.dup
                 end
-        raise Error, "usage: spinel-compat survey GEM... | --list FILE [--jobs N] [--out report.md]" if names.empty?
+        raise Error, "usage: spinel-compat survey GEM... | --list FILE [--jobs N] [--out report.md] [--refresh]" if names.empty?
 
-        survey = Survey.new(jobs: jobs)
+        survey = Survey.new(jobs: jobs, refresh: refresh)
         survey.run(names)
         report = survey.report(names)
         if out_file
@@ -287,6 +333,7 @@ module Bundler
             spinel-compat build-site --out DIR [--store DIR]  static site (presentation + catalog [+ index])
             spinel-compat server --public DIR [--store DIR]   serve site + Compact Index (one process; $PORT)
             spinel-compat ledger [--rev REV]      dump recorded verdicts
+            spinel-compat diff REV_A REV_B [--names]  per-gem verdict changes between two revs
             spinel-compat reprobe                 re-probe known gems under current rev
 
           Verdicts: ✓ clean   ★ verified   ~ risky   ✗ rejected

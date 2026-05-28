@@ -46,6 +46,20 @@ module Bundler
       # blow up the analyzer). Override with SPINEL_COMPILE_TIMEOUT (seconds).
       COMPILE_TIMEOUT = Integer(ENV.fetch("SPINEL_COMPILE_TIMEOUT", "60"))
 
+      # Tokens whose mere presence in `lib/**/*.rb` makes the gem a definite
+      # Spinel reject — there's no path under which the compile would succeed,
+      # so we skip the (expensive) spinel call entirely and record a `rejected`
+      # verdict from the static scan alone. Conservative set: only constructs
+      # Spinel will never support (threads, Mutex, TracePoint). Metaprogramming
+      # tokens like `define_method` stay in RISK_TOKENS below — they degrade
+      # silently, so the compile signal is still the right call there.
+      HARD_REJECT_TOKENS = {
+        /\bThread\.(new|start|fork)\b/ => "Thread.new",
+        /\bMutex\.new\b/               => "Mutex.new",
+        /\bMutex_m\b/                  => "Mutex_m",
+        /\bTracePoint\b/               => "TracePoint"
+      }.freeze
+
       # token => reason. Tokens Spinel cannot honour and may silently no-op.
       RISK_TOKENS = {
         /\beval\s*\(/                  => "eval",
@@ -70,6 +84,17 @@ module Bundler
       # gem_name, version, dir(unpacked) -> recorded Ledger::Verdict
       def probe(gem_name, version, dir)
         @engine.ensure!
+
+        # Fail fast on cheap static signals before spending the spinel-compile
+        # budget — no entrypoint, a C extension, or a top-level token Spinel
+        # will never support → record `rejected` and skip the compile.
+        if (fast = static_hard_reject(dir, gem_name))
+          return @ledger.record(@ledger.build(
+            gem: gem_name, version: version, rev: @engine.rev,
+            verdict: "rejected", reasons: fast, risks: [], probe: "static"
+          ))
+        end
+
         sig = compile_signal(dir, gem_name)
         risks = static_signal(dir)
         # Unfollowed requires are notes, not rejections — record them so a human
@@ -147,6 +172,24 @@ module Bundler
             [output, false, true]
           end
         end
+      end
+
+      # Returns an array of reasons when the gem is rejectable from a static
+      # look alone (cheap; saves a spinel compile), or nil if normal probing
+      # should run. Covers: no entrypoint (lib/<gem>.rb absent and no
+      # lib/*.rb), a C extension (ext/*.c — Spinel doesn't compile C exts),
+      # and top-level HARD_REJECT_TOKENS in lib/**/*.rb.
+      def static_hard_reject(dir, gem_name)
+        return ["no-entrypoint"] if entrypoints(dir, gem_name).empty?
+        return ["c-extension"] if Dir[File.join(dir, "ext", "**", "*.{c,cpp,cc,h}")].any?
+
+        Dir[File.join(dir, "lib", "**", "*.rb")].each do |f|
+          src = code_only(File.read(f))
+          HARD_REJECT_TOKENS.each do |re, reason|
+            return ["hard:#{reason}"] if src =~ re
+          end
+        end
+        nil
       end
 
       # Risks from the static source scan (exclude the `needs:` require notes).

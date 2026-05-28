@@ -1,6 +1,7 @@
 require "fileutils"
 require "cgi"
 require "json"
+require "set"
 
 module Bundler
   module Spinel
@@ -102,12 +103,50 @@ module Bundler
       end
 
       # Latest verdict per gem at this rev, joined with metadata, popularity-ranked.
+      #
+      # Two symmetric stickiness rules — both rooted in the principle that a
+      # *behavioural* signal (verified, rejected:miscompile) outranks a static
+      # one (clean, risky) regardless of probe order:
+      #
+      # - **Sticky-verified.** A (gem, version) that earned `verified` at *any*
+      #   rev carries that verdict forward. Re-running the harness for every
+      #   rev is costly and we trust an honest behaviour-smoke match across
+      #   compiler revisions until we explicitly re-verify.
+      #
+      # - **Sticky-rejected (current-rev).** Among current-rev entries for the
+      #   same gem, a `rejected` (compile error or harness-caught miscompile)
+      #   wins over any softer verdict like `clean` or `loaded`. The survey
+      #   only catches compile-time failures; the harness can catch a silent
+      #   miscompile that the survey can't see. When both have spoken, we
+      #   honour the worse news.
+      #
+      # Together: a current-rev `rejected` defeats the historical `verified`
+      # (we treat caught regressions as fact), and a current-rev `verified`
+      # tops a clean/loaded with the same key.
       def rows
-        latest = {}
-        @ledger.each { |v| latest[v.gem] = v if v.rev == rev }
-        latest.values.map do |v|
-          md = meta[v.gem] || {}
-          Row.new(gem: v.gem, version: v.version, verdict: v.verdict,
+        target_rev = rev
+        ever_verified = Set.new
+        current_entries = Hash.new { |h, k| h[k] = [] }
+        @ledger.each do |v|
+          ever_verified << [v.gem, v.version] if v.verdict == "verified"
+          current_entries[v.gem] << v if v.rev == target_rev
+        end
+
+        current_entries.map do |name, vs|
+          # Sticky-rejected: pick the rejected entry as the row's source if
+          # any current-rev probe rejected, regardless of write order; else
+          # the most recent (verified > loaded > clean > risky by ledger order
+          # — append-only means newer entries supersede).
+          v = vs.find { |x| x.verdict == "rejected" } || vs.last
+          md = meta[name] || {}
+          eff_verdict = if v.verdict == "rejected"
+                          "rejected"
+                        elsif ever_verified.include?([name, v.version])
+                          "verified"
+                        else
+                          v.verdict
+                        end
+          Row.new(gem: name, version: v.version, verdict: eff_verdict,
                   notes: (v.reasons + v.risks).first(8).join(", "),
                   downloads: md["downloads"].to_i, info: md["info"],
                   updated: md["updated"], homepage: md["homepage"])

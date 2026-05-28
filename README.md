@@ -2,7 +2,9 @@
 
 > ⚠️ **Pre-release / experimental** (`0.0.1.pre`). The CLI surface, the verdict
 > vocabulary, and the ledger format may all change before `0.0.1`. Install with
-> `--pre`. (`spinelgems.org` is not live yet.)
+> `--pre`. (`spinelgems.org` is not live yet; a preview of the catalog is at
+> **<https://oripekelman.github.io/spinelgems/>** — a 111,852-gem snapshot at
+> Spinel rev `git:397115c+dirty`.)
 
 **Use a standard `Gemfile` for your [Spinel](https://github.com/matz/spinel)
 project — for now.** Spinel-compiled projects have no shared way to declare or

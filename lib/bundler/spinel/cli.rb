@@ -28,6 +28,7 @@ module Bundler
         when "server"      then cmd_server(argv)
         when "ledger"  then cmd_ledger(argv)
         when "diff"    then cmd_diff(argv)
+        when "detect-ext" then cmd_detect_ext(argv)
         when "reprobe" then cmd_reprobe(argv)
         when "survey"  then cmd_survey(argv)
         when "enrich"  then cmd_enrich(argv)
@@ -207,6 +208,24 @@ module Bundler
         0
       end
 
+      # Infer a draft spinel-ext.json from a gem's `ffi_cflags "@PLACEHOLDER@"`
+      # declarations + nearby `.c` files. Keeps the C-ext convention strictly
+      # consumer-side: gem authors don't have to ship the manifest.
+      def cmd_detect_ext(argv)
+        require_relative "ext_detector"
+        out_file = (j = argv.index("--out")) ? argv.delete_at(j + 1).tap { argv.delete_at(j) } : nil
+        dir = argv.shift or raise Error, "usage: spinel-compat detect-ext GEM_DIR [--out FILE]"
+
+        json = ExtDetector.new(File.expand_path(dir)).to_json
+        if out_file
+          File.write(File.expand_path(out_file), json + "\n")
+          @out.puts "wrote #{out_file}"
+        else
+          @out.puts json
+        end
+        0
+      end
+
       # Build the spinelgems.org static deploy tree: presentation + ledger-driven
       # catalog, plus the Compact Index (apex double-duty) when a --store is given.
       def cmd_build_site(argv)
@@ -334,6 +353,7 @@ module Bundler
             spinel-compat server --public DIR [--store DIR]   serve site + Compact Index (one process; $PORT)
             spinel-compat ledger [--rev REV]      dump recorded verdicts
             spinel-compat diff REV_A REV_B [--names]  per-gem verdict changes between two revs
+            spinel-compat detect-ext GEM_DIR [--out F]  draft spinel-ext.json from a gem's ffi_cflags markers
             spinel-compat reprobe                 re-probe known gems under current rev
 
           Verdicts: ✓ clean   ★ verified   ~ risky   ✗ rejected

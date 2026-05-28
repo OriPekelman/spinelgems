@@ -3,3 +3,4 @@
 /.bundle/
 Gemfile.lock
 /ledger/*.jsonl
+survey-193k/*.bak

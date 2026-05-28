@@ -165,15 +165,15 @@ module Bundler
             <link rel="stylesheet" href="assets/style.css">
           </head>
           <body>
-          <header><a class="brand" href="/">SpinelGems</a>
-            <nav><a href="/">Home</a> <a href="/catalog.html">Catalog</a>
+          <header><a class="brand" href="./">SpinelGems</a>
+            <nav><a href="./">Home</a> <a href="catalog.html">Catalog</a>
               <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav>
           </header>
           <main>
           <h1>Spinel-compatible gems</h1>
           #{body}
           </main>
-          <footer>Pre-release · verdicts keyed on the Spinel engine revision · <a href="/">spinelgems.org</a></footer>
+          <footer>Pre-release · verdicts keyed on the Spinel engine revision · <a href="./">spinelgems.org</a></footer>
           #{script ? "<script>#{script}</script>" : ''}
           </body>
           </html>

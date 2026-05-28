@@ -46,14 +46,20 @@ A Spinel entrypoint does `require_relative "vendor/spinel/deps"`.
    dep, a consumer's `bundle lock` drags a native gem into the lock and the gate
    rejects it. Move such deps to `add_development_dependency`.
 
-3. **C extensions: declare them in `spinel-ext.json`; `vendor` wires them.**
-   A gem with a C extension (tep's `sphttp`/`sqlite`/`pg`, carried as `.c` → `.o`
-   linked via an `ffi_cflags "@TEP_*@"` directive) ships a `spinel-ext.json`
-   manifest; `spinel-compat vendor` then compiles each `.c` to a `.o` under the
-   vendored dir and substitutes the placeholder with its path — so the gem links
-   with no hand-rolled step (this subsumes toy's `prep/sync_tep.rb` substitution).
-   Reuse a prebuilt `.o` with `--ext @TEP_SPHTTP_O@=/abs/x.o` (or
-   `SPINEL_EXT_TEP_SPHTTP_O=…`). See [c-ext.md](c-ext.md).
+3. **C extensions: `vendor` infers the wiring; gem authors ship nothing new.**
+   A Spinel-targeting C-ext gem (tep's `sphttp`/`sqlite`/`pg`) already has what
+   we need: `.c` files in `lib/`, and `ffi_cflags "@TEP_*@"` directives in its
+   Ruby. `spinel-compat detect-ext GEM_DIR` reads those existing markers and
+   emits a draft `spinel-ext.json`; `spinel-compat vendor` then compiles each
+   `.c` to a `.o` under the vendored dir and substitutes the placeholder — so
+   the gem links with no hand-rolled step (this subsumes toy's
+   `prep/sync_tep.rb` substitution). Reuse a prebuilt `.o` with
+   `--ext @TEP_SPHTTP_O@=/abs/x.o` (or `SPINEL_EXT_TEP_SPHTTP_O=…`). Opt out
+   of an optional module with `--no-ext pg`. *Keeping the convention strictly
+   consumer-side keeps the coordination cost with gem authors at zero* — they
+   can ship `spinel-ext.json` natively later if they want, but never have to.
+   See [c-ext.md](c-ext.md). (Vanilla CRuby c-ext gems that use `.so`/mkmf are
+   out — Spinel can't `dlopen` — and the survey marks them `rejected:c-extension`.)
 
 4. **Prefer `require_relative` inside a gem; avoid plain `require "gem/part"`.**
    Spinel has no load path — it follows `require_relative` (and inlines it) but

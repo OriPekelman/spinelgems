@@ -49,8 +49,15 @@ table.ladder td.v { width: 8rem; }
 }
 .chip span { color: var(--muted); font-variant-numeric: tabular-nums; }
 .chip.on { border-color: var(--accent); background: #f7eefb; }
+a.chip { text-decoration: none; }
+a.chip:hover { background: #f7eefb; border-color: var(--accent); }
 .chip.verified { color: var(--verified); } .chip.loaded { color: var(--loaded); } .chip.clean { color: var(--clean); }
 .chip.risky { color: var(--risky); } .chip.rejected { color: var(--rejected); }
+.chip-strip { display: flex; gap: .4rem; flex-wrap: wrap; margin: 0 0 1rem; padding: 0; font-size: .85rem; }
+.muted { color: var(--muted); font-weight: normal; }
+.meta { color: var(--muted); font-size: .9rem; margin-top: 2rem; }
+.cap-note { background: #f7eefb; border-left: 3px solid var(--accent); padding: .6rem .9rem; border-radius: 4px; font-size: .9rem; color: #333; }
+.cap-note a { color: var(--accent); }
 #q { flex: 1; min-width: 12rem; padding: .35rem .6rem; border: 1px solid var(--rule); border-radius: 6px; font-size: .9rem; }
 table#catalog { border-collapse: collapse; width: 100%; font-size: .9rem; }
 table#catalog th { text-align: left; border-bottom: 2px solid var(--rule); padding: .4rem .5rem; position: sticky; top: 0; background: var(--bg); }

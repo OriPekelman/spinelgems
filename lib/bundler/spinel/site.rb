@@ -30,6 +30,14 @@ module Bundler
       VERDICT_ORDER = %w[verified loaded clean risky rejected].freeze
       GLYPH = { "verified" => "★", "loaded" => "○", "clean" => "✓", "risky" => "~", "rejected" => "✗" }.freeze
 
+      # Verdict ladder by strength. Used to pick the strongest current-rev signal
+      # for a gem when multiple probes wrote different verdicts (the survey
+      # writes clean, an earlier harness pass at the same rev wrote loaded; the
+      # harness *ran* something the survey didn't, so it wins). Rejected is
+      # handled separately by `pick_current` — a caught failure beats any
+      # success-shaped signal regardless of where it ranks here.
+      VERDICT_RANK = { "rejected" => 0, "risky" => 1, "clean" => 2, "loaded" => 3, "verified" => 4 }.freeze
+
       # Default downloads floor for the catalog's "hide low-signal gems" toggle —
       # weeds out test / security-researcher / throwaway gems (the exfil PoC has
       # ~580 downloads; rake has ~1.3B). Tunable via SPINEL_CATALOG_MIN_DOWNLOADS.
@@ -160,11 +168,13 @@ module Bundler
         end
 
         current_entries.map do |name, vs|
-          # Sticky-rejected: pick the rejected entry as the row's source if
-          # any current-rev probe rejected, regardless of write order; else
-          # the most recent (verified > loaded > clean > risky by ledger order
-          # — append-only means newer entries supersede).
-          v = vs.find { |x| x.verdict == "rejected" } || vs.last
+          # Within the current rev, pick the *strongest* signal — not the
+          # most recent. A rejected (compile error or harness miscompile)
+          # always wins (caught failures are facts); otherwise pick the
+          # highest-ranked verdict by VERDICT_RANK, so loaded > clean and a
+          # past harness run isn't overshadowed by a subsequent survey clean.
+          v = vs.find { |x| x.verdict == "rejected" } ||
+              vs.max_by { |x| VERDICT_RANK[x.verdict] || -1 }
           md = meta[name] || {}
           eff_verdict = if v.verdict == "rejected"
                           "rejected"

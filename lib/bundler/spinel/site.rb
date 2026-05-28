@@ -121,11 +121,14 @@ module Bundler
         ok = counts["verified"] + counts["clean"]
 
         body = +""
-        body << %(<p class="lede">The compatibility ledger as of <code>#{h rev}</code> — )
-        body << %(<strong>#{rs.size}</strong> gems surveyed, <strong>#{ok}</strong> compatible )
-        body << %((clean + verified), ranked by downloads. Verdicts are forward-compatible: )
-        body << %(keyed on the Spinel revision, a gem rejected today clears the moment the )
-        body << %(feature it needs lands.</p>\n)
+        body << %(<p class="lede">Compatibility ledger as of <code>#{h rev}</code> — )
+        body << %(<strong>#{rs.size}</strong> gems surveyed, ranked by downloads. The chips )
+        body << %(below show the verdict mix; trust <strong>★ verified</strong> (a behaviour )
+        body << %(smoke matched CRuby), not <strong>✓ clean</strong> (a cheap lower bound) or )
+        body << %(<strong>○ loaded</strong> (require-only differential — logic untested, can )
+        body << %(still silently miscompile). Verdicts are forward-compatible: keyed on the )
+        body << %(Spinel revision, a gem rejected today clears the moment the feature it )
+        body << %(needs lands.</p>\n)
 
         body << %(<div class="filters">\n)
         VERDICT_ORDER.each do |v|

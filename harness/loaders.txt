@@ -1,0 +1,15 @@
+# Popular clean gems we exercise require-only (no behaviour smoke — the load
+# path proves they compile + load identically under CRuby and Spinel, but their
+# logic is unproven, so they earn `loaded` not `verified`. Names only;
+# `run.sh` runs `spinel-compat verify <name>` (no --smoke) for each.
+afm
+hike
+jasmine-core
+junit_merge
+capistrano-bundler
+capistrano-rails
+capistrano-rvm
+capistrano-rbenv
+google-cloud-location
+google-cloud-profiler-v2
+google-iam-v1

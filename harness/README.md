@@ -53,23 +53,34 @@ Over the surveyed ledger (15,673 gems): **1 verified · 64 loaded · 2219 clean 
   popular gem to clear the bar so far.
 - **`loaded` is not enough — silent miscompiles, caught only by behaviour:**
   - `strings-ansi`: `sanitize(...)` → CRuby `"RED and bold text"`, **Spinel `"0"`**.
-    *Root cause: `\033` octal escape in a regex wasn't honoured. Fixed upstream
-    by matz/spinel#1009 (commit 52088bc), and broadened to `\xHH` hex too.*
-  - `emoji_regex` (scan): `str.scan(EmojiRegex::Regex)` raised `undefined method
-    'scan'`. *Root cause: a regex in a namespaced constant wasn't resolved.
-    Fixed upstream by matz/spinel#1008 via our PR #1010 (merged, commit 90227db).*
-  - `semantic_puppet`: `Version "1.2.3" < "1.10.0"` → CRuby `true`, **Spinel `false`**.
-  - `tty-which`: `exist?("sh")` → CRuby `true`, **Spinel `0`**.
+    `#1009` (commit `52088bc`) fixed regex octal/hex escapes at the literal and
+    interpolated level — both minimal repros now pass. But `strings-ansi`'s
+    `gsub` (via interpolated regex inside a module method) **still miscompiles
+    to `"0"` on `a03bb49`** — a residual bug, a smaller repro is worth filing.
+  - `emoji_regex` (scan): the original `undefined method 'scan'` came from a
+    regex in a namespaced constant — fixed upstream by matz/spinel#1008 via our
+    PR #1010 (merged, `90227db`). At `a03bb49` `emoji_regex` now rejects for a
+    *different* reason (its huge unicode-property pattern hits another limit).
+  - `semantic_puppet`: `Version "1.2.3" < "1.10.0"` → CRuby `true`, **Spinel
+    `false`** (still broken at `a03bb49`).
+  - `tty-which`: `exist?("sh")` → CRuby `true`, **Spinel `0`** (still broken).
+  - `to_words`: at `a03bb49` it now compiles (previously rejected) but
+    `42.to_words` returns `"0"` instead of `"forty two"` — a new miscompile
+    surfaced once the build error was gone.
 - **Most popular gems reject at compile time** on missing runtime: `Thread::Mutex`,
   `StringScanner#[]`, variadic methods (`notify_observers`), self-referential
-  class types (`AST::Node`), and `to_words`/`cantor`-style logic. (`String#scan`
-  itself works fine — the original failure was scan with a *namespaced-constant*
-  regex, since fixed; see #1008 above.)
+  class types (`AST::Node`), and similar. (`String#scan` itself works — the
+  original `emoji_regex` failure was scan with a *namespaced-constant* regex,
+  fixed by #1008.)
+- **New `loaded` set** (no behaviour smoke, just require-only differential):
+  `afm`, `hike`, `jasmine-core`, `junit_merge`, `capistrano-bundler`,
+  `capistrano-rails`, `capistrano-rvm`, `capistrano-rbenv`,
+  `google-cloud-location`, `google-cloud-profiler-v2`, `google-iam-v1`.
+  Tracked in `loaders.txt` (run.sh exercises them require-only).
 
-The lesson stands even after the fixes: two silent miscompiles in this list were
+The lesson stands even after the fixes: several silent miscompiles are still
 **only catchable by a differential behaviour run** — a static scan can't see
-them. Re-running the harness against fresh upstream is the natural next step
-(some `risky`/`rejected` gems should now move up the ladder).
+them. Each one we surface here is a candidate Spinel issue.
 - **Multi-file plain-`require` gems can't verify** — they need a load path Spinel
   doesn't have (the verifier gives CRuby `-I lib`, so this surfaces as a clean
   `rejected`, not a broken smoke).

@@ -15,8 +15,15 @@ cd "$HERE"
 "${SPINEL_DIR:-$HOME/spinel}/spinel" main.rb -o main.bin
 ./main.bin
 
-echo "== Phase 2: verify each smoke =="
+echo "== Phase 2a: verify each behaviour smoke =="
 for s in "$HERE"/smoke/*.rb; do
   g="$(basename "$s" .rb)"
   "$CLI" verify "$g" --smoke "$s" || true
 done
+
+echo "== Phase 2b: require-only verify the loaders list =="
+if [ -f "$HERE/loaders.txt" ]; then
+  grep -vE '^\s*(#|$)' "$HERE/loaders.txt" | while read -r g; do
+    "$CLI" verify "$g" || true
+  done
+fi

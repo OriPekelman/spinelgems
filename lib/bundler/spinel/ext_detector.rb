@@ -17,24 +17,35 @@ module Bundler
     # detected. Whatever the detector can't infer it leaves blank and warns —
     # the output is a *draft* meant to be reviewed.
     class ExtDetector
+      # Legacy form: ffi_cflags "@PLACEHOLDER@" → substitution at vendor time.
       FFI_CFLAGS = /ffi_cflags\s+["'](@[A-Z0-9_]+@)["']/.freeze
+      # Post-matz/spinel#1011 form: ffi_cflags File.expand_path("name.o", __dir__).
+      # Spinel const-folds the path from source position, so no substitution is
+      # needed — vendor just has to compile the .c and place the .o where the
+      # const-fold will look (next to the placed .rb).
+      FFI_CFLAGS_EXPAND = /ffi_cflags\s+File\.expand_path\(\s*["']([^"']+\.o)["']\s*,\s*__dir__\s*\)/.freeze
 
       def initialize(dir, warn_io: $stderr)
         @dir = File.expand_path(dir)
         @warn = warn_io
       end
 
-      # array of entries shaped like spinel-ext.json. uniq'd by placeholder.
+      # array of entries shaped like spinel-ext.json.
+      # Legacy form (placeholder): dedup'd by placeholder; vendor substitutes.
+      # Const-fold form (post-#1011): dedup'd by source path; vendor compiles +
+      # places the .o, no substitution.
       def detect
-        placeholders = scan_placeholders
-        return [] if placeholders.empty?
+        decls = scan_declarations
+        return [] if decls.empty?
 
         seen = {}
-        placeholders.each_with_object([]) do |p, acc|
-          next if seen[p[:placeholder]]
+        decls.each_with_object([]) do |d, acc|
+          key = d[:kind] == :placeholder ? d[:value] : :"src:#{c_for(d)}"
+          next if seen[key]
 
-          seen[p[:placeholder]] = true
-          acc << build_entry(p)
+          seen[key] = true
+          entry = d[:kind] == :placeholder ? build_placeholder_entry(d) : build_expand_entry(d)
+          acc << entry if entry
         end
       end
 
@@ -42,11 +53,29 @@ module Bundler
 
       private
 
-      # [{ rb_file:, placeholder: }, …]
-      def scan_placeholders
+      # [{ rb_file:, kind:, value: }, …]  kind ∈ {:placeholder, :expand}
+      def scan_declarations
         Dir[File.join(@dir, "lib", "**", "*.rb")].each_with_object([]) do |f, acc|
-          File.read(f).scan(FFI_CFLAGS) { |m| acc << { rb_file: f, placeholder: m[0] } }
+          body = File.read(f)
+          body.scan(FFI_CFLAGS)        { |m| acc << { rb_file: f, kind: :placeholder, value: m[0] } }
+          body.scan(FFI_CFLAGS_EXPAND) { |m| acc << { rb_file: f, kind: :expand,      value: m[0] } }
         end
+      end
+
+      # .c file next to the .rb that's referenced via `File.expand_path("X.o", __dir__)`.
+      def c_for(d)
+        File.join(File.dirname(d[:rb_file]), d[:value].sub(/\.o\z/, ".c"))
+      end
+
+      def build_expand_entry(d)
+        c_abs = c_for(d)
+        name = File.basename(d[:value], ".o")
+        unless File.exist?(c_abs)
+          @warn.puts "[detect-ext] ffi_cflags File.expand_path(#{d[:value]}, __dir__): no matching .c at #{c_abs.sub(@dir + '/', '')}"
+          return { "name" => name, "form" => "const-fold" }
+        end
+        { "name" => name, "form" => "const-fold",
+          "source" => c_abs.sub(@dir + "/", ""), "cflags" => ["-O2"] }
       end
 
       # @TEP_SPHTTP_O@ → ["sphttp", :obj]
@@ -76,20 +105,20 @@ module Bundler
         (same || cands.first).sub(@dir + "/", "")
       end
 
-      def build_entry(p)
-        tag, kind = decompose(p[:placeholder])
+      def build_placeholder_entry(d)
+        tag, kind = decompose(d[:value])
         case kind
         when :obj
-          source = find_source(p[:rb_file], tag)
-          @warn.puts "[detect-ext] #{p[:placeholder]}: no matching .c source found" if source.nil?
-          { "name" => tag, "placeholder" => p[:placeholder], "cflags" => ["-O2"] }.tap { |e| e["source"] = source if source }
+          source = find_source(d[:rb_file], tag)
+          @warn.puts "[detect-ext] #{d[:value]}: no matching .c source found" if source.nil?
+          { "name" => tag, "placeholder" => d[:value], "cflags" => ["-O2"] }.tap { |e| e["source"] = source if source }
         when :cflags
-          @warn.puts "[detect-ext] #{p[:placeholder]}: system-libs placeholder — fill in pkg_config + disabled_cflags before use"
-          { "name" => tag, "placeholder" => p[:placeholder], "pkg_config" => nil, "pkg_config_fallback" => nil,
+          @warn.puts "[detect-ext] #{d[:value]}: system-libs placeholder — fill in pkg_config + disabled_cflags before use"
+          { "name" => tag, "placeholder" => d[:value], "pkg_config" => nil, "pkg_config_fallback" => nil,
             "optional" => true, "disabled_cflags" => nil }
         else
-          @warn.puts "[detect-ext] #{p[:placeholder]}: unknown shape — review by hand"
-          { "name" => tag, "placeholder" => p[:placeholder] }
+          @warn.puts "[detect-ext] #{d[:value]}: unknown shape — review by hand"
+          { "name" => tag, "placeholder" => d[:value] }
         end
       end
     end

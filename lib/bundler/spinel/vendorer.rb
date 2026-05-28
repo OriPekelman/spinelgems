@@ -101,28 +101,39 @@ module Bundler
         wired = 0
         JSON.parse(File.read(manifest)).each do |e|
           placeholder = e["placeholder"]
-          next unless placeholder
+          name = e["name"]
 
-          if e["optional"] && disable.include?(e["name"].to_s)
-            substitute_placeholder(dest, placeholder, e["disabled_cflags"].to_s)
+          # Opt-out (only meaningful with a placeholder to write disabled_cflags into).
+          if e["optional"] && name && disable.include?(name.to_s)
+            substitute_placeholder(dest, placeholder, e["disabled_cflags"].to_s) if placeholder
             wired += 1
             next
           end
 
-          parts = []
-          if (obj = overrides[placeholder] || ENV[ext_env_key(placeholder)])
-            parts << obj
+          # Compile / place the .o (or take a prebuilt override path). Both forms
+          # need this; post-#1011 const-fold form skips the substitution below.
+          obj = nil
+          if placeholder && (ov = overrides[placeholder] || ENV[ext_env_key(placeholder)])
+            obj = ov
           elsif e["source"]
-            built = compile_ext(src, dest, e) or next # compile failed: leave placeholder
-            parts << built
+            obj = compile_ext(src, dest, e) or next # compile failed
           end
-          if e["pkg_config"]
-            pc = pkg_config_flags(e) or next # required pkg-config missing: leave placeholder
-            parts << pc
-          end
-          parts.concat(Array(e["libs"]))
 
-          substitute_placeholder(dest, placeholder, parts.join(" ").strip)
+          # Legacy placeholder form: substitute @PLACEHOLDER@ with <.o> <pkg-cfg> <libs>.
+          if placeholder
+            parts = []
+            parts << obj if obj
+            if e["pkg_config"]
+              pc = pkg_config_flags(e) or next
+              parts << pc
+            end
+            parts.concat(Array(e["libs"]))
+            substitute_placeholder(dest, placeholder, parts.join(" ").strip)
+          end
+          # Const-fold form (e["form"] == "const-fold" / no placeholder): the .o
+          # is already placed by compile_ext at the path the source-position
+          # `File.expand_path` will resolve to. No text rewriting needed.
+
           wired += 1
         end
         wired
@@ -150,18 +161,25 @@ module Bundler
       # `cc <cflags> -c <gem>/<source> -o <dest>/<base>.o`. The .o is a
       # host-specific build artifact, placed alongside the vendored Ruby.
       def compile_ext(src, dest, entry)
-        source = File.join(src, entry["source"].to_s)
-        unless File.exist?(source)
-          warn "[vendor] ext source not found for #{entry['placeholder']}: #{entry['source']}"
+        source_rel = entry["source"].to_s
+        source_abs = File.join(src, source_rel)
+        unless File.exist?(source_abs)
+          warn "[vendor] ext source not found for #{entry['placeholder'] || entry['name']}: #{source_rel}"
           return nil
         end
 
-        obj = File.join(dest, "#{File.basename(entry['source'], '.*')}.o")
-        cmd = [ENV.fetch("CC", "cc"), *Array(entry["cflags"]), "-c", source, "-o", obj]
+        # Place the .o at the source's relative path under dest — both legacy
+        # (the absolute path goes into the placeholder substitution) and
+        # const-fold (Spinel resolves `File.expand_path("X.o", __dir__)` to
+        # this same location) consume that placement.
+        obj_rel = source_rel.sub(/\.[^.]*\z/, ".o")
+        obj = File.join(dest, obj_rel)
+        FileUtils.mkdir_p(File.dirname(obj))
+        cmd = [ENV.fetch("CC", "cc"), *Array(entry["cflags"]), "-c", source_abs, "-o", obj]
         out, st = Open3.capture2e(*cmd)
         return obj if st.success?
 
-        warn "[vendor] ext compile failed (#{entry['placeholder']}): #{out.lines.last(2).join.strip}"
+        warn "[vendor] ext compile failed (#{entry['placeholder'] || entry['name']}): #{out.lines.last(2).join.strip}"
         nil
       end
 

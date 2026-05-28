@@ -28,11 +28,33 @@ end
 - the `spinel` driver `sed`s `SPINEL_CFLAGS:` out and passes it to the final
   `cc … $FFI_CFLAGS …` link (matz/spinel#514 — auto-link, no extra flags).
 
-**The constraint that forces a placeholder.** `ffi_cflags` takes a *string
-literal* — Spinel doesn't evaluate `__dir__` or `ENV.fetch` there. So the `.o`
-path can't be computed in the source; it has to be injected by build-time
-substitution. matz/spinel#1011 (toy's const-fold ask) would obviate this
-category entirely; until then, the substitution is real and `vendor` owns it.
+**Update (2026-05-28): matz/spinel#1011 landed** ([`04e70ae`](https://github.com/matz/spinel/commit/04e70ae)).
+`ffi_cflags` now const-folds `__dir__`, `__FILE__`,
+`File.expand_path(rel, base)` (with `./..` collapsing), and `String#+` over
+compile-time strings. So the **preferred form going forward** is:
+
+```ruby
+module Sock
+  ffi_cflags File.expand_path("sphttp.o", __dir__)   # resolves from source position
+  ffi_func :sphttp_listen, [:int, :int], :int
+end
+```
+
+— no placeholder, no substitution, no manifest needed for **category A**
+(the gem's own `.o`). `vendor` still has to *compile* the `.c` → `.o` and
+*place* it where the const-fold will look (next to the placed `.rb`), but the
+text-rewriting step disappears. Categories B (pkg-config system libs) and C
+(opt-out) are unchanged — they're consumer-environment concerns, not source-
+position ones.
+
+**Legacy `@PLACEHOLDER@` form still supported**, both for gems written before
+the const-fold landed (tep today) and as a fallback when source-position
+resolution doesn't fit. Mechanism below:
+
+`ffi_cflags` historically only took a *string literal* — no `__dir__`, no
+`ENV.fetch`. The `.o` path couldn't be computed in the source, so it was
+injected by build-time substitution. `vendor` continues to handle this for
+gems that still use it.
 
 ## Two paths, one schema — consumer-side by default
 
@@ -109,7 +131,9 @@ shipped manifest is found — same effect), for each entry it substitutes the
 placeholder in the placed Ruby with the parts above joined:
 
 1. **A — `.o`**: a prebuilt override (`--ext @P@=/abs/x.o`), else
-   `cc <cflags> -c <gem>/<source> -o vendor/spinel/<gem>/<base>.o`.
+   `cc <cflags> -c <gem>/<source> -o vendor/spinel/<gem>/<source-rel>.o`
+   (mirrors the source layout, so the post-#1011 const-fold finds it next to
+   the placed `.rb`).
 2. **B — system libs**: `pkg-config --cflags --libs <pkg_config>`, else
    `pkg_config_fallback`, else *leave the placeholder* (the build fails loud —
    never silently drop a required system dep).
@@ -187,9 +211,10 @@ works fine without; the hook is small when we want it.)
   separate Spinel-targeting fork).
 - **Host-specific `.o`.** `vendor` compiles for the build host (same as tep's
   per-host `.o` today); no cross-compilation. Keep `vendor/` gitignored.
-- **matz/spinel#1011** (const-fold `__dir__` in `ffi_cflags`) would obviate
-  category-A placeholders entirely — gems would just reference their own `.o`
-  relative to themselves. The manifest would shrink to pkg-config + opt-out.
+- **matz/spinel#1011 has landed** (`04e70ae`) — new gems should prefer the
+  const-fold form (`ffi_cflags File.expand_path("name.o", __dir__)`) over
+  legacy `@PLACEHOLDER@` substitution. Both work; the manifest schema shrinks
+  to pkg-config + opt-out for category-A-only gems on the new style.
 - **Trust is unchanged.** This is placement/build wiring, not gating — a
   C-ext gem still probes `risky` and earns trust only through the `verified`
   rung (a behaviour smoke through the harness).

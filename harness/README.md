@@ -53,12 +53,23 @@ Over the surveyed ledger (15,673 gems): **1 verified · 64 loaded · 2219 clean 
   popular gem to clear the bar so far.
 - **`loaded` is not enough — silent miscompiles, caught only by behaviour:**
   - `strings-ansi`: `sanitize(...)` → CRuby `"RED and bold text"`, **Spinel `"0"`**.
+    *Root cause: `\033` octal escape in a regex wasn't honoured. Fixed upstream
+    by matz/spinel#1009 (commit 52088bc), and broadened to `\xHH` hex too.*
+  - `emoji_regex` (scan): `str.scan(EmojiRegex::Regex)` raised `undefined method
+    'scan'`. *Root cause: a regex in a namespaced constant wasn't resolved.
+    Fixed upstream by matz/spinel#1008 via our PR #1010 (merged, commit 90227db).*
   - `semantic_puppet`: `Version "1.2.3" < "1.10.0"` → CRuby `true`, **Spinel `false`**.
   - `tty-which`: `exist?("sh")` → CRuby `true`, **Spinel `0`**.
-- **Most popular gems reject at compile time** on missing runtime: `String#scan`,
-  `Thread::Mutex`, `StringScanner#[]`, variadic methods (`notify_observers`),
-  some regex-literal codegen, self-referential class types (`AST::Node`),
-  and `to_words`/`cantor`-style logic.
+- **Most popular gems reject at compile time** on missing runtime: `Thread::Mutex`,
+  `StringScanner#[]`, variadic methods (`notify_observers`), self-referential
+  class types (`AST::Node`), and `to_words`/`cantor`-style logic. (`String#scan`
+  itself works fine — the original failure was scan with a *namespaced-constant*
+  regex, since fixed; see #1008 above.)
+
+The lesson stands even after the fixes: two silent miscompiles in this list were
+**only catchable by a differential behaviour run** — a static scan can't see
+them. Re-running the harness against fresh upstream is the natural next step
+(some `risky`/`rejected` gems should now move up the ladder).
 - **Multi-file plain-`require` gems can't verify** — they need a load path Spinel
   doesn't have (the verifier gives CRuby `-I lib`, so this surfaces as a clean
   `rejected`, not a broken smoke).

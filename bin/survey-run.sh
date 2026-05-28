@@ -24,6 +24,19 @@ if command -v nproc >/dev/null 2>&1; then JOBS="$(nproc)"; else JOBS="$(sysctl -
 mkdir -p "$OUT"
 export SPINEL_COMPAT_LEDGER="${SPINEL_COMPAT_LEDGER:-$OUT/compat.jsonl}"
 
+# Snapshot the Spinel checkout so a parallel rebuild can't mix revs into a long
+# run (we hit this once: a `git pull` + `make` in $SPINEL_DIR mid-survey swapped
+# the binaries while @engine.rev was cached at the old rev → mislabeled verdicts).
+# Hardlink if possible (cheap, same fs); fall back to a full copy. Idempotent —
+# a re-run with the same OUTDIR reuses the existing frozen copy.
+SP_SRC="${SPINEL_DIR:-$HOME/spinel}"
+SP_FROZEN="$OUT/spinel-frozen"
+if [ ! -d "$SP_FROZEN" ]; then
+  echo "[survey-run] freezing $SP_SRC -> $SP_FROZEN"
+  cp -al "$SP_SRC" "$SP_FROZEN" 2>/dev/null || cp -r "$SP_SRC" "$SP_FROZEN"
+fi
+export SPINEL_DIR="$SP_FROZEN"
+
 echo "[survey-run] spinel: $("$HERE/exe/spinel-compat" engine | sed -n '1,2p' | tr '\n' ' ')"
 echo "[survey-run] list=$LIST jobs=$JOBS ledger=$SPINEL_COMPAT_LEDGER"
 

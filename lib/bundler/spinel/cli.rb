@@ -233,8 +233,12 @@ module Bundler
         out = (j = argv.index("--out")) ? argv[j + 1] : raise(Error, "build-site needs --out DIR")
         store = (i = argv.index("--store")) ? File.expand_path(argv[i + 1]) : nil
         min = (k = argv.index("--min")) ? argv[k + 1].to_sym : :verified
-        ledger_path = (l = argv.index("--ledger")) ? argv[l + 1] : "survey-out/compat.jsonl"
-        meta_path = (m = argv.index("--meta")) ? argv[m + 1] : "survey-out/meta.jsonl"
+        # Default to the committed snapshot — survey-193k/ holds compat.jsonl
+        # (the ledger backing the deploy) and meta.jsonl (the PG-dump-derived
+        # full per-gem metadata, 193k entries). `survey-out/` is a working
+        # directory for per-run probes; not what the public catalog renders from.
+        ledger_path = (l = argv.index("--ledger")) ? argv[l + 1] : "survey-193k/compat.jsonl"
+        meta_path = (m = argv.index("--meta")) ? argv[m + 1] : "survey-193k/meta.jsonl"
         site = Site.new(ledger: Ledger.new(path: File.expand_path(ledger_path)),
                         meta_path: File.expand_path(meta_path))
         dir = site.build(File.expand_path(out), store: store, min_verdict: min)

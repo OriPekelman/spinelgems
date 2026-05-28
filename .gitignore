@@ -1,6 +1,7 @@
-*.gem
-/tmp/
 /.bundle/
+*.gem
 Gemfile.lock
 /ledger/*.jsonl
 survey-193k/*.bak
+survey-out/
+/tmp/

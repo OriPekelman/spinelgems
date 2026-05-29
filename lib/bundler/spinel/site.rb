@@ -255,11 +255,19 @@ module Bundler
           # past harness run isn't overshadowed by a subsequent survey clean.
           v = vs.find { |x| x.verdict == "rejected" } ||
               vs.max_by { |x| VERDICT_RANK[x.verdict] || -1 }
+          # A *behaviour*-caught rejection (probe verify / verify-full) is a real
+          # failure that overrides a historical verified (regression). A *static*
+          # probe rejection (compile+scan) does NOT — a gem the harness actually
+          # ran end-to-end (verify-full verified) is more trustworthy than the
+          # entrypoint-only static probe, which is a known lower bound.
+          behaviour_rejected = vs.any? do |x|
+            x.verdict == "rejected" && (x.probe == "verify" || x.probe == "verify-full")
+          end
           md = meta[name] || {}
-          eff_verdict = if v.verdict == "rejected"
-                          "rejected"
-                        elsif ever_verified.include?([name, v.version])
+          eff_verdict = if ever_verified.include?([name, v.version]) && !behaviour_rejected
                           "verified"
+                        elsif v.verdict == "rejected"
+                          "rejected"
                         else
                           v.verdict
                         end

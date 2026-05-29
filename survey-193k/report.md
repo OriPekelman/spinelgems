@@ -4,9 +4,16 @@
 - gems surveyed: **189742**
 - compatible (clean+verified): **35291** (18.6%)  ·  risky: 12511  ·  rejected: 141940
 
-> Catalog `verified` count is **77** (this survey's static pass plus the cross-rev
-> behaviour-verified set below); the corpus aggregate above is the static
-> survey at `a03bb49` and is unchanged.
+> Catalog `verified` count is **16**. The bar was tightened to **full-surface**
+> verification (`verify --full`: every `lib/` file force-required, no `autoload`
+> masking, no missing-dependency rescue, behaviour smoke matches CRuby). An earlier
+> pass reported 57/77 on an entrypoint-only smoke, but the qdrant-ruby spike
+> (spinelgems#4) showed a constant/VERSION-only smoke can pass while the gem's real
+> code stays behind `autoload`/plain-`require` and never compiles. Re-auditing all
+> 237 smokes under `--full`: only 16 self-contained gems compile + behave end-to-end;
+> the rest were demoted to `loaded`/`clean`/`risky` (need external gems, or their real
+> classes never compile under Spinel's no-load-path model). The corpus aggregate above
+> is the static survey at `a03bb49` and is unchanged.
 
 ## Harness behaviour pass — `git:8adbd7b` (2026-05-29)
 
@@ -23,10 +30,12 @@ at engine rev `git:8adbd7b+dirty`:
 | load-path limit (known no-load-path constraint, not a bug) | 283 |
 | risky / no testable surface | 44 |
 
-These `verified` carry forward into the catalog via the sticky-verified rule
-(behaviour-vetted gems stay verified across engine revisions). The bug findings
-below are recorded in `compat.jsonl` at `8adbd7b` and feed the matz/spinel issue
-queue; they do not flip the (a03bb49-dominant) catalog, which is rev-scoped.
+The 57 above is the **entrypoint-only** smoke pass. A follow-up full-surface audit
+(`verify --full` over all 237 smokes) cut this to **16** genuinely-verified gems —
+see the note at the top. Only `verify-full` verdicts now earn the catalog ★; the
+others were demoted. The bug findings below are recorded in `compat.jsonl` at
+`8adbd7b` and feed the matz/spinel issue queue; they do not flip the
+(a03bb49-dominant) catalog, which is rev-scoped.
 
 ### Newly behaviour-verified (57)
 

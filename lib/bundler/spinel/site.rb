@@ -52,7 +52,7 @@ module Bundler
 
       # One-line semantics per verdict — used as the lede on each per-verdict page.
       BLURB = {
-        "verified" => "Compiles clean <strong>and</strong> a behaviour smoke matches CRuby under a Spinel-compiled harness. The only verdict to trust where it matters. Sticky across engine revisions: once verified, stays verified unless a re-run catches a regression.",
+        "verified" => "<strong>Full surface</strong> compiles and a behaviour smoke matches CRuby under a Spinel-compiled harness — every <code>lib/</code> file force-required (no <code>autoload</code> masking, no missing-dependency rescue), not just the entrypoint. The only verdict to trust where it matters. A constant/VERSION-only smoke that loads the entrypoint but leaves the gem's real code behind <code>autoload</code> is <em>not</em> enough — that overstated usability, so the bar was tightened to whole-surface. Sticky across engine revisions until a re-run catches a regression.",
         "loaded"   => "Compiles and loads identically under CRuby and Spinel via a require-only differential. Logic untested — a gem can load fine and still silently miscompile in the code paths the require-only smoke doesn't exercise. Weaker than <strong>verified</strong>; not a trust signal.",
         "clean"    => "Compiles clean (cheap static lower bound). No behaviour was exercised — the survey doesn't run the gem. Massively overstates compatibility; the harness is the trustworthy check.",
         "risky"    => "Compiles, but the source uses constructs Spinel degrades silently (<code>eval</code>, <code>define_method</code>, …). Allowed by default; fails under <code>spinel-compat check --strict</code>.",
@@ -163,7 +163,13 @@ module Bundler
         ever_verified = Set.new
         current_entries = Hash.new { |h, k| h[k] = [] }
         @ledger.each do |v|
-          ever_verified << [v.gem, v.version] if v.verdict == "verified"
+          # `verified` is now the *full-surface* bar: only a `verify-full` probe
+          # (force-requires every lib file, no dependency masking — the smoke
+          # matched AND the whole gem compiled+loaded) earns the ★. An
+          # entrypoint-only `verify` that matched a constant/VERSION smoke while
+          # the gem's real surface stayed behind autoload/plain-require does NOT
+          # count — it overstated usability (the qdrant-ruby spike, spinelgems#4).
+          ever_verified << [v.gem, v.version] if v.verdict == "verified" && v.probe == "verify-full"
           current_entries[v.gem] << v if v.rev == target_rev
         end
 

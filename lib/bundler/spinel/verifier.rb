@@ -84,12 +84,14 @@ module Bundler
         if full
           # Entrypoint first (it sets up the module/autoload structure), then
           # every other lib file — forcing the autoload-masked surface to load
-          # and compile. Each wrapped in begin/rescue LoadError so a single
-          # genuinely-missing dep (e.g. an optional adapter) doesn't abort the
-          # whole load; a real Spinel codegen failure still surfaces as a
-          # non-LoadError crash / divergent output.
+          # and compile. No rescue: this is the "do we actually know it works"
+          # bar, so a dependency that won't load (e.g. Faraday/TLS) or a file
+          # Spinel can't compile is a real failure, not something to swallow.
+          # CRuby runs with -I lib, so a require that fails under CRuby too lands
+          # as `risky` (gem isn't self-contained), distinct from a Spinel-only
+          # `rejected`.
           lib_requires(dir, entry).each do |rel|
-            src << %{begin; require_relative "#{rel}"; rescue LoadError; end\n}
+            src << %{require_relative "#{rel}"\n}
           end
         elsif entry
           src << %{require_relative "#{entry}"\n}

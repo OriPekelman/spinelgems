@@ -41,10 +41,15 @@ module Bundler
         harness = File.join(dir, HARNESS)
         File.write(harness, harness_source(gem_name, dir, smoke, full))
 
-        ruby_out, _, ruby_ok = run_ruby(harness, dir)
+        ruby_out, ruby_err, ruby_ok = run_ruby(harness, dir)
         spin_out, spin_err, spin_ok = run_spinel(harness)
 
         verdict, reasons = classify(ruby_ok, spin_ok, ruby_out, spin_out, spin_err, behavior: !smoke.nil?)
+        # Tag *why* (the spinelgems#4 usability rubric) so a failure says what it'd
+        # take, not just "rejected". Prepended to reasons as `rubric:<tag>`.
+        unless verdict == "verified" || verdict == "loaded" || verdict == "clean"
+          reasons = ["rubric:#{rubric(ruby_ok, ruby_err, spin_ok, spin_err, ruby_out, spin_out, gem_name)}"] + reasons
+        end
         @ledger.record(@ledger.build(
           gem: gem_name, version: version, rev: @engine.rev,
           verdict: verdict, reasons: reasons, probe: full ? "verify-full" : "verify"
@@ -54,6 +59,40 @@ module Bundler
       end
 
       private
+
+      # The spinelgems#4 usability rubric: classify *why* a gem isn't verified,
+      # from the CRuby-vs-Spinel attribution + the spinel warnings/errors. One
+      # short tag, stored as `rubric:<tag>` in the verdict reasons.
+      #
+      #   needs-dep      — fails under CRuby too (not self-contained: needs an
+      #                    external gem / TLS that the harness doesn't provide)
+      #   load-path      — Spinel ignored a plain `require "gem/part"` (no load
+      #                    path); the gem's real classes never compiled
+      #   needs-stdlib   — Spinel ignored a `require` of a stdlib it doesn't ship
+      #   codegen        — a C compile error on ordinary Ruby — a real Spinel bug
+      #   miscompile     — compiles + runs, but output diverges from CRuby
+      #   unsupported    — a call Spinel can't resolve (silently emits 0)
+      #   build-error    — some other build/run failure
+      def rubric(ruby_ok, ruby_err, spin_ok, spin_err, ruby_out, spin_out, gem_name)
+        unless ruby_ok
+          e = ruby_err.to_s
+          return "needs-dep" if e =~ /cannot load such file|LoadError|OpenSSL|openssl/i
+          return "smoke-error"
+        end
+        if spin_ok && ruby_out != spin_out
+          return "miscompile"
+        end
+        # spin build/run failure — read the spinel warnings/errors.
+        if (m = spin_err.match(/could not be resolved \(no ([^\s)]+?)\.rb/))
+          missing = m[1]
+          stem = gem_name.tr("-", "_").split("/").first.to_s
+          return "load-path" if missing.include?("/") || missing.start_with?(gem_name.tr("-", "/")) || missing.include?(stem)
+          return "needs-stdlib"
+        end
+        return "codegen"     if spin_err =~ /\bout\.c:\d+:\d+: *error:/
+        return "unsupported" if spin_err =~ /cannot resolve call|undefined method/
+        "build-error"
+      end
 
       # behavior: true when a real --smoke drove the gem's API (→ `verified` on
       # match); false for the require-only default smoke (→ `loaded` on match —

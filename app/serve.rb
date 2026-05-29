@@ -122,7 +122,13 @@ get '/' do
   db.finalize
   rev = db.first_str("SELECT value FROM catalog_meta WHERE key = ?", "rev")
   total = db.first_str("SELECT value FROM catalog_meta WHERE key = ?", "total")
+  built = db.first_str("SELECT value FROM catalog_meta WHERE key = ?", "built_at")
   db.close
+
+  # The catalog DB is immutable per deploy; key the validator on its build stamp
+  # so the edge (Cloudflare) caches and clients get a 304 until the next deploy.
+  response.cache_control("public, max-age=120")
+  response.etag(built + "|home")
 
   verified_n = V.count_in(counts_csv, "verified")
   body = "<h1>Dependencies for Spinel projects</h1>\n" +
@@ -185,6 +191,13 @@ get '/catalog' do
 
   db = Tep::SQLite.new
   db.open(DB_PATH)
+
+  # Cache: key on the build stamp + the full query (the DB is immutable per
+  # deploy, so this response is byte-stable until the next deploy). Cloudflare
+  # caches it; the server auto-304s a conditional GET with the matching ETag.
+  built = db.first_str("SELECT value FROM catalog_meta WHERE key = ?", "built_at")
+  response.cache_control("public, max-age=120")
+  response.etag(built + "|" + verdict + "|" + q + "|" + min.to_s + "|" + sort + "|" + page.to_s)
 
   counts_csv = ""
   db.prepare("SELECT verdict, COUNT(*) FROM catalog GROUP BY verdict")

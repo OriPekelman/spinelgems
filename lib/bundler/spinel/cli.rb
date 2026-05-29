@@ -25,6 +25,7 @@ module Bundler
         when "serve"   then cmd_serve(argv)
         when "build-index" then cmd_build_index(argv)
         when "build-site"  then cmd_build_site(argv)
+        when "build-db"    then cmd_build_db(argv)
         when "server"      then cmd_server(argv)
         when "ledger"  then cmd_ledger(argv)
         when "diff"    then cmd_diff(argv)
@@ -245,6 +246,20 @@ module Bundler
         dir = site.build(File.expand_path(out), store: store, min_verdict: min)
         @out.puts "built spinelgems.org site -> #{dir}" \
                   "#{store ? " (+ Compact Index from #{store})" : ' (presentation + catalog; pass --store DIR to add the Compact Index)'}"
+        0
+      end
+
+      # Materialize the catalog into a read-only SQLite DB for the dynamic (Tep)
+      # server. Same ledger/meta defaults as build-site; reuses Site#rows.
+      def cmd_build_db(argv)
+        require_relative "site"
+        out = (j = argv.index("--out")) ? argv[j + 1] : raise(Error, "build-db needs --out DB")
+        ledger_path = (l = argv.index("--ledger")) ? argv[l + 1] : "survey-193k/compat.jsonl"
+        meta_path = (m = argv.index("--meta")) ? argv[m + 1] : "survey-193k/meta.jsonl"
+        site = Site.new(ledger: Ledger.new(path: File.expand_path(ledger_path)),
+                        meta_path: File.expand_path(meta_path))
+        db = site.build_db(File.expand_path(out))
+        @out.puts "built catalog DB -> #{db}"
         0
       end
 

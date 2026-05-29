@@ -87,7 +87,67 @@ module Bundler
         out
       end
 
+      # Materialize the catalog into a SQLite DB for the dynamic (Tep) server:
+      # one row per gem, with `rows`' stickiness already applied, so the runtime
+      # only does indexed SELECTs (no 209k-line ledger replay per request, no
+      # 90MB-HTML split, no REJECTED_CAP). Built at deploy and served read-only.
+      #
+      # We shell out to the `sqlite3` CLI (TSV `.import`) rather than the Ruby
+      # sqlite3 gem: no native-gem build at deploy, and the file is read by
+      # Tep::SQLite (C) at runtime — same on-disk format. `rows` stays the single
+      # source of verdict truth.
+      def build_db(db_path)
+        require "open3"
+        require "tempfile"
+        require "time"
+
+        rs = rows
+        # Strip control chars incl. the ASCII unit/record separators (\x1c-\x1f)
+        # we use as the .import delimiters, so no field value can break a row.
+        clean = ->(s) { s.to_s.gsub(/[\t\r\n\x1c-\x1f]+/, " ").strip }
+        us = "\x1f" # unit (field) separator
+        rs_ = "\x1e" # record separator
+        tsv = Tempfile.new(["catalog", ".asv"])
+        begin
+          rs.each do |r|
+            tsv.write([r.gem, r.gem.downcase, clean.(r.version), r.verdict,
+                       r.downloads.to_i, clean.(r.info), clean.(r.updated),
+                       clean.(r.homepage), clean.(r.notes)].join(us) + rs_)
+          end
+          tsv.flush
+          FileUtils.rm_f(db_path)
+          # .mode ascii uses \x1f/\x1e separators with NO quote processing —
+          # robust for arbitrary description text (.mode tabs/csv quote-swallows
+          # rows whose info contains a `"`, silently dropping ~10% of gems).
+          sql = <<~SQL
+            PRAGMA journal_mode=OFF;
+            CREATE TABLE catalog (
+              gem TEXT PRIMARY KEY, gem_lower TEXT NOT NULL, version TEXT,
+              verdict TEXT NOT NULL, downloads INTEGER NOT NULL DEFAULT 0,
+              info TEXT, updated TEXT, homepage TEXT, notes TEXT
+            );
+            .mode ascii
+            .import #{tsv.path} catalog
+            CREATE INDEX idx_verdict_dl ON catalog(verdict, downloads DESC);
+            CREATE INDEX idx_downloads  ON catalog(downloads DESC);
+            CREATE INDEX idx_gem_lower  ON catalog(gem_lower);
+            CREATE TABLE catalog_meta (key TEXT PRIMARY KEY, value TEXT);
+            INSERT INTO catalog_meta VALUES
+              ('rev', #{sql_str(rev)}),
+              ('total', '#{rs.size}'),
+              ('built_at', '#{Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")}');
+          SQL
+          out, st = Open3.capture2e("sqlite3", db_path, stdin_data: sql)
+          raise Error, "sqlite3 build failed: #{out}" unless st.success?
+        ensure
+          tsv.close!
+        end
+        db_path
+      end
+
       private
+
+      def sql_str(s) = "'#{s.to_s.gsub("'", "''")}'"
 
       def copy_presentation(out)
         return unless File.directory?(@src)
@@ -291,7 +351,10 @@ module Bundler
           <h1>Spinel-compatible gems</h1>
           #{body}
           </main>
-          <footer>Pre-release · verdicts keyed on the Spinel engine revision · <a href="./">spinelgems.org</a></footer>
+          <footer>Pre-release · verdicts keyed on the Spinel engine revision ·
+            Hosted on <a href="https://upsun.com" rel="noopener">Upsun</a> ·
+            Built with <a href="https://github.com/OriPekelman/tep" rel="noopener">Tep</a>
+            (compiled by Spinel) · <a href="./">spinelgems.org</a></footer>
           #{script ? "<script>#{script}</script>" : ''}
           </body>
           </html>

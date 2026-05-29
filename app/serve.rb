@@ -9,7 +9,7 @@ set :public_dir, './public'
 get '/' do
   "<!doctype html><meta charset=utf-8><title>SpinelGems</title>" +
   "<h1>SpinelGems on Tep</h1>" +
-  "<p>Served by a Spinel-compiled Tep binary on Upsun. (spike)</p>"
+  "<p>Served by a Spinel-compiled Tep binary on Upsun. (spike — cache test)</p>"
 end
 
 get '/healthz' do

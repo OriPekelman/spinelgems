@@ -21,8 +21,11 @@ applications:
 
     variables:
       env:
-        # Pin spinel to the commit tep is verified against (tep SPINEL_PIN).
-        SPINEL_PIN: "96b21e64e4e11465e0c21510ee0ab08667bf94dc"
+        # Pin spinel. Bumped past tep's 96b21e6 to pick up 9d5bfc8 "Root poly
+        # (sp_RbVal) locals so they survive GC" (matz/spinel#1052) — the UAF that
+        # made FFI bind_str of param-derived string locals nondeterministically
+        # bind NULL / segfault on the no-verdict /catalog path.
+        SPINEL_PIN: "8d88ebe31c"
 
     hooks:
       build: |

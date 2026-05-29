@@ -215,3 +215,32 @@ get '/catalog' do
 
   V.page(head + " gems — SpinelGems", body)
 end
+
+# TEMPORARY: replicates the original conditional-build/conditional-bind pattern
+# that segfaulted on pin 96b21e6 (GC UAF #1052). Proves 8d88ebe fixes it. Remove
+# after verification.
+get '/cattest' do
+  verdict = params["verdict"]
+  q = params["q"]
+  where = "downloads >= ?"
+  has_verdict = verdict.length > 0
+  where = where + " AND verdict = ?" if has_verdict
+  has_q = q.length > 0
+  where = where + " AND gem_lower LIKE ?" if has_q
+  db = Tep::SQLite.new
+  db.open(DB_PATH)
+  db.prepare("SELECT COUNT(*) FROM catalog WHERE " + where)
+  bi = 1
+  db.bind_int(bi, 1000); bi = bi + 1
+  if has_verdict
+    db.bind_str(bi, verdict); bi = bi + 1
+  end
+  if has_q
+    db.bind_str(bi, "%" + q + "%"); bi = bi + 1
+  end
+  matched = 0
+  matched = db.col_int(0) if db.step == 1
+  db.finalize
+  db.close
+  "cattest matched=" + matched.to_s
+end

@@ -4,4 +4,8 @@ Gemfile.lock
 /ledger/*.jsonl
 survey-193k/*.bak
 survey-out/
+survey-fresh/
+/spinel-frozen-*/
+/harness/out/
+/public/
 /tmp/

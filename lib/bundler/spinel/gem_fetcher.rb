@@ -9,7 +9,11 @@ module Bundler
     # not an install. Sources are cached under a content dir so re-probes are
     # free.
     class GemFetcher
-      CACHE = File.expand_path("~/.cache/spinel-compat/gems")
+      # Default cache lives on $HOME. Override with SPINEL_COMPAT_CACHE to put the
+      # source cache on a roomier volume — a full ecosystem sweep caches ~193k gem
+      # sources (100s of GB), which overruns a tight root fs. On gx10 that means
+      # /srv/data/scratch (the 1.9 TB volume), not ~/.cache on the 916 GB root.
+      CACHE = File.expand_path(ENV["SPINEL_COMPAT_CACHE"] || "~/.cache/spinel-compat/gems")
 
       def initialize(cache: CACHE)
         @cache = cache

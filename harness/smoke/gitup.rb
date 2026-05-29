@@ -1,0 +1,7 @@
+puts Gitup.respond_to?(:on_master?)
+puts Gitup.respond_to?(:current_branch)
+puts Gitup.respond_to?(:everything_commited?)
+puts Gitup.respond_to?(:gitup!)
+puts Gitup.respond_to?(:gitdown!)
+puts Gitup.respond_to?(:run_gitup_commands)
+puts Gitup.respond_to?(:run_gitdown_commands)

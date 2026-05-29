@@ -1,0 +1,6 @@
+puts LicenseList.is_a?(Module)
+puts LicenseList::Tasks.is_a?(Module)
+puts LicenseList::Tasks::License.is_a?(Module)
+puts LicenseList::Tasks::License.respond_to?(:list)
+puts LicenseList::Tasks::License.respond_to?(:export)
+puts LicenseList::Tasks::License.private_method_defined?(:list_licenses)

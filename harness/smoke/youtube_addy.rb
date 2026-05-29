@@ -1,0 +1,7 @@
+puts YouTubeAddy.extract_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+puts YouTubeAddy.extract_video_id("https://youtu.be/dQw4w9WgXcQ")
+puts YouTubeAddy.extract_video_id("https://www.youtube.com/embed/dQw4w9WgXcQ")
+puts YouTubeAddy.youtube_regular_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+puts YouTubeAddy.youtube_shortened_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+puts YouTubeAddy.has_invalid_chars?("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+puts YouTubeAddy.has_invalid_chars?("https://www.youtube.com/watch?v=dQw4w9WgXcQ spaces here")

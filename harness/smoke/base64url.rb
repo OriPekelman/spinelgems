@@ -1,0 +1,7 @@
+puts Base64URL.encode('Send reinforcements')
+puts Base64URL.decode('U2VuZCByZWluZm9yY2VtZW50cw')
+puts Base64URL.encode('Hello, World!')
+puts Base64URL.decode(Base64URL.encode('Hello, World!'))
+puts Base64URL.encode('')
+puts Base64URL.encode('a')
+puts Base64URL.decode(Base64URL.encode('a'))

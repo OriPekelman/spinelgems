@@ -1,0 +1,9 @@
+puts RUT.digitoValido('k')
+puts RUT.digitoValido('K')
+puts RUT.digitoValido('5')
+puts RUT.digitoValido('x')
+puts RUT.getDigito('12345678').to_s
+puts RUT.digitoCorrecto('123456785').to_s
+puts RUT.digitoCorrecto('12345678k').to_s
+puts RUT.quitarFormato('12.345.678-9')
+puts RUT.validar('12.345.678-9').to_s

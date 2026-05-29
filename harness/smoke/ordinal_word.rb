@@ -1,0 +1,7 @@
+puts OrdinalWord.wordinalize(1)
+puts OrdinalWord.wordinalize(5)
+puts OrdinalWord.wordinalize(12)
+puts OrdinalWord.wordinalize(20)
+puts OrdinalWord.wordinalize(21)
+puts OrdinalWord.wordinalize(43)
+puts OrdinalWord.wordinalize(99)

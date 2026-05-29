@@ -42,6 +42,22 @@ fi
 mkdir -p "$OUT"
 export SPINEL_COMPAT_LEDGER="${SPINEL_COMPAT_LEDGER:-$HERE/ledger/compat.jsonl}"
 
+# Freeze the Spinel checkout so a parallel `git pull && make` in $SPINEL_DIR
+# can't swap binaries mid-run and mislabel verdicts at a stale cached rev (the
+# bug we hit during the survey). Hardlink (cheap, same fs) into a rev-stamped
+# frozen copy and point the workers at it. Idempotent — re-runs reuse it.
+# Set SPINEL_NO_FREEZE=1 to opt out (e.g. when SPINEL_DIR is already frozen).
+if [ -z "${SPINEL_NO_FREEZE:-}" ]; then
+  SP_SRC="${SPINEL_DIR:-$HOME/spinel}"
+  SP_REV="$(git -C "$SP_SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  SP_FROZEN="$HERE/spinel-frozen-$SP_REV"
+  if [ ! -d "$SP_FROZEN" ]; then
+    echo "[harness-run] freezing $SP_SRC -> $SP_FROZEN"
+    cp -al "$SP_SRC" "$SP_FROZEN" 2>/dev/null || cp -r "$SP_SRC" "$SP_FROZEN"
+  fi
+  export SPINEL_DIR="$SP_FROZEN"
+fi
+
 echo "[harness-run] spinel : $("$CLI" engine | sed -n '1,2p' | tr '\n' ' ')"
 echo "[harness-run] ledger : $SPINEL_COMPAT_LEDGER  shards=$SHARDS"
 

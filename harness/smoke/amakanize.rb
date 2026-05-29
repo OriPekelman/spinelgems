@@ -1,0 +1,10 @@
+# Smoke test: Amakanize — test regex constants defined in the entrypoint
+puts "123" =~ Amakanize::PATTERN_OF_NUMERIC_CHARACTERS ? "numeric: 123" : "no match"
+puts "42.5" =~ Amakanize::PATTERN_OF_NUMERIC_CHARACTERS ? "numeric: 42.5" : "no match"
+puts "iv" =~ Amakanize::PATTERN_OF_NUMERIC_CHARACTERS ? "numeric: iv" : "no match"
+puts "hello" =~ Amakanize::PATTERN_OF_NUMERIC_CHARACTERS ? "match" : "no match: hello"
+puts "vol.1" =~ Amakanize::PATTERN_OF_PREFIX_OF_BOOK_POSITION ? "prefix match: vol.1" : "no match"
+puts "episode 3" =~ Amakanize::PATTERN_OF_PREFIX_OF_BOOK_POSITION ? "prefix match: episode" : "no match"
+puts "第" =~ Amakanize::PATTERN_OF_PREFIX_OF_BOOK_POSITION ? "prefix match: 第" : "no match"
+puts " 巻" =~ Amakanize::PATTERN_OF_SUFFIX_OF_BOOK_POSITION ? "suffix match: 巻" : "no match"
+puts "Vol.2" =~ Amakanize::PATTERN_OF_VOLUME_PREFIX ? "volume prefix: Vol.2" : "no match"

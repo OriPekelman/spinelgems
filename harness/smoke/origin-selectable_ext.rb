@@ -1,0 +1,5 @@
+puts Origin::Selectable.is_a?(Module)
+puts Origin.const_defined?(:Selectable)
+puts Origin::Selectable.private_method_defined?(:between)
+puts Origin::Selectable.private_method_defined?(:custom_between)
+puts Origin::Selectable.private_method_defined?(:custom_serialization?)

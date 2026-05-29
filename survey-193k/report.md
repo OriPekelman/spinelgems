@@ -4,6 +4,54 @@
 - gems surveyed: **189742**
 - compatible (clean+verified): **35291** (18.6%)  ·  risky: 12511  ·  rejected: 141940
 
+> Catalog `verified` count is **77** (this survey's static pass plus the cross-rev
+> behaviour-verified set below); the corpus aggregate above is the static
+> survey at `a03bb49` and is unchanged.
+
+## Harness behaviour pass — `git:8adbd7b` (2026-05-29)
+
+A targeted differential CRuby-vs-Spinel pass over the **546** most-popular
+clean, dependency-light gems that load require-only. Each got a hand-driven
+behaviour smoke (authored by a per-gem agent, see `harness/smoke/`). Outcomes
+at engine rev `git:8adbd7b+dirty`:
+
+| outcome | count |
+|---|---|
+| **verified** (smoke matches CRuby) | **57** |
+| miscompile bug (runs, wrong output) | 77 |
+| codegen bug (C-compile error, ordinary Ruby) | 85 |
+| load-path limit (known no-load-path constraint, not a bug) | 283 |
+| risky / no testable surface | 44 |
+
+These `verified` carry forward into the catalog via the sticky-verified rule
+(behaviour-vetted gems stay verified across engine revisions). The bug findings
+below are recorded in `compat.jsonl` at `8adbd7b` and feed the matz/spinel issue
+queue; they do not flip the (a03bb49-dominant) catalog, which is rev-scoped.
+
+### Newly behaviour-verified (57)
+
+`activerecord-import-sqlserver`, `amakanize`, `bigkeeper`, `bundler_install_stats`, `cloudapp`, `cloudwalk_handshake`, `cocoapods-dependencies`, `cocoapods-no-dev-schemes`, `cocoapods-prune-localizations`, `codemonitor`, `crunchbase-ruby-library`, `danger-SwiftInfo`, `danger-apple_swift_format`, `danger-duplicate_localizable_strings`, `danger-findbugs`, `danger-iblinter`, `danger-lgtm`, `danger-logging_lint`, `danger-pmd`, `danger-pronto`, `danger-reek`, `danger-shellcheck`, `danger-shroud`, `danger-slack`, `danger-slather`, `danger-the_coding_love`, `danger-undercover`, `danger-xcodebuild`, `danger-yamlint`, `flipper-activerecord3dot2`, `glicko2`, `grape-jsonapi`, `gtk2passwordapp`, `haddock`, `hello-world`, `href_protocol`, `innodb_ruby`, `knife-cleanup`, `knife-inspect`, `metric_fu-roodi`, `mime_builder`, `mime_type_list`, `mod11`, `qawolf-socket-rubygem`, `qdrant-ruby`, `remote_syslog-gitlab`, `rggen`, `ringcentral_sdk`, `ruby-recaptcha`, `ruby_version`, `salamtak`, `tagrity`, `test`, `testrbl`, `trusty-rad-social-extension`, `yarn_lock_parser`, `zerobounce-sdk`
+
+### Bug findings (162) — candidate matz/spinel issues
+
+Grouped by apparent root cause. Each gem has a minimal-ish reproducer smoke.
+
+- **other** (96): `fustigit`, `rox-rollout`, `ftpfxp`, `whenever-elasticbeanstalk`, `sexpistol`, `validate-website`, `call_with_params`, `facebook_username_extractor`, `tradsim`, `minimal_pipeline`, `rubysl-expect`, `sauce_platforms`, …
+- **Module#is_a?(Module) returns false** (21): `activerecord-mysql2-adapter`, `cocoapods-clean`, `slimcop`, `ar_mysql_flexmaster`, `error_page_assets`, `testflight`, `ember-data-factory-guy`, `marathon_deploy`, `rspec_chunked`, `hudson`, `ignore_this_gem`, `origin-selectable_ext`, …
+- **nested class name uses _ not ::** (10): `prop`, `ae_network_connection_exception`, `webpurify`, `slackened`, `delayed_task`, `jakal`, `Dhalang`, `md2man`, `kiqstand`, `cohere-ruby`
+- **respond_to? on self.-method / class<<self false** (10): `tinnef`, `clarity_tracking_number`, `redis_dedupe`, `samson_secret_puller`, `cleantalk`, `wrgem`, `strip_params`, `gitup`, `awes_cli`, `activerecord-fast-import`
+- **frozen-string / frozen-array mishandling** (7): `pygmentize`, `schema_registry`, `gitlab-development-kit`, `cocoapods-try-release-fix`, `scalpel`, `cfn_manage`, `story_branch`
+- **Module#constants wrong / empty** (6): `stigg-api-client`, `cocoapods-amicable`, `heroku_deploy`, `hashy_db`, `notifier`, `pg_hash_func`
+- **string interpolation collapses to first arg** (5): `rfc-822`, `companies-house-rest`, `retry_block`, `recent_ruby`, `stemmify`
+- **.class on a Module returns Integer** (2): `jar_wrapper`, `gem-helper`
+- **String#[](offset,len) returns 0** (2): `picky-statistics`, `n_gram`
+- **nil constant treated as integer 0** (1): `taglib-ruby`
+- **Struct.members returns 0** (1): `danger-periphery`
+- **Hash[:sym] from module method returns 0** (1): `youtube_addy`
+
+Full per-gem diffs and one-line defect summaries: see the workflow result and the kept smokes.
+
+
 ## Candidate features — unresolved calls Spinel could learn
 
 _Core/stdlib method calls only; metaprogramming and `require` excluded as known out-of-scope. The top is the real signal; the long tail is mostly calls unresolved only because their defining `require` wasn't followed._

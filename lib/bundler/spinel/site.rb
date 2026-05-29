@@ -351,7 +351,10 @@ module Bundler
           <h1>Spinel-compatible gems</h1>
           #{body}
           </main>
-          <footer>Pre-release · verdicts keyed on the Spinel engine revision · <a href="./">spinelgems.org</a></footer>
+          <footer>Pre-release · verdicts keyed on the Spinel engine revision ·
+            Hosted on <a href="https://upsun.com" rel="noopener">Upsun</a> ·
+            Built with <a href="https://github.com/OriPekelman/tep" rel="noopener">Tep</a>
+            (compiled by Spinel) · <a href="./">spinelgems.org</a></footer>
           #{script ? "<script>#{script}</script>" : ''}
           </body>
           </html>

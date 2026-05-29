@@ -18,10 +18,7 @@ the Spinel dependency-manager's own website is itself a Spinel program.
   static tree (`public/`, assets, the Compact Index) and the dynamic catalog,
   querying the baked SQLite DB. No CRuby, no services.
 
-## The one surprise: Spinel is C, not Rust
-
-The biggest risk we expected — "is a Rust toolchain available on the build
-container?" — was a non-issue. Spinel builds with:
+## The build
 
 ```sh
 make deps   # curl + untar the prebuilt prism gem's C sources into vendor/prism
@@ -105,16 +102,6 @@ read-only** — so `mounts: {}`. Two things to get right:
 
 The `||` fallback keeps a CRuby/WEBrick path (serving the static `build-site`
 output) as a safety net if the binary is ever missing.
-
-## A gotcha worth its own paragraph: SQLite `.import`
-
-The catalog DB is built by piping SQL to the `sqlite3` CLI (no Ruby sqlite3 gem
-needed at build). **Do not use `.mode tabs` or `.mode csv`** to bulk-import gem
-metadata: those do quote processing, and ~10% of gem descriptions contain a `"`,
-so rows get silently swallowed/merged (we lost ~18k of 190k rows before noticing
-the count was off). Use **`.mode ascii`** (US/RS `\x1f`/`\x1e` separators, no
-quote processing) and strip those control bytes from field values. Then the row
-count matches exactly.
 
 ## Branch environments are the test rig
 

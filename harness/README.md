@@ -29,10 +29,22 @@ depends on whether a behaviour smoke was supplied:
 
 | run | match | mismatch | no build |
 |---|---|---|---|
-| `--smoke FILE` (drives the API) | **`verified`** | `rejected:miscompile` | `rejected` |
+| `--smoke FILE --full` (drives the API, whole surface) | **`verified`** | `rejected:miscompile` | `rejected` / `risky` |
+| `--smoke FILE` (drives the API, entrypoint only) | behaviour match (not ★ on its own) | `rejected:miscompile` | `rejected` |
 | require-only (default) | **`loaded`** | — | `rejected` |
 
 `run.sh` automates both phases.
+
+### Why `--full` (full-surface) — the second refinement
+
+A behaviour smoke that only touches constants (`Gem::VERSION`) passes while the
+gem's real code stays behind `autoload`/plain-`require` and never compiles — and
+Spinel silently ignores plain `require "gem/sub"` (no load path), so a gem's
+actual classes may never exist at runtime. `--full` force-requires **every**
+`lib/` file (no `LoadError` rescue), so ★ `verified` now means the whole surface
+compiles + loads **and** the smoke matches. Re-auditing all smokes this way took
+the catalog from 77 "verified" to 16. Full rationale, the audit, and the
+matz/spinel bug pipeline: [`docs/verification-tiers.md`](../docs/verification-tiers.md).
 
 ### Why `loaded` ≠ `verified` (the refinement)
 

@@ -136,7 +136,15 @@ get '/catalog' do
   off = (page - 1) * per
   order = V.order_by(sort)
   like = "%" + q + "%"
-  filt = "downloads >= ? AND (? = '' OR verdict = ?) AND (? = '' OR gem_lower LIKE ?)"
+  # Integer "match-all" flags (1 = no filter). NOT empty-string compares:
+  # Tep::SQLite bind_str("") binds NULL, so `? = ''` would be `NULL = ''` → NULL
+  # → zero rows. `? = 1` with a bound int is unambiguous; verdict/like are still
+  # bound (harmless when the flag short-circuits the OR to true).
+  vflag = 1
+  vflag = 0 if verdict.length > 0
+  qflag = 1
+  qflag = 0 if q.length > 0
+  filt = "downloads >= ? AND (? = 1 OR verdict = ?) AND (? = 1 OR gem_lower LIKE ?)"
 
   db = Tep::SQLite.new
   db.open(DB_PATH)
@@ -150,9 +158,9 @@ get '/catalog' do
 
   db.prepare("SELECT COUNT(*) FROM catalog WHERE " + filt)
   db.bind_int(1, min)
-  db.bind_str(2, verdict)
+  db.bind_int(2, vflag)
   db.bind_str(3, verdict)
-  db.bind_str(4, q)
+  db.bind_int(4, qflag)
   db.bind_str(5, like)
   matched = 0
   matched = db.col_int(0) if db.step == 1
@@ -162,9 +170,9 @@ get '/catalog' do
   db.prepare("SELECT gem, version, verdict, downloads, info, updated, homepage FROM catalog WHERE " +
              filt + " ORDER BY " + order + " LIMIT ? OFFSET ?")
   db.bind_int(1, min)
-  db.bind_str(2, verdict)
+  db.bind_int(2, vflag)
   db.bind_str(3, verdict)
-  db.bind_str(4, q)
+  db.bind_int(4, qflag)
   db.bind_str(5, like)
   db.bind_int(6, per)
   db.bind_int(7, off)

@@ -36,20 +36,42 @@ class V
     (n / 1000000000).to_s + "." + ((n % 1000000000) / 100000000).to_s + "B"
   end
 
+  def self.brand
+    "<a class=brand href=\"/\"><svg class=gem viewBox=\"0 0 24 24\" aria-hidden=true>" +
+    "<path d=\"M6 3h12l4 6-10 13L2 9z\" fill=\"#7b2d8e\"/>" +
+    "<path d=\"M6 3 2 9l10 13z\" fill=\"#5a1f6b\" opacity=\".55\"/>" +
+    "<path d=\"M18 3l4 6-10 13z\" fill=\"#b14fc4\"/>" +
+    "<path d=\"M6 3h12l-6 6z\" fill=\"#d98ee8\"/></svg>SpinelGems</a>"
+  end
+
+  def self.footer
+    "<footer><div class=foot-wrap><div class=foot-built>" +
+    "<span class=by><svg width=16 height=16 viewBox=\"0 0 24 24\" aria-hidden=true>" +
+    "<path d=\"M6 3h12l4 6-10 13L2 9z\" fill=\"#b31217\"/>" +
+    "<path d=\"M6 3 2 9l10 13z\" fill=\"#7a0c0f\"/>" +
+    "<path d=\"M18 3l4 6-10 13z\" fill=\"#d42b2b\"/>" +
+    "<path d=\"M6 3h12l-6 6z\" fill=\"#e86a6a\"/></svg> " +
+    "<a href=\"https://github.com/matz/spinel\">Spinel</a>-compiled Ruby</span>" +
+    "<span class=by>Built with <a href=\"https://github.com/OriPekelman/tep\">Tep</a></span>" +
+    "<span class=by><svg width=16 height=16 viewBox=\"0 0 24 24\" aria-hidden=true>" +
+    "<circle cx=12 cy=12 r=4.4 fill=\"#ff6b57\"/>" +
+    "<g stroke=\"#ff6b57\" stroke-width=1.7 stroke-linecap=round>" +
+    "<path d=\"M12 2.2v2.6\"/><path d=\"M12 19.2v2.6\"/><path d=\"M2.2 12h2.6\"/><path d=\"M19.2 12h2.6\"/>" +
+    "<path d=\"M5.1 5.1l1.8 1.8\"/><path d=\"M17.1 17.1l1.8 1.8\"/><path d=\"M18.9 5.1l-1.8 1.8\"/><path d=\"M6.9 17.1l-1.8 1.8\"/></g></svg> " +
+    "Hosted on <a href=\"https://upsun.com\">Upsun</a></span></div>" +
+    "<p class=foot-note>Pre-release &middot; verdicts keyed on the Spinel engine revision &middot; " +
+    "<a href=\"https://github.com/OriPekelman/spinelgems\">source &amp; RFC on GitHub</a></p></div></footer>"
+  end
+
   def self.page(title, body)
     "<!doctype html>\n<html lang=en>\n<head><meta charset=utf-8>" +
     "<meta name=viewport content=\"width=device-width, initial-scale=1\">" +
     "<title>" + Tep.h(title) + "</title>" +
     "<link rel=stylesheet href=\"/assets/style.css\"></head>\n<body>\n" +
-    "<header><a class=brand href=\"/\">SpinelGems</a>" +
+    "<header>" + V.brand +
     "<nav><a href=\"/\">Home</a> <a href=\"/catalog\">Catalog</a> " +
     "<a href=\"https://github.com/OriPekelman/spinelgems\">GitHub</a></nav></header>\n" +
-    "<main>\n" + body + "\n</main>\n" +
-    "<footer>Pre-release &middot; verdicts keyed on the Spinel engine revision &middot; " +
-    "Hosted on <a href=\"https://upsun.com\" rel=noopener>Upsun</a> &middot; " +
-    "Built with <a href=\"https://github.com/OriPekelman/tep\" rel=noopener>Tep</a> " +
-    "(compiled by Spinel) &middot; <a href=\"/\">spinelgems.org</a></footer>\n" +
-    "</body>\n</html>\n"
+    "<main>\n" + body + "\n</main>\n" + V.footer + "\n</body>\n</html>\n"
   end
 
   # chip strip linking to /catalog?verdict=V; `active` marks the current one.
@@ -102,21 +124,36 @@ get '/' do
   total = db.first_str("SELECT value FROM catalog_meta WHERE key = ?", "total")
   db.close
 
-  body = "<h1>Spinel-compatible gems</h1>\n" +
-    "<p class=lede>Compatibility ledger as of <code>" + Tep.h(rev) + "</code> &mdash; " +
-    "<strong>" + total + "</strong> gems surveyed, ranked by downloads in each tier. " +
-    "Trust <strong>★ verified</strong> (full surface compiles <em>and</em> a behaviour " +
-    "smoke matches CRuby), not <strong>✓ clean</strong> (a cheap lower bound) or " +
-    "<strong>○ loaded</strong> (require-only). Verdicts are forward-compatible: a gem " +
-    "rejected today clears the moment the feature it needs lands.</p>\n" +
-    "<div class=filters>\n" + V.chips(counts_csv, "") + "</div>\n" +
-    "<form class=filters method=get action=\"/catalog\">\n" +
-    "<input id=q name=q type=search placeholder=\"filter by gem name…\" autocomplete=off> " +
+  verified_n = V.count_in(counts_csv, "verified")
+  body = "<h1>Dependencies for Spinel projects</h1>\n" +
+    "<p class=lede><a href=\"https://github.com/matz/spinel\">Spinel</a> is a new " +
+    "ahead-of-time Ruby compiler. SpinelGems proposes a plain <code>Gemfile</code> as " +
+    "the way to share Spinel code <em>and</em> to reach into the huge existing Ruby " +
+    "ecosystem. The catch: most gems won't compile under Spinel <em>yet</em> &mdash; its " +
+    "scope is deliberately limited and still growing &mdash; so this catalog tracks what " +
+    "works today, at each engine revision.</p>\n" +
+    "<div class=stat-row>" +
+    "<div class=\"stat verified\"><b>" + V.fmt_n(verified_n) + "</b><span>★ behaviour-verified</span></div>" +
+    "<div class=stat><b>" + total + "</b><span>gems surveyed</span></div>" +
+    "</div>\n" +
+    "<p class=meta>Compatibility ledger as of <code>" + Tep.h(rev) + "</code>.</p>\n" +
+    "<form class=filters method=get action=\"/catalog\">" +
+    "<input id=q name=q type=search placeholder=\"search a gem…\" autocomplete=off> " +
     "<button type=submit>Browse catalog</button></form>\n" +
-    "<p class=meta>Raw data: " +
+    "<div class=filters>" + V.chips(counts_csv, "") + "</div>\n" +
+    "<h2>What the verdicts mean</h2>\n" +
+    "<table class=ladder>" +
+    "<tr><td class=\"v verified\">★ verified</td><td>full surface compiles <em>and</em> a behaviour smoke matches CRuby &mdash; trust this one</td></tr>" +
+    "<tr><td class=\"v loaded\">○ loaded</td><td>compiles + loads identically (require-only); logic untested</td></tr>" +
+    "<tr><td class=\"v clean\">✓ clean</td><td>compiles (a cheap lower bound); no behaviour run</td></tr>" +
+    "<tr><td class=\"v risky\">~ risky</td><td>compiles, but uses constructs Spinel degrades silently</td></tr>" +
+    "<tr><td class=\"v rejected\">✗ rejected</td><td>doesn't compile, or a caught miscompile &mdash; the reason names the missing feature</td></tr>" +
+    "</table>\n" +
+    "<p class=note>Verdicts are forward-compatible: a gem rejected today clears the moment " +
+    "the feature it needs lands in Spinel. Raw data: " +
     "<a href=\"https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/compat.jsonl\">compat.jsonl</a> &middot; " +
     "<a href=\"https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/report.md\">report.md</a></p>\n"
-  V.page("Catalog — SpinelGems", body)
+  V.page("SpinelGems — dependencies for Spinel projects", body)
 end
 
 # ---- the queryable catalog ----

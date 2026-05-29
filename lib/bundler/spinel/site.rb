@@ -62,6 +62,20 @@ module Bundler
       Row = Struct.new(:gem, :version, :verdict, :notes, :downloads, :info,
                        :updated, :homepage, keyword_init: true)
 
+      # Shared footer (Ruby gem + Upsun sun inline SVGs). The Tep server
+      # (app/serve.rb) carries a byte-identical copy — keep them in sync.
+      FOOTER_HTML = <<~'FOOT'
+        <footer><div class="foot-wrap">
+          <div class="foot-built">
+            <span class="by"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9z" fill="#b31217"/><path d="M6 3 2 9l10 13z" fill="#7a0c0f"/><path d="M18 3l4 6-10 13z" fill="#d42b2b"/><path d="M6 3h12l-6 6z" fill="#e86a6a"/></svg> <a href="https://github.com/matz/spinel">Spinel</a>-compiled Ruby</span>
+            <span class="by">Built with <a href="https://github.com/OriPekelman/tep">Tep</a></span>
+            <span class="by"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="#ff6b57"/><g stroke="#ff6b57" stroke-width="1.7" stroke-linecap="round"><path d="M12 2.2v2.6"/><path d="M12 19.2v2.6"/><path d="M2.2 12h2.6"/><path d="M19.2 12h2.6"/><path d="M5.1 5.1l1.8 1.8"/><path d="M17.1 17.1l1.8 1.8"/><path d="M18.9 5.1l-1.8 1.8"/><path d="M6.9 17.1l-1.8 1.8"/></g></svg> Hosted on <a href="https://upsun.com">Upsun</a></span>
+          </div>
+          <p class="foot-note">Pre-release · verdicts keyed on the Spinel engine revision ·
+            <a href="https://github.com/OriPekelman/spinelgems">source &amp; RFC on GitHub</a></p>
+        </div></footer>
+      FOOT
+
       def initialize(ledger: Ledger.new, engine: nil, src: SRC, meta_path: nil)
         @ledger = ledger
         @engine = engine
@@ -343,18 +357,16 @@ module Bundler
             <link rel="stylesheet" href="assets/style.css">
           </head>
           <body>
-          <header><a class="brand" href="./">SpinelGems</a>
-            <nav><a href="./">Home</a> <a href="catalog.html">Catalog</a>
+          <header>
+            <a class="brand" href="/"><svg class="gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9z" fill="#7b2d8e"/><path d="M6 3 2 9l10 13z" fill="#5a1f6b" opacity=".55"/><path d="M18 3l4 6-10 13z" fill="#b14fc4"/><path d="M6 3h12l-6 6z" fill="#d98ee8"/></svg>SpinelGems</a>
+            <nav><a href="/">Home</a> <a href="/catalog">Catalog</a>
               <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav>
           </header>
           <main>
           <h1>Spinel-compatible gems</h1>
           #{body}
           </main>
-          <footer>Pre-release · verdicts keyed on the Spinel engine revision ·
-            Hosted on <a href="https://upsun.com" rel="noopener">Upsun</a> ·
-            Built with <a href="https://github.com/OriPekelman/tep" rel="noopener">Tep</a>
-            (compiled by Spinel) · <a href="./">spinelgems.org</a></footer>
+          #{FOOTER_HTML}
           #{script ? "<script>#{script}</script>" : ''}
           </body>
           </html>

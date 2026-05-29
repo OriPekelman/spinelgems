@@ -28,10 +28,18 @@ module Bundler
         @ledger = ledger
       end
 
-      def verify(gem_name, version, dir, smoke: nil)
+      # full: when true, the harness force-requires *every* .rb under the gem's
+      # lib/ (not just the entrypoint) before the smoke body. This defeats the
+      # `autoload`/lazy-`require` masking that lets a constant-only smoke pass
+      # `verified` while the gem's real surface (client/transport/serialization)
+      # never compiled — the qdrant-ruby spike (spinelgems#4). The verdict
+      # vocabulary is unchanged; the probe is tagged `verify-full` so the
+      # whole-surface signal stays distinguishable in the ledger from the
+      # entrypoint-only `verify`.
+      def verify(gem_name, version, dir, smoke: nil, full: false)
         @engine.ensure!
         harness = File.join(dir, HARNESS)
-        File.write(harness, harness_source(gem_name, dir, smoke))
+        File.write(harness, harness_source(gem_name, dir, smoke, full))
 
         ruby_out, _, ruby_ok = run_ruby(harness, dir)
         spin_out, spin_err, spin_ok = run_spinel(harness)
@@ -39,7 +47,7 @@ module Bundler
         verdict, reasons = classify(ruby_ok, spin_ok, ruby_out, spin_out, spin_err, behavior: !smoke.nil?)
         @ledger.record(@ledger.build(
           gem: gem_name, version: version, rev: @engine.rev,
-          verdict: verdict, reasons: reasons, probe: "verify"
+          verdict: verdict, reasons: reasons, probe: full ? "verify-full" : "verify"
         ))
       ensure
         File.delete(harness) if harness && File.exist?(harness)
@@ -69,13 +77,35 @@ module Bundler
       # and Spinel inlines it — so this follows require_relative-split gems
       # natively. (Plain `require "gem/part"` gems still under-resolve; that's the
       # documented load-path limitation.)
-      def harness_source(gem_name, dir, smoke)
+      def harness_source(gem_name, dir, smoke, full = false)
         entry = entrypoint(gem_name, dir)
         body = smoke ? File.read(smoke) : %{puts "spinel-verify: loaded #{gem_name}"}
         src = +""
-        src << %{require_relative "#{entry}"\n} if entry
+        if full
+          # Entrypoint first (it sets up the module/autoload structure), then
+          # every other lib file — forcing the autoload-masked surface to load
+          # and compile. Each wrapped in begin/rescue LoadError so a single
+          # genuinely-missing dep (e.g. an optional adapter) doesn't abort the
+          # whole load; a real Spinel codegen failure still surfaces as a
+          # non-LoadError crash / divergent output.
+          lib_requires(dir, entry).each do |rel|
+            src << %{begin; require_relative "#{rel}"; rescue LoadError; end\n}
+          end
+        elsif entry
+          src << %{require_relative "#{entry}"\n}
+        end
         src << body << "\n"
         src
+      end
+
+      # Every .rb under lib/ as require_relative-able paths (no extension),
+      # entrypoint first, the rest sorted for determinism.
+      def lib_requires(dir, entry)
+        files = Dir[File.join(dir, "lib", "**", "*.rb")]
+                .map { |f| f.sub(%r{\A#{Regexp.escape(dir)}/}, "").sub(/\.rb\z/, "") }
+                .sort
+        files.unshift(entry) if entry # already in `files`; uniq keeps it first
+        files.uniq
       end
 
       # The gem's conventional entry file. Try lib/<gem>.rb, then the require path

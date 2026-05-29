@@ -90,6 +90,10 @@ class V
     return "updated DESC, downloads DESC" if sort == "updated"
     "downloads DESC, gem_lower ASC"
   end
+
+  def self.dbg(s)
+    File.open("/tmp/dbg.log", "a") { |f| f.puts s }
+  end
 end
 
 # ---- landing: live verdict counts + intro + search ----
@@ -145,9 +149,11 @@ get '/catalog' do
   has_q = q.length > 0
   where = where + " AND gem_lower LIKE ?" if has_q
   order = V.order_by(sort)
+  V.dbg("M1 verdict=[" + verdict + "] q=[" + q + "] has_v=" + (has_verdict ? "1" : "0") + " has_q=" + (has_q ? "1" : "0") + " where=[" + where + "] order=[" + order + "]")
 
   db = Tep::SQLite.new
   db.open(DB_PATH)
+  V.dbg("M2 opened")
 
   # chip-strip counts (whole catalog, independent of the filter)
   counts_csv = ""
@@ -167,9 +173,11 @@ get '/catalog' do
   if has_q
     db.bind_str(bi, "%" + q + "%"); bi = bi + 1
   end
+  V.dbg("M3 counts=[" + counts_csv + "]")
   matched = 0
   matched = db.col_int(0) if db.step == 1
   db.finalize
+  V.dbg("M4 matched=" + matched.to_s)
 
   # the page of rows
   rows = ""
@@ -198,10 +206,12 @@ get '/catalog' do
   end
   db.finalize
   db.close
+  V.dbg("M5 rows-rendered len=" + rows.length.to_s)
 
   last = (matched + per - 1) / per
   head = "all gems"
   head = V.glyph(verdict) + " " + verdict if has_verdict
+  V.dbg("M6 last=" + last.to_s + " head=[" + head + "]")
 
   body = V.chips(counts_csv, verdict) +
     "<h2>" + head + " <span class=muted>&mdash; " + V.fmt_n(matched) + " match</span></h2>\n" +
@@ -222,5 +232,6 @@ get '/catalog' do
     body = body + nav + "</p>\n"
   end
 
+  V.dbg("M7 body-built len=" + body.length.to_s)
   V.page(head + " gems — SpinelGems", body)
 end

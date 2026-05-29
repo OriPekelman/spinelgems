@@ -1,28 +1,35 @@
 # bundler-spinel
 
 > ⚠️ **Pre-release / experimental** (`0.0.1.pre`). The CLI surface, the verdict
-> vocabulary, and the ledger format may all change before `0.0.1`. Install with
-> `--pre`. (`spinelgems.org` is not live yet; a preview of the catalog is at
-> **<https://oripekelman.github.io/spinelgems/>** — a 111,852-gem snapshot at
-> Spinel rev `git:397115c+dirty`.)
+> vocabulary, and the ledger format may still change. Browse the live catalog at
+> **<https://spinelgems.org>**.
 
-**Use a standard `Gemfile` for your [Spinel](https://github.com/matz/spinel)
-project — for now.** Spinel-compiled projects have no shared way to declare or
-exchange dependencies, so each vendors by hand. Rather than design a package
-manager, borrow a format everyone already knows and revisit later. See
-[RFC.md](RFC.md) for the proposal, and [docs/adoption.md](docs/adoption.md) for a
-project's how-to — adopting the convention *and* breaking a project into
-extractable libraries (so a consumer depends on just the slice it needs).
+**Use a standard `Gemfile` for your [Spinel](https://github.com/matz/spinel) project.**
 
-`bundler-spinel` is a small Bundler plugin that makes that practical in two ways:
+[Spinel](https://github.com/matz/spinel) is a new ahead-of-time Ruby compiler.
+Spinel projects have no shared way to declare or exchange dependencies, so each
+vendors by hand. Rather than invent a package manager, we propose a plain
+`Gemfile` — for two reasons:
 
-1. **Makes it work** — places resolved dependencies where Spinel can actually
-   find them. Spinel has no load path and inlines `require_relative`, so a dep
-   has to be *placed* and wired. `spinel-compat vendor` does that from a lockfile.
-2. **Gates** — Spinel silently emits a no-op for unsupported Ruby (exit 0), so
-   "it compiled" ≠ "it works". The plugin probes gems and flags incompatible ones
-   at `bundle lock` time, with reasons that name the missing feature — nicer than
-   a silent miscompile. Verdicts are forward-compatible (keyed on the Spinel rev).
+- **Share Spinel code.** A `Gemfile` (with `path:` / `git:` siblings) becomes the
+  preferred way to declare and exchange dependencies *between* Spinel projects.
+- **Reach the Ruby ecosystem.** The same `Gemfile` lets a Spinel project pull from
+  the enormous existing body of Ruby gems.
+
+The catch: **most gems won't compile under Spinel yet.** Its scope is deliberately
+limited and still growing. So we surveyed the ecosystem and publish a
+**[catalog](https://spinelgems.org)** of what works today, at each engine revision.
+
+## The bundler plugin
+
+`bundler-spinel` makes the convention practical in two ways:
+
+1. **Makes it work** — Spinel has no load path and inlines `require_relative`, so a
+   dependency has to be *placed* where Spinel will follow it. `spinel-compat vendor`
+   does that from a lockfile.
+2. **Gates** — Spinel silently no-ops unsupported Ruby (exit 0), so "it compiled"
+   ≠ "it works". The plugin probes gems and flags incompatible ones at `bundle lock`
+   time, with reasons that name the missing feature.
 
 ## The Gemfile convention
 
@@ -30,90 +37,35 @@ extractable libraries (so a consumer depends on just the slice it needs).
 source "https://rubygems.org"
 ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
 
-gem "tep", git: "https://…/tep.git"   # siblings via path:/git: (replaces rsync)
+gem "tep", git: "https://…/tep.git"   # siblings via path:/git:
 gem "some_pure_ruby_lib"
 ```
 
 `bundle lock` resolves normally (it ignores the engine marker); the marker guards
-`bundle install` (exit 18 under CRuby). Nothing here is novel — that's the point.
+`bundle install`. Nothing here is novel — that's the point.
 
 ## Quick start
 
 ```sh
-# 1. make it work — place deps where Spinel finds them
-bundle lock
-exe/spinel-compat vendor                 # -> vendor/spinel/<gem>/lib + vendor/spinel/deps.rb
-#    then `require_relative "vendor/spinel/deps"` from your Spinel entrypoint
-
-# 2. gate — flag what Spinel can't compile, early
-exe/spinel-compat check Gemfile.lock     # exit 1 if any gem is rejected
+bundle plugin install bundler-spinel --git https://github.com/OriPekelman/spinelgems.git
+bundle spinel-lock                 # bundle lock + report incompatible gems
+spinel-compat vendor               # place deps -> vendor/spinel/<gem>/lib + deps.rb
+spinel-compat check Gemfile.lock   # gate: exit 1 if any gem is rejected
 ```
 
-As a Bundler plugin:
+Then `require_relative "vendor/spinel/deps"` from your Spinel entrypoint.
 
-```sh
-bundle plugin install bundler-spinel --git https://github.com/OriPekelman/spinelgems.git   # or --path .
-bundle spinel-lock      # bundle lock, then report incompatible gems
-bundle spinel-check     # gate an existing Gemfile.lock
-```
+Verdicts: `★ verified` · `○ loaded` · `✓ clean` · `~ risky` · `✗ rejected`. Trust
+`verified` (a behaviour smoke matches CRuby); `clean`/`loaded` are cheap lower
+bounds. [What the verdicts mean →](https://spinelgems.org)
 
-## The rest of the toolbelt
+## More
 
-```sh
-exe/spinel-compat engine                 # detected compiler + engine rev
-exe/spinel-compat probe rake [--dir P]   # probe one gem (or a local/sibling dir)
-exe/spinel-compat verify NAME --smoke F  # differential CRuby-vs-Spinel run -> verified
-exe/spinel-compat survey --list F        # wholesale review -> reason histogram
-exe/spinel-compat serve --store DIR      # curated source (only vetted gems)
-exe/spinel-compat ledger / reprobe       # inspect / re-probe under current rev
-```
-
-Verdicts: `✗ rejected` · `~ risky` · `✓ clean` · `○ loaded` · `★ verified`.
-`clean` compiles; `loaded` also *runs* a require-only differential; `verified`
-also passes a behaviour smoke. Trust `verified` — `clean`/`loaded` are cheap
-lower bounds (a `loaded` gem can still silently miscompile in untested logic).
-
-## Environment
-
-- `SPINEL_DIR` — path to the Spinel checkout (default `~/spinel`; falls back to a `spinel` on `PATH`).
-- `SPINEL_COMPAT_LEDGER` — ledger path (default `ledger/compat.jsonl`).
-
-## Status
-
-Working: the Gemfile convention, `vendor` (placement), the lock-time gate +
-Bundler plugin, the probe + forward-compat ledger, the `verified` differential
-harness, the curated source (`serve`), and the wholesale `survey`.
-
-The probe is a **lower bound** — Spinel's lack of a load path means multi-file
-plain-`require` gems under-probe, and silent miscompiles are invisible to it.
-Trust `verified` (smoke runs identically under CRuby and Spinel), not `clean`,
-where it matters. Empirically most third-party gems reject today, so the weight
-is on your own vetted gems and `path:`/`git:` siblings — not a rubygems mirror.
-
-## Related
-
-> ⚠️ Two unrelated projects share the name **"Spinel"**: bundler-spinel targets
-> **[matz/spinel](https://github.com/matz/spinel)** (Matz's Ruby→C AOT
-> compiler). It has **no relationship** to **[Spinel Cooperative](https://github.com/spinel-coop)**
-> (André Arko's group, creator of Bundler).
-
-[`spinel-coop/rv`](https://github.com/spinel-coop/rv) — Spinel Cooperative's
-Rust-based unified replacement for `rvm` / `rbenv` / `bundler` / `rubygems`.
-Different layer: it accelerates the *CRuby* toolchain (install rubies + lock +
-install gems, fast). It's **compatible**, not competing — `rv` produces a
-standard `Gemfile.lock`, so `spinel-compat vendor` / `check` work over its
-output identically to Bundler's. Use `rv` for your everyday Ruby/Bundler
-workflow if you like; spinelgems still gates the Spinel-target build on top.
-
-[`rubocop_spinel`](https://github.com/gurgeous/rubocop_spinel) (gurgeous) — a
-RuboCop extension whose cops flag Spinel-unsupported Ruby (`class << self`,
-`Thread.new`, …) at **author time**, AST-based and tracked against Spinel by PR.
-It's complementary: it lints *your own code as you write it*, while
-bundler-spinel gates *dependencies* at resolution time and adds the differential
-`verified` rung — which catches **silent miscompiles a static linter can't see**
-(a gem can lint clean and still produce wrong output under Spinel; see
-[`harness/`](harness/README.md)). Its AST-based cop set is also a cleaner
-static-risk signal than our regex scan (no comment/string false-positives — cf.
-the same fix in our probe), so it's a candidate to *feed* the probe's static
-signal. Use both: `rubocop_spinel` while authoring, bundler-spinel to gate +
-verify what you depend on.
+- [RFC.md](RFC.md) — the proposal.
+- [docs/cli.md](docs/cli.md) — the full `spinel-compat` toolbelt, verdict ladder, env vars.
+- [docs/adoption.md](docs/adoption.md) — adopting the convention + extracting libraries.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — how the gate, the ledger, and the verify rung work.
+- [harness/](harness/README.md) — the behaviour-`verified` testing ground (and bug pipeline).
+- [docs/verification-tiers.md](docs/verification-tiers.md) — why `verified` means *full surface*.
+- [docs/deploying-tep-on-upsun.md](docs/deploying-tep-on-upsun.md) — the catalog site is itself a Spinel-compiled [Tep](https://github.com/OriPekelman/tep) app.
+- [docs/related.md](docs/related.md) — the two unrelated "Spinel" projects, `rv`, and `rubocop_spinel`.

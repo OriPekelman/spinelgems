@@ -57,8 +57,10 @@ applications:
         export TEP_SKIP_SPINEL_FRESH=1 TEP_SPINEL_DIR="$CACHE"
         make -C "$TEPDIR" helper
 
-        echo "== build static site (fallback) =="
+        echo "== build static site (fallback) + catalog DB =="
         ruby exe/spinel-compat build-site --out public
+        ruby exe/spinel-compat build-db --out public/catalog.db
+        ls -la public/catalog.db
 
         echo "== compile Tep app =="
         "$TEPDIR/bin/tep" build app/serve.rb -o serve_bin

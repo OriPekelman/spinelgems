@@ -1,4 +1,4 @@
-# spinelgems.org on Upsun — SPIKE: serve via a Spinel-compiled Tep binary.
+# spinelgems.org on Upsun — served by a Spinel-compiled Tep binary.
 #
 # The dogfood arc: the human site + Compact Index are served by a Tep app that
 # itself compiles via Spinel (matz/spinel) — built on the Upsun x86 box at

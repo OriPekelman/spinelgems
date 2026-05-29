@@ -80,19 +80,11 @@ class V
     0
   end
 
-  def self.valid_verdict?(v)
-    ORDER.include?(v)
-  end
-
   # whitelist sort -> ORDER BY clause (never interpolate raw input)
   def self.order_by(sort)
     return "gem_lower ASC" if sort == "name"
     return "updated DESC, downloads DESC" if sort == "updated"
     "downloads DESC, gem_lower ASC"
-  end
-
-  def self.dbg(s)
-    File.open("/tmp/dbg.log", "a") { |f| f.puts s }
   end
 end
 
@@ -128,34 +120,27 @@ get '/' do
 end
 
 # ---- the queryable catalog ----
+# Branchless: one fixed filter SQL with empty params as no-ops via
+# `(? = '' OR col = ?)`, always binding the same positions. Keeping the SQL +
+# bind sequence constant avoids a Spinel miscompile (pin 96b21e6) that segfaulted
+# the conditional no-verdict build path.
 get '/catalog' do
   verdict = params["verdict"]
   q = params["q"]
   sort = params["sort"]
-  min_dl = params["min_downloads"]
+  min = 1000
+  min = params["min_downloads"].to_i if params["min_downloads"].length > 0
   page = params["page"].to_i
   page = 1 if page < 1
   per = 100
   off = (page - 1) * per
-
-  # default downloads floor (the old client-side "hide low-signal" toggle)
-  min = 1000
-  min = min_dl.to_i if min_dl.length > 0
-
-  # build WHERE with positional binds (string concat for clauses, bound values)
-  where = "downloads >= ?"
-  has_verdict = V.valid_verdict?(verdict)
-  where = where + " AND verdict = ?" if has_verdict
-  has_q = q.length > 0
-  where = where + " AND gem_lower LIKE ?" if has_q
   order = V.order_by(sort)
-  V.dbg("M1 verdict=[" + verdict + "] q=[" + q + "] has_v=" + (has_verdict ? "1" : "0") + " has_q=" + (has_q ? "1" : "0") + " where=[" + where + "] order=[" + order + "]")
+  like = "%" + q + "%"
+  filt = "downloads >= ? AND (? = '' OR verdict = ?) AND (? = '' OR gem_lower LIKE ?)"
 
   db = Tep::SQLite.new
   db.open(DB_PATH)
-  V.dbg("M2 opened")
 
-  # chip-strip counts (whole catalog, independent of the filter)
   counts_csv = ""
   db.prepare("SELECT verdict, COUNT(*) FROM catalog GROUP BY verdict")
   while db.step == 1
@@ -163,36 +148,26 @@ get '/catalog' do
   end
   db.finalize
 
-  # total matching this filter (for pagination)
-  db.prepare("SELECT COUNT(*) FROM catalog WHERE " + where)
-  bi = 1
-  db.bind_int(bi, min); bi = bi + 1
-  if has_verdict
-    db.bind_str(bi, verdict); bi = bi + 1
-  end
-  if has_q
-    db.bind_str(bi, "%" + q + "%"); bi = bi + 1
-  end
-  V.dbg("M3 counts=[" + counts_csv + "]")
+  db.prepare("SELECT COUNT(*) FROM catalog WHERE " + filt)
+  db.bind_int(1, min)
+  db.bind_str(2, verdict)
+  db.bind_str(3, verdict)
+  db.bind_str(4, q)
+  db.bind_str(5, like)
   matched = 0
   matched = db.col_int(0) if db.step == 1
   db.finalize
-  V.dbg("M4 matched=" + matched.to_s)
 
-  # the page of rows
   rows = ""
   db.prepare("SELECT gem, version, verdict, downloads, info, updated, homepage FROM catalog WHERE " +
-             where + " ORDER BY " + order + " LIMIT ? OFFSET ?")
-  bi = 1
-  db.bind_int(bi, min); bi = bi + 1
-  if has_verdict
-    db.bind_str(bi, verdict); bi = bi + 1
-  end
-  if has_q
-    db.bind_str(bi, "%" + q + "%"); bi = bi + 1
-  end
-  db.bind_int(bi, per); bi = bi + 1
-  db.bind_int(bi, off)
+             filt + " ORDER BY " + order + " LIMIT ? OFFSET ?")
+  db.bind_int(1, min)
+  db.bind_str(2, verdict)
+  db.bind_str(3, verdict)
+  db.bind_str(4, q)
+  db.bind_str(5, like)
+  db.bind_int(6, per)
+  db.bind_int(7, off)
   while db.step == 1
     g = db.col_str(0); ver = db.col_str(1); vd = db.col_str(2)
     dl = db.col_int(3); info = db.col_str(4); upd = db.col_str(5); home = db.col_str(6)
@@ -206,12 +181,10 @@ get '/catalog' do
   end
   db.finalize
   db.close
-  V.dbg("M5 rows-rendered len=" + rows.length.to_s)
 
   last = (matched + per - 1) / per
   head = "all gems"
-  head = V.glyph(verdict) + " " + verdict if has_verdict
-  V.dbg("M6 last=" + last.to_s + " head=[" + head + "]")
+  head = V.glyph(verdict) + " " + verdict if verdict.length > 0
 
   body = V.chips(counts_csv, verdict) +
     "<h2>" + head + " <span class=muted>&mdash; " + V.fmt_n(matched) + " match</span></h2>\n" +
@@ -232,6 +205,5 @@ get '/catalog' do
     body = body + nav + "</p>\n"
   end
 
-  V.dbg("M7 body-built len=" + body.length.to_s)
   V.page(head + " gems — SpinelGems", body)
 end

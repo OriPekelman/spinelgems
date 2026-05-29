@@ -1,40 +1,83 @@
-# spinelgems.org on Upsun — one app, apex double-duty.
+# spinelgems.org on Upsun — SPIKE: serve via a Spinel-compiled Tep binary.
 #
-# Build renders the static tree (presentation + ledger/metadata catalog) from
-# the committed survey-out/ snapshot — no Spinel, no network. The app then serves
-# that static site AND the machine Compact Index from a single process on $PORT,
-# so https://spinelgems.org/ is the website and the same origin is a usable
-# RubyGems `source`. (The Compact Index is empty until a --store of vetted .gem
-# files exists — see the dogfood plan; the human site works standalone.)
+# The dogfood arc: the human site + Compact Index are served by a Tep app that
+# itself compiles via Spinel (matz/spinel) — built on the Upsun x86 box at
+# deploy time. The build hook builds spinel from source (C-only: make deps +
+# make all), caches it keyed by the pinned commit, builds tep's C helper .o's,
+# then `tep build`s app/serve.rb into a native binary. A CRuby/WEBrick fallback
+# keeps the site up if the Tep binary is missing.
+#
+# ruby:3.4 — bundles prism, which tep's translator (bin/tep) requires.
 
 applications:
   spinelgems:
-    type: "ruby:3.3"
+    type: "ruby:3.4"
     source:
       root: "/"
 
-    # WEBrick is a bundled gem (not default) since Ruby 3.0; the server needs it.
     dependencies:
       ruby:
-        webrick: "*"
+        webrick: "*"      # CRuby fallback server
+
+    variables:
+      env:
+        # Pin spinel to the commit tep is verified against (tep SPINEL_PIN).
+        SPINEL_PIN: "96b21e64e4e11465e0c21510ee0ab08667bf94dc"
 
     hooks:
       build: |
         set -e
+        echo "== toolchain =="
+        cc --version | head -1 || echo "NO cc"
+        make --version | head -1 || echo "NO make"
+        ruby -v; ruby -e 'require "prism"; puts "prism #{Prism::VERSION}"' || echo "NO prism"
+        which ar git curl tar || true
+
+        PIN="$SPINEL_PIN"
+        CACHE="$PLATFORM_CACHE_DIR/spinel-$PIN"
+        if [ ! -x "$CACHE/spinel" ]; then
+          echo "== building spinel $PIN (cold) =="
+          rm -rf "$CACHE"; mkdir -p "$PLATFORM_CACHE_DIR"
+          git clone --quiet https://github.com/matz/spinel.git "$CACHE"
+          git -C "$CACHE" checkout --quiet "$PIN"
+          t0=$(date +%s)
+          make -C "$CACHE" deps
+          make -C "$CACHE" all
+          echo "== spinel built in $(( $(date +%s) - t0 ))s =="
+        else
+          echo "== spinel cache hit ($CACHE) =="
+        fi
+        export SPINEL="$CACHE/spinel"
+        "$SPINEL" -e 'puts "spinel runs: " + (1+1).to_s' || { echo "spinel smoke FAILED"; exit 1; }
+
+        echo "== fetch tep =="
+        TEPDIR="$PLATFORM_CACHE_DIR/tep"
+        if [ -d "$TEPDIR/.git" ]; then git -C "$TEPDIR" pull --quiet || true
+        else git clone --quiet https://github.com/OriPekelman/tep.git "$TEPDIR"; fi
+        export TEP_SKIP_SPINEL_FRESH=1 TEP_SPINEL_DIR="$CACHE"
+        make -C "$TEPDIR" helper
+
+        echo "== build static site (fallback) =="
         ruby exe/spinel-compat build-site --out public
 
+        echo "== compile Tep app =="
+        "$TEPDIR/bin/tep" build app/serve.rb -o serve_bin
+        echo "== serve_bin =="; ls -la serve_bin; ldd serve_bin || true
+
     web:
-      # All requests go to our combined server; it serves public/ statically and
-      # mounts the Compact Index endpoints over the top.
       commands:
-        start: "ruby exe/spinel-compat server --public public --port $PORT"
+        start: |
+          if [ -x serve_bin ]; then
+            exec ./serve_bin -p $PORT
+          else
+            exec ruby exe/spinel-compat server --public public --port $PORT
+          fi
       upstream:
         socket_family: tcp
       locations:
         "/":
           passthru: true
 
-    # No persistent state: the catalog/index are built from committed data.
     mounts: {}
 
 routes:

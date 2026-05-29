@@ -4,16 +4,22 @@
 - gems surveyed: **189742**
 - compatible (clean+verified): **35291** (18.6%)  ·  risky: 12511  ·  rejected: 141940
 
-> Catalog `verified` count is **16**. The bar was tightened to **full-surface**
-> verification (`verify --full`: every `lib/` file force-required, no `autoload`
-> masking, no missing-dependency rescue, behaviour smoke matches CRuby). An earlier
-> pass reported 57/77 on an entrypoint-only smoke, but the qdrant-ruby spike
-> (spinelgems#4) showed a constant/VERSION-only smoke can pass while the gem's real
-> code stays behind `autoload`/plain-`require` and never compiles. Re-auditing all
-> 237 smokes under `--full`: only 16 self-contained gems compile + behave end-to-end;
-> the rest were demoted to `loaded`/`clean`/`risky` (need external gems, or their real
-> classes never compile under Spinel's no-load-path model). The corpus aggregate above
-> is the static survey at `a03bb49` and is unchanged.
+> Catalog `verified` count is **28**. The bar is **full-surface** verification
+> (`verify --full`: every `lib/` file force-required, no `autoload` masking, no
+> missing-dependency rescue, behaviour smoke matches CRuby). An earlier pass reported
+> 57/77 on an entrypoint-only smoke, but the qdrant-ruby spike (spinelgems#4) showed a
+> constant/VERSION-only smoke can pass while the gem's real code stays behind
+> `autoload`/plain-`require` and never compiles; re-auditing all 237 smokes under
+> `--full` cut it to 16 self-contained gems.
+>
+> Then five of our filed module/reflection bugs landed on `matz/spinel` (8ec9a3b,
+> e47419b — `is_a?(Module)`, `.class`, `respond_to?` on singleton methods/accessors,
+> nested `::` naming). Rebuilding at `git:8d88ebe` and re-auditing: **30** gems now
+> pass full-surface (14 graduated). Two of those 30 (`pr_geohash`, `strings-ansi`)
+> still show `rejected` in the catalog because they were rejected at the dominant
+> survey rev `a03bb49` and sticky-rejected is rev-scoped — they'll flip on a full
+> re-survey at the newer rev. The corpus aggregate above is the `a03bb49` static
+> survey and is unchanged.
 
 ## Harness behaviour pass — `git:8adbd7b` (2026-05-29)
 

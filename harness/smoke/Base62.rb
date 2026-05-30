@@ -1,0 +1,6 @@
+puts Base62.to_base62(0)
+puts Base62.to_base62(62)
+puts Base62.to_base62(123456789)
+puts Base62.to_base10('0')
+puts Base62.to_base10('10')
+puts Base62.to_base10('8M0kX')

@@ -1,0 +1,5 @@
+puts ActionView::Helpers::FormBuilder.instance_methods(false).include?(:globalize_fields_for)
+puts Globalize::ActiveRecord::InstanceMethods.instance_methods(false).include?(:update_attributes_with_translations)
+puts Globalize::Model::ActiveRecord::Translated::Callbacks.instance_methods(false).include?(:enable_nested_attributes)
+puts Globalize::Model::ActiveRecord::Translated::InstanceMethods.instance_methods(false).include?(:after_save)
+puts Globalize::Model::ActiveRecord::Translated::InstanceMethods.instance_methods(false).include?(:init_translations)

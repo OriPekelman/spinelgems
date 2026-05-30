@@ -1,0 +1,8 @@
+puts Terbilang.convert(1)
+puts Terbilang.convert(11)
+puts Terbilang.convert(15)
+puts Terbilang.convert(42)
+puts Terbilang.convert(100)
+puts Terbilang.convert(1000)
+puts Terbilang.convert(123456)
+puts Terbilang.convert(0)

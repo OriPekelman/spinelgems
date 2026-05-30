@@ -9,6 +9,7 @@ exe/spinel-compat engine                 # detected compiler + engine rev
 exe/spinel-compat probe rake [--dir P]   # probe one gem (or a local/sibling dir)
 exe/spinel-compat verify NAME --smoke F  # differential CRuby-vs-Spinel run -> verified
 exe/spinel-compat verify NAME --full     # whole-surface verify (force-require every lib file)
+exe/spinel-compat verify NAME --tests     # run the gem's own minitest/test-unit suite, differentially
 exe/spinel-compat survey --list F        # wholesale review -> reason histogram
 exe/spinel-compat build-db --out F.db    # materialize the catalog into a SQLite DB
 exe/spinel-compat build-site --out DIR   # render the static catalog/site

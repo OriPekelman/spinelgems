@@ -71,7 +71,8 @@ module Bundler
         dir = (i = argv.index("--dir")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
         smoke = (j = argv.index("--smoke")) ? argv.delete_at(j + 1).tap { argv.delete_at(j) } : nil
         full = !!argv.delete("--full")
-        name = argv.shift or raise Error, "usage: spinel-compat verify NAME [VERSION] [--dir PATH] [--smoke FILE] [--full]"
+        tests = !!argv.delete("--tests")
+        name = argv.shift or raise Error, "usage: spinel-compat verify NAME [VERSION] [--dir PATH] [--smoke FILE | --tests] [--full]"
         engine = Engine.new
         if dir
           version = argv.shift || "path"
@@ -80,8 +81,18 @@ module Bundler
           version = argv.shift || latest_version(name)
           gem_dir = GemFetcher.new.fetch(name, version)
         end
+        # --tests: translate the gem's own minitest/test-unit suite into a
+        # Spinel-compilable runner and use it as the smoke (spinelgems#6).
+        if tests
+          require_relative "test_runner"
+          runner = TestRunner.generate_suite(gem_dir)
+          raise Error, "no runnable test suite found in #{gem_dir}/test" unless runner
+          smoke = File.join(Dir.tmpdir, "__spinel_tests_#{name}.rb")
+          File.write(smoke, runner)
+        end
         v = Verifier.new(engine, Ledger.new).verify(name, version, gem_dir, smoke: smoke && File.expand_path(smoke), full: full)
         print_verdict(v)
+        File.delete(smoke) if tests && smoke && File.exist?(smoke)
         (v.verified? || v.loaded?) ? 0 : 1
       end
 

@@ -76,7 +76,10 @@ module Bundler
         # Not a git checkout: hash the binary so distinct builds get distinct keys.
         return "missing" unless available?
 
-        "bin:#{Digest::SHA256.file(@bin).hexdigest[0, 12]}"
+        # Fully-qualified: inside `module Bundler`, a bare `Digest` resolves
+        # to Bundler's own `Bundler::Digest` (no SHA256), so probe/check
+        # NameError'd. Reach the stdlib digest explicitly.
+        "bin:#{::Digest::SHA256.file(@bin).hexdigest[0, 12]}"
       end
 
       def which(cmd)

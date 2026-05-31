@@ -98,8 +98,26 @@ module Bundler
         manifest = File.join(src, "spinel-ext.json")
         return 0 unless File.exist?(manifest)
 
+        entries = JSON.parse(File.read(manifest))
+
+        # A module's C extension can be split across two manifest entries: a
+        # `source` `.o` entry (@MOD_O@) and a CFLAGS-only sibling (@MOD_CFLAGS@)
+        # carrying the `pkg_config` include path. They share `name` (the detector
+        # decomposes both `@TEP_PG_O@` and `@TEP_PG_CFLAGS@` to name "pg"). The
+        # source compile must see the sibling's include path, or e.g. tep's
+        # `tep_pg.c` can't find <libpq-fe.h> (spinelgems#8). Pre-resolve the
+        # compile-time cflags each module name contributes from its CFLAGS-only
+        # siblings so compile_ext gets them.
+        sib_cflags = Hash.new { |h, k| h[k] = [] }
+        entries.each do |e|
+          next if e["source"] || !e["name"]              # only CFLAGS-only siblings
+          next if e["optional"] && disable.include?(e["name"].to_s)
+          (cf = pkg_config_cflags(e)) && sib_cflags[e["name"].to_s].concat(cf)
+          sib_cflags[e["name"].to_s].concat(Array(e["cflags"])) if e["cflags"]
+        end
+
         wired = 0
-        JSON.parse(File.read(manifest)).each do |e|
+        entries.each do |e|
           placeholder = e["placeholder"]
           name = e["name"]
 
@@ -116,7 +134,7 @@ module Bundler
           if placeholder && (ov = overrides[placeholder] || ENV[ext_env_key(placeholder)])
             obj = ov
           elsif e["source"]
-            obj = compile_ext(src, dest, e) or next # compile failed
+            obj = compile_ext(src, dest, e, sib_cflags[name.to_s]) or next # compile failed
           end
 
           # Legacy placeholder form: substitute @PLACEHOLDER@ with <.o> <pkg-cfg> <libs>.
@@ -158,9 +176,20 @@ module Bundler
         nil
       end
 
+      # Just the compile-time include flags (`pkg-config --cflags <pkg>`), split
+      # into argv tokens, for folding a CFLAGS-only sibling entry into a source
+      # entry's compile (spinelgems#8). The `--libs` side is a link flag and is
+      # added at the placeholder substitution, not here. nil if unavailable —
+      # the compile then fails loud, which is correct (a required include path).
+      def pkg_config_cflags(entry)
+        return nil unless entry["pkg_config"]
+        out, st = Open3.capture2e("pkg-config", "--cflags", entry["pkg_config"].to_s)
+        st.success? && !out.strip.empty? ? out.strip.split : nil
+      end
+
       # `cc <cflags> -c <gem>/<source> -o <dest>/<base>.o`. The .o is a
       # host-specific build artifact, placed alongside the vendored Ruby.
-      def compile_ext(src, dest, entry)
+      def compile_ext(src, dest, entry, extra_cflags = [])
         source_rel = entry["source"].to_s
         source_abs = File.join(src, source_rel)
         unless File.exist?(source_abs)
@@ -175,7 +204,9 @@ module Bundler
         obj_rel = source_rel.sub(/\.[^.]*\z/, ".o")
         obj = File.join(dest, obj_rel)
         FileUtils.mkdir_p(File.dirname(obj))
-        cmd = [ENV.fetch("CC", "cc"), *Array(entry["cflags"]), "-c", source_abs, "-o", obj]
+        # extra_cflags: include paths from a CFLAGS-only sibling entry for the
+        # same module (spinelgems#8 — e.g. @TEP_PG_CFLAGS@'s `pkg-config libpq`).
+        cmd = [ENV.fetch("CC", "cc"), *Array(entry["cflags"]), *Array(extra_cflags), "-c", source_abs, "-o", obj]
         out, st = Open3.capture2e(*cmd)
         return obj if st.success?
 

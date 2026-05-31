@@ -21,6 +21,50 @@ ones above. `clean` is the cheapest and the most misleading: a gem can compile
 and still miscompile its logic, fail to load a dependency, or silently no-op a
 plain `require`.
 
+## Signals — composable, orthogonal to the verdict
+
+The verdict is the **rank** (how far the gem compiled and ran). Layered on top
+are **signals** — independent badges a gem can *also* carry. A gem can be ★
+verified **and** 👤 human-attested **and** ✪ own-tests-passing at once. We chose
+composable badges over a single deeper ladder so each signal stays legible (you
+can see *which* evidence a gem has, not just a collapsed rank).
+
+| signal | glyph | what it means | source |
+|---|---|---|---|
+| human | 👤 | a person has used the gem in a real Spinel/Tep program and attests it works — the **highest-trust** signal we carry | `attestations.jsonl` (version-pinned, git-tracked) |
+| tests | ✪ | the gem's **own** test suite compiles, runs, and matches CRuby under a Spinel-compiled harness (`verify --tests`) — stronger than a hand smoke, zero per-gem human effort | `test-results.jsonl` (gated on the current rev) |
+| rubric | — | on a **non-verified** gem: *why* not yet — `needs-dep` · `load-path` · `needs-stdlib` · `codegen` · `miscompile` · `unsupported` · `build-error` | the verifier's CRuby-vs-Spinel attribution (`rubric:<tag>` in the ledger) |
+
+**Human attestation** is deliberately the top signal: at current engine maturity,
+a person saying "I built on this and it works" outranks any mechanical check —
+mechanical verdicts are lower bounds that a real program can still trip past. An
+attestation is a `{gem, version, by, date, note, evidence}` record; `Site#rows`
+grants 👤 only on a version match, and suppresses it if the gem is
+behaviour-rejected at the current rev (a caught regression postdates the
+human's "it worked").
+
+**Own-tests (`✪ tests`)** is the strictly-stronger, zero-human-effort behaviour
+signal of [#6](https://github.com/OriPekelman/spinelgems/issues/6): the authors'
+tests exercise far more than a `VERSION` smoke, and a test that passes CRuby but
+fails Spinel-compiled is a pinpointed miscompile → straight into the bug
+pipeline. `verify --tests` translates a gem's minitest/test-unit suite into a
+Spinel-compilable runner (Ripper-extracted explicit `t.test_x` calls, inlined
+assertions — no reflection, no shared polymorphic helper). **Today the badge is
+empty:** every verified gem's own suite tried (12 of them, `pr_geohash`,
+`haddock`, `ValidateEmail`, …) still surfaces a miscompile the entrypoint smoke
+misses — e.g. `ValidateEmail`'s translated suite reports `pass=21 fail=0` under
+CRuby but `pass=0 fail=0` Spinel-compiled (the assertions evaporate). That's the
+[#6](https://github.com/OriPekelman/spinelgems/issues/6) finding: own-tests push
+type-shapes hand-smokes don't, so they hit the whole-program-inference wall
+([#1043](https://github.com/matz/spinel/issues/1043)/[#1062](https://github.com/matz/spinel/issues/1062))
+sooner than they pass. The mechanism is wired and will light up as that
+stabilizes — and in the meantime each failing run is a free bug reproducer.
+
+**Rubric** turns the survey from green/red into "green, and here's what it'd
+take" (the [#4](https://github.com/OriPekelman/spinelgems/issues/4) ask): e.g.
+`diff-lcs` (1.1B downloads) shows ✗ rejected · *needs load-path*; `tty-cursor`
+(214M) shows ✗ rejected · *miscompiles*.
+
 ## Why the `verified` bar is *full-surface*
 
 The original `verified` rung only required the gem's **entrypoint** to load plus

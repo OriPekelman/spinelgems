@@ -108,6 +108,29 @@ class V
     return "updated DESC, downloads DESC" if sort == "updated"
     "downloads DESC, gem_lower ASC"
   end
+
+  # rubric tag -> human label (the "here's what it'd take" signal)
+  def self.rubric_label(t)
+    return "needs a dep" if t == "needs-dep"
+    return "needs load-path" if t == "load-path"
+    return "needs stdlib" if t == "needs-stdlib"
+    return "codegen bug" if t == "codegen"
+    return "miscompiles" if t == "miscompile"
+    return "unsupported call" if t == "unsupported"
+    return "build error" if t == "build-error"
+    return "smoke error" if t == "smoke-error"
+    ""
+  end
+
+  # composable signal badges for one row (human/tests ints, rubric tag)
+  def self.signals(human, tests, rubric)
+    s = ""
+    s = s + "<span class=\"badge human\">👤 human</span>" if human == 1
+    s = s + "<span class=\"badge tests\">✪ tests</span>" if tests == 1
+    lbl = V.rubric_label(rubric)
+    s = s + "<span class=\"badge rubric\">" + lbl + "</span>" if lbl.length > 0
+    s
+  end
 end
 
 # ---- landing: live verdict counts + intro + search ----
@@ -154,6 +177,13 @@ get '/' do
     "<tr><td class=\"v clean\">✓ clean</td><td>compiles (a cheap lower bound); no behaviour run</td></tr>" +
     "<tr><td class=\"v risky\">~ risky</td><td>compiles, but uses constructs Spinel degrades silently</td></tr>" +
     "<tr><td class=\"v rejected\">✗ rejected</td><td>doesn't compile, or a caught miscompile &mdash; the reason names the missing feature</td></tr>" +
+    "</table>\n" +
+    "<h2>Signals</h2>\n" +
+    "<p class=note>The verdict is the rank; gems also carry orthogonal <em>signals</em>, shown as badges in the catalog:</p>\n" +
+    "<table class=ladder>" +
+    "<tr><td><span class=\"badge human\">👤 human</span></td><td>a person attests it works in real use &mdash; the highest-trust signal</td></tr>" +
+    "<tr><td><span class=\"badge tests\">✪ tests</span></td><td>the gem's own test suite passes under Spinel (stronger than a hand smoke, zero human effort)</td></tr>" +
+    "<tr><td><span class=\"badge rubric\">rubric</span></td><td>on non-verified gems: <em>why</em> not yet (needs-dep &middot; load-path &middot; miscompiles &middot; …)</td></tr>" +
     "</table>\n" +
     "<p class=note>Verdicts are forward-compatible: a gem rejected today clears the moment " +
     "the feature it needs lands in Spinel. Raw data: " +
@@ -217,7 +247,7 @@ get '/catalog' do
   db.finalize
 
   rows = ""
-  db.prepare("SELECT gem, version, verdict, downloads, info, updated, homepage FROM catalog WHERE " +
+  db.prepare("SELECT gem, version, verdict, downloads, info, updated, homepage, human, tests, rubric FROM catalog WHERE " +
              filt + " ORDER BY " + order + " LIMIT ? OFFSET ?")
   db.bind_int(1, min)
   db.bind_int(2, vflag)
@@ -229,9 +259,11 @@ get '/catalog' do
   while db.step == 1
     g = db.col_str(0); ver = db.col_str(1); vd = db.col_str(2)
     dl = db.col_int(3); info = db.col_str(4); upd = db.col_str(5); home = db.col_str(6)
+    hum = db.col_int(7); tst = db.col_int(8); rub = db.col_str(9)
     gcell = Tep.h(g)
     gcell = "<a href=\"" + Tep.h(home) + "\" rel=\"noopener nofollow\">" + Tep.h(g) + "</a>" if home.length > 0
     rows = rows + "<tr><td class=\"v " + vd + "\">" + V.glyph(vd) + " " + vd + "</td>" +
+      "<td class=sig>" + V.signals(hum, tst, rub) + "</td>" +
       "<td class=g>" + gcell + " <span class=ver>" + Tep.h(ver) + "</span></td>" +
       "<td class=num>" + V.fmt_n(dl) + "</td>" +
       "<td class=upd>" + Tep.h(upd[0,10]) + "</td>" +
@@ -250,7 +282,7 @@ get '/catalog' do
     "<input type=hidden name=verdict value=\"" + Tep.h(verdict) + "\">" +
     "<input id=q name=q type=search placeholder=\"filter by gem name…\" value=\"" + Tep.h(q) + "\" autocomplete=off> " +
     "<button type=submit>Filter</button></form>\n" +
-    "<table id=catalog><thead><tr><th>verdict</th><th>gem</th>" +
+    "<table id=catalog><thead><tr><th>verdict</th><th>signals</th><th>gem</th>" +
     "<th class=num>downloads</th><th>updated</th><th>description</th></tr></thead><tbody>\n" +
     rows + "</tbody></table>\n"
 

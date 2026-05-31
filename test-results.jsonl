@@ -1,0 +1,12 @@
+{"gem":"ValidateEmail","version":"1.0.1","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"fail","verdict":"rejected","note":"miscompile; diff:L1 cruby=\"TESTS pass=21 fail=0\\n\" spinel=\"TESTS pass=0 fail=0\\n\""}
+{"gem":"a1412tk_bmi","version":"0.0.3","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"fail","verdict":"rejected","note":"miscompile; diff:L1 cruby=\"TESTS pass=2 fail=2\\n\" spinel=\"TESTS pass=0 fail=0\\n\""}
+{"gem":"a1426kt_prime_number","version":"0.0.7","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"fail","verdict":"risky","note":"smoke-error:cruby"}
+{"gem":"bad_words","version":"0.1.7","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"n/a","verdict":"no-suite","note":"TestRunner found no extractable test_* methods (reflective/shared-helper suite)"}
+{"gem":"gem-helper","version":"0.0.1","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"n/a","verdict":"no-suite","note":"TestRunner found no extractable test_* methods (reflective/shared-helper suite)"}
+{"gem":"gitup","version":"0.0.3","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"n/a","verdict":"no-suite","note":"TestRunner found no extractable test_* methods (reflective/shared-helper suite)"}
+{"gem":"haddock","version":"0.2.2","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"fail","verdict":"rejected","note":"miscompile; diff:L1 cruby=\"TESTS pass=2 fail=8\\n\" spinel=\"TESTS pass=0 fail=4\\n\""}
+{"gem":"hello-world","version":"1.2.0","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"n/a","verdict":"no-suite","note":"TestRunner found no extractable test_* methods (reflective/shared-helper suite)"}
+{"gem":"maidenhead","version":"1.0.1","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"fail","verdict":"rejected","note":"build-or-run-error"}
+{"gem":"pr_geohash","version":"1.0.0","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"fail","verdict":"rejected","note":"build-or-run-error; /tmp/spinel_out.MzJriT/out.c:417:64: error: incompatible type for argument 2 of ‘sp_poly_eq’"}
+{"gem":"simplecov-shields-badge","version":"0.1.0","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"fail","verdict":"rejected","note":"build-or-run-error; /tmp/spinel_out.h8pxSp/out.c:151:5: error: unknown type name ‘sp_SimpleCov_Formatter_ShieldsBadge’"}
+{"gem":"tinnef","version":"0.3.1","rev":"git:f8040f3+dirty/aarch64-linux-gnu","result":"fail","verdict":"rejected","note":"build-or-run-error; /tmp/spinel_out.3w1wWw/out.c:235:5: error: unknown type name ‘sp_Dir’; did you mean ‘sp_Fiber’?"}

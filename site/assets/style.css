@@ -110,6 +110,21 @@ td.desc { color: #46434f; max-width: 46ch; }
 .pager { display: flex; gap: 1rem; align-items: center; justify-content: center; margin: 1.4rem 0; color: var(--muted); font-size: .92rem; }
 .pager a { font-weight: 600; }
 
+/* ---- composable signal badges (orthogonal to the verdict) ---- */
+td.sig { white-space: nowrap; }
+.badge { display: inline-flex; align-items: center; gap: .25rem; font-size: .76rem; font-weight: 600;
+  padding: .12rem .5rem; border-radius: 999px; border: 1px solid var(--rule); margin: 0 .2rem .15rem 0;
+  white-space: nowrap; vertical-align: middle; cursor: default; }
+.badge.human { color: #6b21a8; background: #f7eefb; border-color: #e3c8ef; }
+.badge.tests { color: #0e7490; background: #ecfeff; border-color: #bae6fd; }
+.badge.rubric { color: var(--muted); background: #f7f6fa; border-color: var(--rule); font-weight: 500; }
+/* signal-legend strip on the landing */
+.signals-legend { display: flex; flex-wrap: wrap; gap: .8rem 1.4rem; margin: 1.1rem 0; padding: .9rem 1.1rem;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius); font-size: .9rem; }
+.signals-legend .sig-item { display: flex; align-items: baseline; gap: .45rem; }
+.signals-legend b { color: var(--fg); }
+.signals-legend .muted { color: var(--muted); }
+
 /* ---- history ---- */
 table.timeline { border-collapse: collapse; width: 100%; font-size: .92rem; background: #fff;
   border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); margin: 1.2rem 0; }

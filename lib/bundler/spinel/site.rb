@@ -60,7 +60,24 @@ module Bundler
       }.freeze
 
       Row = Struct.new(:gem, :version, :verdict, :notes, :downloads, :info,
-                       :updated, :homepage, keyword_init: true)
+                       :updated, :homepage, :human, :tests, :rubric, keyword_init: true)
+
+      # Composable signal badges layered on top of the verdict (spinelgems#4/#6).
+      # The verdict is the *rank* (how far the gem compiled/ran); badges are
+      # *orthogonal signals* a gem can additionally carry. A gem can be ★ verified
+      # AND 👤 human-attested AND ✪ own-tests-passing all at once.
+      #   human — a person attested it works in real use (attestations.jsonl).
+      #           The strongest signal there is: a human's "I built on this."
+      #   tests — the gem's OWN test suite compiles, runs, and matches CRuby under
+      #           Spinel (verify --tests). Zero per-gem human effort, strictly
+      #           stronger than a hand smoke. Rare today (whole-program inference,
+      #           #1043/#1062 — every suite tried still surfaces a miscompile).
+      BADGE = {
+        "human" => { glyph: "👤", label: "human-attested",
+          blurb: "A person has used this gem in a real Spinel/Tep program and attests it works — the highest-trust signal we carry. Version-pinned in <code>attestations.jsonl</code>." },
+        "tests" => { glyph: "✪", label: "own-tests pass",
+          blurb: "The gem's own test suite compiles, runs, and matches CRuby under a Spinel-compiled harness (<code>verify --tests</code>) — a stronger, zero-human-effort behaviour signal than a hand smoke." },
+      }.freeze
 
       # Shared footer (Ruby gem + Upsun sun inline SVGs). The Tep server
       # (app/serve.rb) carries a byte-identical copy — keep them in sync.
@@ -76,11 +93,19 @@ module Bundler
         </div></footer>
       FOOT
 
-      def initialize(ledger: Ledger.new, engine: nil, src: SRC, meta_path: nil)
+      # Sidecar signal sources (repo-root, committed, version-pinned). Absent →
+      # the badge is simply never granted.
+      ATTESTATIONS = File.expand_path("../../../attestations.jsonl", __dir__)
+      TEST_RESULTS = File.expand_path("../../../test-results.jsonl", __dir__)
+
+      def initialize(ledger: Ledger.new, engine: nil, src: SRC, meta_path: nil,
+                     attestations_path: ATTESTATIONS, test_results_path: TEST_RESULTS)
         @ledger = ledger
         @engine = engine
         @src = src
         @meta_path = meta_path
+        @attestations_path = attestations_path
+        @test_results_path = test_results_path
       end
 
       # out: deploy dir. store: optional dir of vetted .gem files → Compact Index.
@@ -126,7 +151,8 @@ module Bundler
           rs.each do |r|
             tsv.write([r.gem, r.gem.downcase, clean.(r.version), r.verdict,
                        r.downloads.to_i, clean.(r.info), clean.(r.updated),
-                       clean.(r.homepage), clean.(r.notes)].join(us) + rs_)
+                       clean.(r.homepage), clean.(r.notes),
+                       r.human ? 1 : 0, r.tests ? 1 : 0, clean.(r.rubric)].join(us) + rs_)
           end
           tsv.flush
           FileUtils.rm_f(db_path)
@@ -138,13 +164,17 @@ module Bundler
             CREATE TABLE catalog (
               gem TEXT PRIMARY KEY, gem_lower TEXT NOT NULL, version TEXT,
               verdict TEXT NOT NULL, downloads INTEGER NOT NULL DEFAULT 0,
-              info TEXT, updated TEXT, homepage TEXT, notes TEXT
+              info TEXT, updated TEXT, homepage TEXT, notes TEXT,
+              human INTEGER NOT NULL DEFAULT 0, tests INTEGER NOT NULL DEFAULT 0,
+              rubric TEXT
             );
             .mode ascii
             .import #{tsv.path} catalog
             CREATE INDEX idx_verdict_dl ON catalog(verdict, downloads DESC);
             CREATE INDEX idx_downloads  ON catalog(downloads DESC);
             CREATE INDEX idx_gem_lower  ON catalog(gem_lower);
+            CREATE INDEX idx_human ON catalog(human, downloads DESC);
+            CREATE INDEX idx_tests ON catalog(tests, downloads DESC);
             CREATE TABLE catalog_meta (key TEXT PRIMARY KEY, value TEXT);
             INSERT INTO catalog_meta VALUES
               ('rev', #{sql_str(rev)}),
@@ -211,6 +241,35 @@ module Bundler
         end
       end
 
+      # [gem, version] => attestation hash, from attestations.jsonl. The 👤 human
+      # signal: a person vouches a specific version works in real use.
+      def attestations
+        @attestations ||= load_jsonl(@attestations_path) { |h| [[h["gem"], h["version"]], h] }
+      end
+
+      # [gem, version] => true, for gems whose OWN test suite passed under Spinel
+      # at the current rev (the ✪ tests signal). A pass at an older rev does NOT
+      # carry forward (could have regressed) — gated on rev in `rows`.
+      def test_passes
+        @test_passes ||= load_jsonl(@test_results_path) { |h|
+          next nil unless h["result"] == "pass"
+          [[h["gem"], h["version"], h["rev"]], true]
+        }
+      end
+
+      def load_jsonl(path)
+        out = {}
+        return out unless path && File.exist?(path)
+        File.foreach(path) do |line|
+          line = line.strip
+          next if line.empty?
+          h = (JSON.parse(line) rescue next)
+          kv = yield h
+          out[kv[0]] = kv[1] if kv
+        end
+        out
+      end
+
       # Latest verdict per gem at this rev, joined with metadata, popularity-ranked.
       #
       # Two symmetric stickiness rules — both rooted in the principle that a
@@ -271,10 +330,22 @@ module Bundler
                         else
                           v.verdict
                         end
+          # Composable signals (orthogonal to the verdict):
+          # 👤 human — a version-matched attestation, suppressed if the gem is
+          #            behaviour-rejected now (a caught regression postdates the
+          #            human's "it worked").
+          human = attestations.key?([name, v.version]) && eff_verdict != "rejected"
+          # ✪ tests — own suite passed at THIS rev.
+          tests = test_passes.key?([name, v.version, target_rev])
+          # the rubric tag (why-not-verified), surfaced from the picked entry's
+          # reasons (`rubric:<tag>`); only meaningful below verified.
+          rubric = (v.reasons + (vs.flat_map(&:reasons))).grep(/\Arubric:/).first&.sub("rubric:", "")
           Row.new(gem: name, version: v.version, verdict: eff_verdict,
                   notes: (v.reasons + v.risks).first(8).join(", "),
                   downloads: md["downloads"].to_i, info: md["info"],
-                  updated: md["updated"], homepage: md["homepage"])
+                  updated: md["updated"], homepage: md["homepage"],
+                  human: human, tests: tests,
+                  rubric: (eff_verdict == "verified" ? nil : rubric))
         end.sort_by { |r| [-r.downloads, r.gem.downcase] }
       end
 
@@ -297,6 +368,19 @@ module Bundler
           body << %(  <a href="catalog-#{v}.html" class="chip #{v} on">#{GLYPH[v]} #{v} <span>#{fmt_n counts[v]}</span></a>\n)
         end
         body << %(</div>\n)
+
+        # Composable signal legend — the verdict is the rank; these are extra,
+        # orthogonal signals a gem can also carry (spinelgems#4/#6).
+        nh = rs.count(&:human)
+        nt = rs.count(&:tests)
+        body << %(<div class="signals-legend">\n)
+        body << %(  <span class="sig-item"><span class="badge human">👤 human</span> <b>#{fmt_n nh}</b> <span class="muted">a person attests it works in real use — the highest-trust signal</span></span>\n)
+        body << %(  <span class="sig-item"><span class="badge tests">✪ tests</span> <b>#{fmt_n nt}</b> <span class="muted">the gem's own test suite passes under Spinel — stronger than a hand smoke, zero human effort</span></span>\n)
+        body << %(  <span class="sig-item"><span class="badge rubric">rubric</span> <span class="muted">on non-verified gems: <em>why</em> not yet (needs-dep · load-path · miscompiles · …)</span></span>\n)
+        body << %(</div>\n)
+        if nt.zero?
+          body << %(<p class="note">No gem yet passes its own test suite under Spinel: every suite tried surfaces a miscompile the entrypoint smoke misses — the strictly-stronger signal of <a href="https://github.com/OriPekelman/spinelgems/issues/6">#6</a>, blocked on whole-program type inference (<a href="https://github.com/matz/spinel/issues/1043">#1043</a>/<a href="https://github.com/matz/spinel/issues/1062">#1062</a>). The badge is wired and will light up as that stabilizes.</p>\n)
+        end
 
         body << %(<p class="meta">Raw data: <a href="https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/compat.jsonl">compat.jsonl</a> · )
         body << %(<a href="https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/candidates.tsv">candidates.tsv</a> · )
@@ -337,12 +421,13 @@ module Bundler
         body << %(hide low-signal gems (&lt; #{fmt_n MIN_DOWNLOADS} downloads)</label>\n)
         body << %(</div>\n)
 
-        body << %(<table id="catalog"><thead><tr><th>verdict</th><th>gem</th>)
+        body << %(<table id="catalog"><thead><tr><th>verdict</th><th>signals</th><th>gem</th>)
         body << %(<th class="num">downloads</th><th>updated</th><th>description</th></tr></thead><tbody>\n)
         shown.each do |r|
           gem_cell = r.homepage ? %(<a href="#{h r.homepage}" rel="noopener nofollow">#{h r.gem}</a>) : h(r.gem)
           body << %(<tr data-gem="#{h r.gem.downcase}" data-dl="#{r.downloads}">)
           body << %(<td class="v #{r.verdict}" title="#{h r.notes}">#{GLYPH[r.verdict]} #{r.verdict}</td>)
+          body << %(<td class="sig">#{signals_html(r)}</td>)
           body << %(<td class="g">#{gem_cell} <span class="ver">#{h r.version}</span></td>)
           body << %(<td class="num">#{fmt_n r.downloads}</td>)
           body << %(<td class="upd">#{fmt_date r.updated}</td>)
@@ -379,6 +464,28 @@ module Bundler
           </body>
           </html>
         HTML
+      end
+
+      # rubric tag → human label (the spinelgems#4 "here's what it'd take" signal).
+      RUBRIC_LABEL = {
+        "needs-dep" => "needs a dep", "load-path" => "needs load-path",
+        "needs-stdlib" => "needs stdlib", "codegen" => "codegen bug",
+        "miscompile" => "miscompiles", "unsupported" => "unsupported call",
+        "build-error" => "build error", "smoke-error" => "smoke error",
+      }.freeze
+
+      # The composable signal badges + the rubric tag for one row.
+      def signals_html(r)
+        s = +""
+        if r.human
+          a = attestations[[r.gem, r.version]] || {}
+          s << %(<span class="badge human" title="#{h a["note"]} — #{h a["by"]}, #{h a["date"]}">#{BADGE["human"][:glyph]} human</span>)
+        end
+        s << %(<span class="badge tests" title="own test suite matches CRuby under Spinel">#{BADGE["tests"][:glyph]} tests</span>) if r.tests
+        if r.rubric && (lbl = RUBRIC_LABEL[r.rubric])
+          s << %(<span class="badge rubric" title="why it isn't verified yet">#{h lbl}</span>)
+        end
+        s
       end
 
       def h(s) = CGI.escapeHTML(s.to_s)

@@ -21,11 +21,20 @@ applications:
 
     variables:
       env:
-        # Pin spinel. Bumped past tep's 96b21e6 to pick up 9d5bfc8 "Root poly
-        # (sp_RbVal) locals so they survive GC" (matz/spinel#1052) — the UAF that
-        # made FFI bind_str of param-derived string locals nondeterministically
-        # bind NULL / segfault on the no-verdict /catalog path.
-        SPINEL_PIN: "8d88ebe31c"
+        # Pin spinel + tep to a verified-together PAIR. The build hook compiles
+        # the serve binary against tep's C runtime (libspinel_rt.a + sphttp.o),
+        # so spinel must be NEW ENOUGH for tep's helper: tep's sphttp.c links
+        # sp_net_* (added to libspinel_rt.a at matz/spinel 23ba632, #1055). When
+        # tep main advanced past that, the old 8d88ebe pin no longer provided
+        # those symbols and the link failed (undefined reference to sp_net_*).
+        # SPINEL_PIN now tracks tep's own SPINEL_PIN (the commit tep is verified
+        # to build+test against); TEP_PIN freezes tep so a future main advance
+        # can't silently break the deploy again. Bump both together.
+        #   spinel cc94707 carries every GC fix the serve path needs (#1052
+        #   poly-local rooting, #1068 heap-typed params) — strictly safer than
+        #   the prior 8d88ebe for the /catalog FFI-bind path.
+        SPINEL_PIN: "cc94707765c376e507ebac1ac2d902ac765c6da5"
+        TEP_PIN: "af497ca"
 
     hooks:
       build: |
@@ -53,10 +62,14 @@ applications:
         export SPINEL="$CACHE/spinel"
         "$SPINEL" -e 'puts "spinel runs: " + (1+1).to_s' || { echo "spinel smoke FAILED"; exit 1; }
 
-        echo "== fetch tep =="
+        echo "== fetch tep @ $TEP_PIN =="
         TEPDIR="$PLATFORM_CACHE_DIR/tep"
-        if [ -d "$TEPDIR/.git" ]; then git -C "$TEPDIR" pull --quiet || true
-        else git clone --quiet https://github.com/OriPekelman/tep.git "$TEPDIR"; fi
+        if [ ! -d "$TEPDIR/.git" ]; then git clone --quiet https://github.com/OriPekelman/tep.git "$TEPDIR"; fi
+        git -C "$TEPDIR" fetch --quiet origin || true
+        git -C "$TEPDIR" checkout --quiet "$TEP_PIN"
+        # force a clean helper rebuild against the pinned spinel (drop any cached
+        # .o from a prior spinel so the sp_net_* link resolves against cc94707)
+        rm -f "$TEPDIR"/lib/tep/*.o
         export TEP_SKIP_SPINEL_FRESH=1 TEP_SPINEL_DIR="$CACHE"
         make -C "$TEPDIR" helper
 

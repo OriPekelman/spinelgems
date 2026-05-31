@@ -1,0 +1,5 @@
+puts RandomWord.is_a?(Module)
+puts RandomWord::EachRandomly.is_a?(Module)
+puts RandomWord.respond_to?(:nouns)
+puts RandomWord.respond_to?(:adjs)
+puts RandomWord.respond_to?(:exclude_list)

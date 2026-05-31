@@ -1,0 +1,8 @@
+puts PHP.serialize(42)
+puts PHP.serialize("hello")
+puts PHP.serialize(true)
+puts PHP.serialize(false)
+puts PHP.serialize(nil)
+puts PHP.serialize(3.14)
+puts PHP.serialize([1, 2, 3])
+puts PHP.serialize({"key" => "val", "n" => 99})

@@ -1,0 +1,8 @@
+puts Verhoeff.checksum_digit_of(236)
+puts Verhoeff.checksum_digit_of(12345)
+puts Verhoeff.checksum_of(236)
+puts Verhoeff.checksum_of(12345)
+puts Verhoeff.valid?(2363)
+puts Verhoeff.valid?(2364)
+puts Verhoeff.valid?(123456)
+puts Verhoeff.valid?(123451)

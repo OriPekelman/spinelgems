@@ -1,0 +1,6 @@
+puts TwitterUsernameExtractor.extract("@johndoe")
+puts TwitterUsernameExtractor.extract("johndoe")
+puts TwitterUsernameExtractor.extract("https://twitter.com/johndoe")
+puts TwitterUsernameExtractor.extract("https://www.twitter.com/johndoe")
+puts TwitterUsernameExtractor.extract("https://twitter.com/@johndoe")
+puts TwitterUsernameExtractor.extract("https://twitter.com/#!/johndoe")

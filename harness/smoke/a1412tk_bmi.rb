@@ -1,0 +1,5 @@
+puts A1412tkBmi.calc(180.0, 70.0)
+puts A1412tkBmi.calc(180.4, 70.0)
+puts A1412tkBmi.calc(180.0, 70.6)
+puts A1412tkBmi.calc(180.4, 70.6)
+puts A1412tkBmi.calc(160.0, 55.0)

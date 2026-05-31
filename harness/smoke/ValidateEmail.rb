@@ -1,0 +1,7 @@
+puts ValidateEmail.validate("user@example.com")
+puts ValidateEmail.validate("bad-email")
+puts ValidateEmail.validate("no@domain")
+puts ValidateEmail.validate("a@b.co")
+puts ValidateEmail.validate("user+tag@sub.example.org")
+puts ValidateEmail.validate("")
+puts ValidateEmail.validate("@no-local.com")

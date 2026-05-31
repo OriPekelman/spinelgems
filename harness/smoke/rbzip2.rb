@@ -1,0 +1,7 @@
+puts RBzip2::VERSION
+puts RBzip2::FFI::BZ_OK
+puts RBzip2::FFI::BZ_FINISH
+puts RBzip2::FFI::BZ_STREAM_END
+puts RBzip2::FFI::DEFAULT_BLK_SIZE
+puts RBzip2::FFI::BZ_PARAM_ERROR
+puts RBzip2::FFI::BZ_MEM_ERROR

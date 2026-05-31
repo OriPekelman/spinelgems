@@ -1,0 +1,7 @@
+puts Mmh3.hash32('Hello, world')
+puts Mmh3.hash32('')
+puts Mmh3.hash32('abc')
+puts Mmh3.hash32('test', seed: 42)
+puts Mmh3.hash128('Hello, world')
+puts Mmh3.hash128('')
+puts Mmh3.hash128('abc')

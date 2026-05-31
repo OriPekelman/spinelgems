@@ -1,0 +1,5 @@
+puts Redcar::SvnKit.jar_path.end_with?("vendor/svnkit-1.3.5.jar")
+puts Redcar::SvnKit.jar_path.include?("vendor")
+puts Redcar::SvnKit.respond_to?(:jar_path)
+puts Redcar.is_a?(Module)
+puts Redcar::SvnKit.is_a?(Module)

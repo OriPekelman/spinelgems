@@ -1,0 +1,7 @@
+puts JSON.neat_generate([1, 2, 3])
+puts JSON.neat_generate({"b" => 2, "a" => 1}, sort: true)
+puts JSON.neat_generate({"x" => 1, "y" => [1, 2, 3]}, wrap: false)
+puts JSON.neat_generate([1, 2, 3, 4, 5], wrap: 10)
+puts JSON.neat_generate(nil)
+puts JSON.neat_generate(true)
+puts JSON.neat_generate("hello")

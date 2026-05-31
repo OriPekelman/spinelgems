@@ -1,0 +1,9 @@
+puts NAMES.size
+puts NAMES.sort.first
+puts NAMES.sort.last
+puts KANYEISM.size
+puts KANYEISM.first
+puts LONG_SENTENCE_SAMPLES.size
+puts SHORT_SENTENCE_SAMPLES.size
+puts NAMES.include?("kanye")
+puts NAMES.include?("eminem")

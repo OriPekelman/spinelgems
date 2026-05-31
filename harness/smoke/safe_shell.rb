@@ -1,0 +1,6 @@
+puts SafeShell::CommandFailedException.ancestors.include?(RuntimeError)
+puts SafeShell::CommandFailedException.ancestors.include?(StandardError)
+puts SafeShell.is_a?(Module)
+puts SafeShell.respond_to?(:execute)
+puts SafeShell.respond_to?(:execute?)
+puts SafeShell.respond_to?(:execute!)

@@ -1,0 +1,8 @@
+puts RomanNumerals.to_roman(1)
+puts RomanNumerals.to_roman(4)
+puts RomanNumerals.to_roman(9)
+puts RomanNumerals.to_roman(14)
+puts RomanNumerals.to_roman(42)
+puts RomanNumerals.to_roman(1994)
+puts RomanNumerals.to_decimal("XIV")
+puts RomanNumerals.to_decimal("MCMXCIV")

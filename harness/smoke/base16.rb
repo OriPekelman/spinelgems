@@ -1,0 +1,5 @@
+puts Base16.encode16("hello")
+puts Base16.encode16("world")
+puts Base16.encode16("ABC")
+puts Base16.decode16("48656C6C6F")
+puts Base16.decode16(Base16.encode16("ruby"))

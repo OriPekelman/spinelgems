@@ -1,0 +1,7 @@
+puts AVsAn.query("apple")
+puts AVsAn.query("banana")
+puts AVsAn.query("elephant")
+puts AVsAn.query("unicorn")
+puts AVsAn.query("hour")
+puts AVsAn.query("user")
+puts AVsAn.query("honest")

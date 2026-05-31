@@ -1,0 +1,11 @@
+# library_stdnums smoke — ISBN, ISSN, LCCN pure transforms
+puts StdNum::ISBN.valid?("0-306-40615-2")
+puts StdNum::ISBN.normalize("0-306-40615-2")
+puts StdNum::ISBN.convert_to_13("0306406152")
+puts StdNum::ISBN.convert_to_10("9780306406157")
+puts StdNum::ISBN.checkdigit("0306406152")
+puts StdNum::ISSN.valid?("0378-5955")
+puts StdNum::ISSN.normalize("0378-5955")
+puts StdNum::ISSN.checkdigit("03785955")
+puts StdNum::LCCN.normalize("n78-890351")
+puts StdNum::LCCN.valid?("n78890351")

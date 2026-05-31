@@ -1,0 +1,7 @@
+puts PalmCivet.byte_size(500)
+puts PalmCivet.byte_size(1024)
+puts PalmCivet.byte_size(1_500_000)
+puts PalmCivet.byte_size(1_073_741_824)
+puts PalmCivet.to_bytes("1K")
+puts PalmCivet.to_bytes("2.5M")
+puts PalmCivet.to_megabytes("512M")

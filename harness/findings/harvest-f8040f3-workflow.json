@@ -1,0 +1,731 @@
+{
+  "summary": "Author behaviour smokes for 300 new loaded gems @ f8040f3; verify --full (verified) or attribute the failure (bug vs known limit)",
+  "agentCount": 300,
+  "logs": [
+    "verified=41 miscompile=43 codegen=91 loadpath=113 risky=4 skipped=8"
+  ],
+  "result": {
+    "total": 300,
+    "returned": 300,
+    "verified": [
+      "little-plugger",
+      "user_agent_parser",
+      "metasploit-payloads",
+      "nanoid",
+      "single_test",
+      "release-metrics",
+      "json_rpc_handler",
+      "smbhash",
+      "fancy_gets",
+      "fit-commit",
+      "webpacker_lite",
+      "marionetta",
+      "base16",
+      "cafepress_api",
+      "tracker-client",
+      "redcar-bundles",
+      "simplecov-shields-badge",
+      "ocean-names",
+      "quadrigacx",
+      "a1412tk_bmi",
+      "zstandard",
+      "require-magic",
+      "rubberband_flamethrower",
+      "http-cage",
+      "ValidateEmail",
+      "bad_words",
+      "rspec_timeout",
+      "load",
+      "rhyme",
+      "app_revision",
+      "ui_faces",
+      "rapsum",
+      "fgi",
+      "passw",
+      "postal_code",
+      "projectr",
+      "clockwork-mocks",
+      "bio-gemma-wrapper",
+      "qotd",
+      "toolbox",
+      "bittrex"
+    ],
+    "miscompile_bugs": [
+      {
+        "gem": "tty-cursor",
+        "diff": "L2 cruby=\"\\\"\\\\e[3A\\\"\\n\" spinel=\"\\\"\\\\x1B[3A\\\"\\n\"",
+        "bug": "Spinel's String#inspect renders the escape character (0x1B) as `\\x1B` instead of CRuby's `\\e`, causing divergent output for any string containing ESC."
+      },
+      {
+        "gem": "atomos",
+        "diff": "L1 cruby=\"ArgumentError: must provide either contents or a block\\n\" spinel=\"Atomos module exists: true\\n\"",
+        "bug": "Spinel does not raise ArgumentError when Atomos.atomic_write is called with both contents and a block (or neither), meaning the `unless nil? ^ nil?` XOR guard condition is not correctly compiled and the rescue block is never executed."
+      },
+      {
+        "gem": "libdatadog",
+        "diff": "L2 cruby=\"33.0.0.1.0\\n\" spinel=\"194450183112009.194450183112017.194450183112025194450183112033\\n\"",
+        "bug": "Spinel miscompiles the string-interpolated constant VERSION = \"#{LIB_VERSION}.#{GEM_MAJOR_VERSION}.#{GEM_MINOR_VERSION}#{GEM_PRERELEASE_VERSION}\" — numeric garbage is emitted instead of the correct version string \"33.0.0.1.0\"."
+      },
+      {
+        "gem": "sd_notify",
+        "diff": "L10 cruby=\"nil\\n\" spinel=\"0\\n\"",
+        "bug": "SdNotify.notify returns nil in CRuby when NOTIFY_SOCKET is not set, but Spinel compiles it to return 0 instead."
+      },
+      {
+        "gem": "abbrev",
+        "diff": "L1 cruby=\"ca=>car\\n\" spinel=\"car=>205693808042361\\n\"",
+        "bug": "Spinel miscompiles Hash#[] (or string interpolation of hash values) inside the abbrev method, producing a raw integer object ID instead of the string value, and also yields wrong key ordering relative to CRuby."
+      },
+      {
+        "gem": "mime",
+        "diff": "L3 cruby=\"[\\\"pdf\\\"]\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel emits `0` instead of the correct Array value when calling `.inspect` on the result of a Hash literal lookup (e.g., `MIME::ContentTypes::CONTENT_TYPES['application/pdf'].inspect` returns `0` instead of `[\"pdf\"]`)."
+      },
+      {
+        "gem": "libddprof",
+        "diff": "L1 cruby=\"0.6.0.1.0\\n\" spinel=\"193272419917401.193272419917409.193272419917417193272419917425\\n\"",
+        "bug": "Spinel miscompiles the VERSION constant (built via string interpolation of sub-constants) producing a garbled numeric string instead of \"0.6.0.1.0\"."
+      },
+      {
+        "gem": "omnicontacts",
+        "diff": "L3 cruby=\"hello world\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles `normalize_name` — a method chaining `chomp!`, `squeeze!`, and `strip!` on a local string — returning `0` instead of the mutated string, indicating a bug in codegen for in-place String bang-method return values or the method's implicit return."
+      },
+      {
+        "gem": "to_dots",
+        "diff": "L1 cruby=\"[\\\"a.b.1\\\", \\\"a.c.2\\\", \\\"d.3\\\"]\\n\" spinel=\"[]\\n\"",
+        "bug": "Spinel returns an empty array from ToDots.to_dots instead of the populated result, indicating the recursive accumulator pattern (passing a mutable default array argument through recursive calls) is miscompiled."
+      },
+      {
+        "gem": "magic_frozen_string_literal",
+        "diff": "L2 cruby=\"frozen_string_literal: true\\n\" spinel=\"210248295084609: true\\n\"",
+        "bug": "Spinel miscompiles string interpolation of a frozen-string-literal constant: `MAGIC_COMMENT = \"#{MAGIC_COMMENT_PREFIX}: true\"` produces a numeric value (`210248295084609`) in place of the string `frozen_string_literal`, suggesting the `# frozen_string_literal: true` magic comment in the gem's own source causes Spinel to corrupt the string constant's value during AOT compilation."
+      },
+      {
+        "gem": "nido",
+        "diff": "L1 cruby=\"app\\n\" spinel=\"195026819125968\\n\"",
+        "bug": "When `puts` is called on a `Nido` instance (a String subclass), Spinel emits a raw integer (the object address) instead of the String content, indicating String-subclass instances are not treated as strings during `puts`/`to_s` dispatch."
+      },
+      {
+        "gem": "cacert",
+        "diff": "L3 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Cacert.share_dir.end_with?(\"share\") returns false under Spinel but true under CRuby, indicating that File.expand_path (used in Cacert.share_dir) or the subsequent String#end_with? call produces a wrong result in the Spinel-compiled binary."
+      },
+      {
+        "gem": "static_literal_parser",
+        "diff": "L1 cruby=42 spinel=unhandled exception: Unsupported constants type: 221156236649168",
+        "bug": "Spinel miscompiles `case x when Array / when Hash` dispatch: a Hash argument is stored into an `mrb_int` local (C warning: \"initialization of 'mrb_int' from 'sp_StrIntHash *' makes integer from pointer without a cast\"), causing the `when Hash` branch to never match and the fallthrough `raise ArgumentError` to fire with the raw pointer value as the \"type\"."
+      },
+      {
+        "gem": "round_robin_tournament",
+        "diff": "diff:L2 cruby=\"1v2,3v4\\n\" spinel=\"\\n\"",
+        "bug": "Spinel fails to resolve Integer#times (emitting 0), causing RoundRobinTournament.schedule to return an empty/wrong games array instead of the correct round-robin pairings."
+      },
+      {
+        "gem": "ensure_valid_encoding",
+        "diff": "diff:L2 cruby=\"??\\n\" spinel=\"\\xFF\\xFE\\n\"",
+        "bug": "Spinel fails to replace invalid UTF-8 bytes when `ensure_valid_encoding` is called with `invalid: :replace, replace: \"?\"`, returning the raw invalid byte sequence unchanged instead of substituting the replacement character, because `String#chars`, `Array#collect`, and `Array#join` are emitted as 0 due to unresolved type inference cascading from an ignored `require`."
+      },
+      {
+        "gem": "json_web_token",
+        "diff": "L1 cruby=\"1\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel returns 0 instead of 1 when accessing a symbol-keyed hash value after JsonWebToken::Util.symbolize_keys converts string keys to symbols via transform_keys."
+      },
+      {
+        "gem": "damm",
+        "diff": "L4 cruby=\"4\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles the iterative TASQ table lookup in Damm.generate, returning 0 instead of the correct check digit 4 for input \"572\", likely due to incorrect handling of the each_char block with accumulated integer indexing."
+      },
+      {
+        "gem": "a_vs_an",
+        "diff": "L1 cruby=\"an\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles AVsAn.query, returning 0 (integer) instead of the correct article string \"an\", likely due to incorrect handling of the hash trie lookup or the conditional assignment of the :article key."
+      },
+      {
+        "gem": "jaccard",
+        "diff": "L1 cruby=0.75 spinel=unhandled exception: [1, 2, 3, 4] does not implement #&",
+        "bug": "Spinel's `respond_to?` incorrectly returns false for the `#&` (intersection) operator method on Array, causing Jaccard.coefficient to raise ArgumentError at runtime even though CRuby correctly returns true and proceeds to compute the coefficient."
+      },
+      {
+        "gem": "has_images",
+        "diff": "L4 cruby=\"[:has_images]\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles `Module#instance_methods(false)` on a nested module (`HasImages::ClassMethods`), returning `0` instead of the array `[:has_images]`."
+      },
+      {
+        "gem": "random_user_agent",
+        "diff": "L2 cruby=\"52.9\\n\" spinel=\"52\\n\"",
+        "bug": "Spinel truncates Float hash values to Integer when accessed via Hash#[], causing `Browser.new.statistics[\"Chrome\"]` to return `52` instead of `52.9`."
+      },
+      {
+        "gem": "combination-extractor",
+        "diff": "diff:L2 cruby=\"fruit=\\\"apple\\\", city=\\\"NewYork\\\"\\n\" spinel=\"\\n\"",
+        "bug": "Spinel miscompiles Hash#each destructuring in a block with two block parameters (|k, v|): `combination.map { |k, v| \"#{k}=#{v.inspect}\" }` returns empty strings instead of formatted key-value pairs."
+      },
+      {
+        "gem": "twitter_username_extractor",
+        "diff": "L1 cruby=\"johndoe\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles `Regexp.last_match(1)` called after a successful `String#match`, emitting 0 instead of the capture group string, causing `TwitterUsernameExtractor.extract` to return 0 on every code path."
+      },
+      {
+        "gem": "date_format",
+        "diff": "L6 cruby=\"NA\\n\" spinel=\"\\n\"",
+        "bug": "Spinel miscompiles the `unless element.nil? || element == \"\"` guard in `DateFormat.change_to`: when `element` is `nil`, CRuby correctly returns `\"NA\"` but Spinel emits an empty string instead."
+      },
+      {
+        "gem": "quadkey",
+        "diff": "L4 cruby=\"512\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles `256 << precision` in Quadkey.map_size: with precision=1 CRuby returns 512 but Spinel emits 0, corrupting all downstream tile/quadkey computations."
+      },
+      {
+        "gem": "bitly-client",
+        "diff": "diff:L2 cruby=\"[:access_token, :access_token=, :api_version, :api_version=, :configure]\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles Module#instance_methods(false) — returns 0 instead of the array of method symbols defined on Bitly::Config."
+      },
+      {
+        "gem": "justified",
+        "diff": "diff:L4 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel incorrectly returns false for `Justified.const_defined?(:Error)` when the `Error` module is defined within the `Justified` module, while CRuby correctly returns true."
+      },
+      {
+        "gem": "redcar-svnkit",
+        "diff": "L1 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel incorrectly evaluates `String#end_with?(\"vendor/svnkit-1.3.5.jar\")` as false when the receiver is the result of `File.expand_path`, whereas CRuby returns true."
+      },
+      {
+        "gem": "soar_authentication_cas",
+        "diff": "diff:L5 cruby=\"nil\\n\" spinel=\"{}\\n\"",
+        "bug": "SoarAuthenticationCas.configure(nil) returns nil in CRuby (early return on nil? check) but Spinel returns {} — Spinel miscompiles the `return nil if environment.nil? or environment['RACK_ENV'].nil?` guard, failing to short-circuit and instead returning an empty hash."
+      },
+      {
+        "gem": "redcar-jruby",
+        "diff": "L1 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel miscompiles `File.expand_path(\"../../vendor/jruby-complete-1.6.4.jar\", __FILE__)`: the returned path does not end with the expected filename, indicating `__FILE__` or `expand_path`'s relative-traversal is resolved incorrectly at compile/runtime."
+      },
+      {
+        "gem": "git_modified_lines",
+        "diff": "L6 cruby=\"2\\n\" spinel=\"0\\n\"",
+        "bug": "String#scan with a multiline extended regex (DIFF_HUNK_REGEX uses /x and anchors) returns 0 matches in Spinel when scanning a newline-containing string that CRuby correctly matches twice."
+      },
+      {
+        "gem": "require-me",
+        "diff": "L4 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel evaluates `tracing == :on` as false even after `Require.tracing = :on` is set, indicating a defect in symbol equality comparison through module-level attr_accessor in Spinel's AOT compilation."
+      },
+      {
+        "gem": "flashatron",
+        "diff": "L4 cruby=\"[:render_flashes]\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles `Module#instance_methods(false).sort.inspect` on a module with one instance method, returning `0` instead of `[:render_flashes]`."
+      },
+      {
+        "gem": "time_aware_polyline",
+        "diff": "L1 cruby=\"3850000\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel emits 0 for `Float#round(0)` (cannot resolve call to 'round' on poly — no concrete user-class arm), so `_get_coordinate_for_polyline(38.5)` returns 0 instead of 3850000."
+      },
+      {
+        "gem": "a9s_swift",
+        "diff": "L5 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel incorrectly returns false for `Module#singleton_class.method_defined?(:version)` when the method is defined via `def self.version` on a module, whereas CRuby returns true."
+      },
+      {
+        "gem": "mack-paths",
+        "diff": "L1 cruby=\"/myapp/public/\\n\" spinel=\"/myapp/public\\n\"",
+        "bug": "File.join with a trailing empty array argument (from an unpopulated splat *files) produces a trailing slash in CRuby but not in Spinel, causing Mack::Paths path helpers to return divergent strings."
+      },
+      {
+        "gem": "vindicator",
+        "diff": "L1 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel miscompiles Vindicator.valid_vin? returning false for a known-valid VIN ('1GNEC233X9R191831') where CRuby returns true, indicating a bug in the check-digit arithmetic (likely in integer modulo, string/integer comparison, or hash-keyed alpha-value lookup)."
+      },
+      {
+        "gem": "sms_sender_tester",
+        "diff": "L1 cruby=\"Hash\\n\" spinel=\"\\n\"",
+        "bug": "Spinel emits an empty string instead of the class name \"Hash\" when calling `.class` on a Hash literal returned from a method, indicating a miscompile in `puts result.class` where the class name resolution produces no output."
+      },
+      {
+        "gem": "color_contrast_calc",
+        "diff": "diff:L1 cruby=\"1.0\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles `ColorContrastCalc::Checker.relative_luminance([255, 255, 255])`, returning `0` instead of `1.0`, indicating a bug in AOT-compiled floating-point arithmetic for the WCAG luminance formula."
+      },
+      {
+        "gem": "bychar",
+        "diff": "diff:L3 cruby=\"a\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel's String#[] (single-integer-index form) returns an Integer instead of a one-character String, causing ReaderStrbuf#read_one_char to emit byte values (e.g. 97) instead of characters (e.g. \"a\")."
+      },
+      {
+        "gem": "pdftohtml",
+        "diff": "L3 cruby=\"1\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel reports arity 0 for `Pdftohtml.method(:convert)` where CRuby correctly returns 1 for a singleton method defined with one required parameter."
+      },
+      {
+        "gem": "tasks",
+        "diff": "L5 cruby=\"1\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel reports `Tasks.instance_method(:kill_children).arity` as 0 instead of the correct 1, indicating that `UnboundMethod#arity` mis-counts required parameters for methods defined with `module_function`."
+      },
+      {
+        "gem": "hache",
+        "diff": "L1 cruby=\"Hello &lt;World&gt; &amp; &#39;everyone&#39; &#34;quoted&#34;\\n\" spinel=\"\\n\"",
+        "bug": "Spinel fails to resolve `String#to_str` (emitting 0) and subsequently `gsub` on the resulting int, causing `Hache.h` to silently return 0 instead of the HTML-escaped string."
+      }
+    ],
+    "codegen_bugs": [
+      {
+        "gem": "base64",
+        "error": "warning: in Base64.encode64: cannot resolve call to 'pack' on str_array (emitting 0) | /tmp/spinel_out.qF2WR4/out.c:38:13: warning: returning 'long int' from a function with return type 'const char *' makes pointer from integer without a cast [-Wint-conversion]",
+        "bug": "Spinel cannot resolve calls to core Ruby methods Array#pack and String#unpack1, emitting NoMethodError stubs with a C type mismatch (mrb_int returned from const char* function) that causes all Base64 encode/decode operations to fail at runtime."
+      },
+      {
+        "gem": "escape",
+        "error": "out.c:210:29: error: incompatible type for argument 2 of 'sp_StrArray_push' — sp_RbVal passed where const char* expected; also out.c:284:62: warning: passing argument 2 of 'sp_str_concat' makes pointer from integer without a cast (mrb_int passed as const char*)",
+        "bug": "Spinel incorrectly types the return value of a user-defined method called inside a `map` block as `sp_RbVal` instead of `const char*`, causing a C compilation error when the collected array is fed to `sp_StrArray_push` and `join`; a related failure types the result of `unpack(\"H2\")[0]` as `mrb_int` instead of `const char*` in `uri_segment`."
+      },
+      {
+        "gem": "tsort",
+        "error": "/tmp/spinel_out/out.c:341:11: error: '_block' undeclared (first use in this function); did you mean 'mlock'?",
+        "bug": "Spinel emits a C function for TSort.each_strongly_connected_component_from that uses block variables _block/_benv without declaring them, caused by mistyping the `stack.slice!` receiver as int_array and then emitting a broken block-call stub, resulting in a C compile error."
+      },
+      {
+        "gem": "Platform",
+        "error": "/tmp/spinel_out.hdeYW7/out.c:390:13: error: '_block' undeclared (first use in this function); did you mean 'mlock'?",
+        "bug": "Spinel emits C code referencing `_block` and `_benv` as undeclared variables in `sp_Platform_cls_for_platform`, because the codegen for `block_given?` + `yield` in a method fails to declare the block/block-environment parameters in the generated C function signature."
+      },
+      {
+        "gem": "safe_shell",
+        "error": "out.c:163:57: error: incompatible type for argument 1 of 'sp_File_open' (expected 'const char *' but argument is of type 'sp_RbVal')",
+        "bug": "Spinel fails to unify types across the ternary `opts[:stdout] ? File.open(opts[:stdout], \"w+\") : write_end` in SafeShell.execute, passing the polymorphic sp_RbVal result as the path argument to sp_File_open which expects a const char*, causing a C compilation error."
+      },
+      {
+        "gem": "neatjson",
+        "error": "out.c:157:40: error: 'lv_indent' undeclared (first use in this function); did you mean 'lv_indent2'?\nout.c:158:29: error: 'lv_floats_forced' undeclared (first use in this function)\nout.c:173:77: error: 'lv_build' undeclared (first use in this function)",
+        "bug": "Spinel fails to capture outer-lambda variables (lv_indent, lv_floats_forced, lv_build) in the generated C code for the inner `build` lambda closure inside JSON.neat_generate, producing undeclared-identifier compiler errors."
+      },
+      {
+        "gem": "cpf_cnpj",
+        "error": "/tmp/spinel_out.iSJF1y/out.c:166:5: error: unknown type name 'sp_CPF'",
+        "bug": "Spinel ignores `require \"cpf\"` (loadpath limit) but still emits a C variable declaration with type `sp_CPF` in the generated out.c, causing a C compilation failure with \"unknown type name 'sp_CPF'\"."
+      },
+      {
+        "gem": "feature",
+        "error": "/tmp/spinel_out/out.c:29:46: error: unknown type name 'sp_Feature_Repository_SimpleRepository'",
+        "bug": "Spinel emits the C type `sp_Feature_Repository_SimpleRepository` in function signatures (for `Feature.set_repository`'s parameter and the `@repository` class-level ivar) without ever defining or forward-declaring that struct type, causing a C compiler error on fully dep-free Ruby code."
+      },
+      {
+        "gem": "tdiff",
+        "error": "out.c:633:60: error: incompatible type for argument 2 of 'sp_Node_new'",
+        "bug": "Spinel generates C code with incompatible argument types for the user-class constructor (sp_Node_new) when the class is initialized with a mix of String and Node instance arguments, causing C compilation to fail."
+      },
+      {
+        "gem": "crockford32",
+        "error": "out.c:389:83: error: incompatible type for argument 2 of 'sp_exc_new'",
+        "bug": "Spinel generates invalid C when raising a custom exception subclass (Crockford32::UnsupportedDecodingTypeError): sp_exc_new is called with an incompatible second argument type, causing a C compiler error."
+      },
+      {
+        "gem": "wilson_score",
+        "error": "/tmp/spinel_out.gjzax7/out.c:284:33: error: 'WilsonScore_VERSION' undeclared (first use in this function)",
+        "bug": "When `require \"wilson_score/version\"` is silently ignored due to the load-path limitation, Spinel still emits a bare C identifier `WilsonScore_VERSION` for references to that constant rather than emitting 0 or a runtime error, causing a C compilation failure."
+      },
+      {
+        "gem": "activerecord-analyze",
+        "error": "/tmp/spinel_out.LkzyUR/out.c:161:34: error: incompatible type for argument 2 of 'sp_IntArray_include' — sp_RbVal passed where mrb_int expected, in sp_ActiveRecordAnalyze_cls_analyze_sql",
+        "bug": "Spinel generates `sp_IntArray_include` (integer-typed) for a Symbol-valued array literal `[:json, :hash, :pretty_json].include?(opts[:format])`, producing a C type mismatch (`sp_RbVal` vs `mrb_int`) that fails C compilation."
+      },
+      {
+        "gem": "rbzip2",
+        "error": "/tmp/spinel_out.wIDJTb/out.c:36:33: error: 'RBzip2_VERSION' undeclared (first use in this function)\n/tmp/spinel_out.wIDJTb/out.c:37:33: error: 'RBzip2_FFI_BZ_OK' undeclared (first use in this function)",
+        "bug": "Spinel emits C variable references (e.g. RBzip2_VERSION, RBzip2_FFI_BZ_OK) for constants defined in modules loaded via autoload+require, but never emits the corresponding C declarations, causing C compilation to fail with \"undeclared identifier\" errors."
+      },
+      {
+        "gem": "namecase",
+        "error": "out.c:(.text.sp_NameCase_cls_nc+0x138): undefined reference to `sp_StrPolyHash_from_sym_int_hash'\ncollect2: error: ld returned 1 exit status",
+        "bug": "Spinel emits a call to `sp_StrPolyHash_from_sym_int_hash` (which is not defined in sp_runtime.h) when compiling a `Hash.merge` of a symbol-keyed literal hash with a method-parameter hash, causing a linker error on ordinary dependency-free Ruby code."
+      },
+      {
+        "gem": "bech32",
+        "error": "out.c:235:75: error: incompatible type for argument 2 of 'sp_PolyArray_get' — sp_Range passed where mrb_int expected (array range-slice `data[0..-7]` compiled to wrong C)",
+        "bug": "Spinel emits `sp_PolyArray_get(arr, sp_range_new(...))` instead of a slice helper when a Range literal is used as an array index (e.g. `data[0..-7]`), producing a C type mismatch that prevents compilation."
+      },
+      {
+        "gem": "roman-numerals",
+        "error": "warning: in RomanNumerals.to_decimal: cannot resolve call to 'reverse' on str_array (emitting 0); out.c:154: warning: initialization of 'sp_StrArray *' from 'long int' makes pointer from integer without a cast [-Wint-conversion]",
+        "bug": "Spinel fails to resolve `.reverse` on a hash-values array and `.key` on an integer-keyed hash, emitting `(mrb_int)0` stubs that produce a C type-mismatch error when compiling `RomanNumerals.to_decimal`."
+      },
+      {
+        "gem": "colsole",
+        "error": "/tmp/spinel_out.3XXQb3/out.c:260:15: error: invalid operands to binary - (have 'sp_RbVal' and 'mrb_int' {aka 'long int'})\n/tmp/spinel_out.3XXQb3/out.c:263:107: error: invalid operands to binary * (have 'long int' and 'char *')",
+        "bug": "Spinel emits a type-mismatched C expression in `Colsole#word_wrap` — it subtracts an `mrb_int` from `sp_RbVal` (without coercing the lhs) and then multiplies a `long int` zero-placeholder (from an unresolved `collect!`) by a `char *`, producing a C compilation error for otherwise valid Ruby code."
+      },
+      {
+        "gem": "which_works",
+        "error": "out.c:264:27: warning: assignment to 'sp_StrIntHash *' from incompatible pointer type 'sp_SymIntHash *' [-Wincompatible-pointer-types]\\nout.c:265:12: warning: returning 'sp_StrIntHash *' from a function with incompatible return type 'sp_SymIntHash *' [-Wincompatible-pointer-types]",
+        "bug": "Spinel generates incompatible C pointer types (sp_StrIntHash* vs sp_SymIntHash*) for the @@options class variable when Hash.new initializes it as StrIntHash but a symbol-keyed hash literal is later assigned, causing the compiled binary to segfault (exit 139) at runtime."
+      },
+      {
+        "gem": "color-converter",
+        "error": "/tmp/spinel_out.../out.c:95:48: error: incompatible type for argument 1 of 'sp_ColorConverter_cls_rgb' (sp_IntArray * passed where sp_RbVal expected); out.c:111:127: error: incompatible type for argument 1 of 'sp_box_int' (sp_RbVal passed where mrb_int expected)",
+        "bug": "Spinel generates C code with mismatched types when compiling ColorConverter.hex: the splat-arg dispatch to `rgb(*values)` produces `sp_IntArray *` instead of `sp_RbVal`, and the modulo sub-expression `v % 16` in `HEX[(v-v%16)/16]` is emitted as `sp_RbVal` where `sp_box_int` expects `mrb_int`, both causing C compile errors."
+      },
+      {
+        "gem": "cloudfiles",
+        "error": "out.c:321:33: error: 'CloudFiles_VERSION' undeclared (first use in this function); out.c:327:47: error: incompatible type for argument 1 of 'sp_box_int' (sp_Class passed where mrb_int expected)",
+        "bug": "Spinel emits an undeclared C identifier for a nested string constant (CloudFiles::VERSION) and incorrectly attempts to box an sp_Class value as an integer when passing a class literal to Array#include?, causing C compilation failure."
+      },
+      {
+        "gem": "shortuuid",
+        "error": "out.c:131:36: error: incompatible type for argument 2 of 'sp_IntArray_unshift' — Spinel infers `out` as IntArray but tries to unshift an sp_RbVal (alphabet element picked via `alphabet[i % radix]`)",
+        "bug": "In ShortUUID.convert_decimal_to_alphabet, Spinel infers the local `out` array as IntArray (because the index `i % radix` is an integer) but then attempts to unshift an sp_RbVal (the string alphabet element), producing a C type error: incompatible type for argument 2 of 'sp_IntArray_unshift'."
+      },
+      {
+        "gem": "selenium_remote_control",
+        "error": "out.c:70:52: error: 'SeleniumRC_Version' undeclared (first use in this function)",
+        "bug": "Spinel emits `SeleniumRC_Version` as a C identifier for `SeleniumRC::Version` (where `SeleniumRC` is a top-level module alias set with `SeleniumRC = SeleniumRemoteControl`) but never declares the corresponding C symbol, causing a C compilation failure."
+      },
+      {
+        "gem": "sql_spy",
+        "error": "/tmp/spinel_out.ItuiDK/out.c:123:24: error: incompatible types when initializing type 'const char *' using type 'sp_RbVal'",
+        "bug": "In the generated C function for SqlSpy::Query#model_name, Spinel incorrectly assigns a Struct member (iv_name, type sp_RbVal) to a `const char *` local variable, producing a C type-mismatch error when compiling code that calls `String(name)` on a Struct field."
+      },
+      {
+        "gem": "get_pomo",
+        "error": "/tmp/spinel_out.B26Zqu/out.c:252:5: error: unknown type name 'sp_GetPomo_Translation'",
+        "bug": "Spinel emits a C type reference `sp_GetPomo_Translation` for a class that it resolved in scope but then fails to declare in the generated C output, producing a C compiler error on valid ordinary Ruby."
+      },
+      {
+        "gem": "verhoeff",
+        "error": "/tmp/spinel_out.kAjuLV/out.c:48:85: error: 'lv_i' undeclared (first use in this function); did you mean 'lv_'?\n/tmp/spinel_out.kAjuLV/out.c:52:71: error: 'lv_x' undeclared (first use in this function); did you mean 'lv__x'?",
+        "bug": "Spinel generates references to block-parameter locals lv_i and lv_x inside an inject block chained off reverse_each.with_index, but never declares those locals in the emitted C function, causing a C compilation failure."
+      },
+      {
+        "gem": "base91",
+        "error": "out.c:208:17: error: invalid operands to binary + (have 'sp_String *' and 'const char *') [string += char* from StrArray_get]; out.c:299:47: error: incompatible type for argument 2 of 'sp_PolyArray_get' [lv_byte typed as const char* instead of integer after .ord assignment]",
+        "bug": "Spinel miscompiles Base91.encode/decode: it emits `sp_String * += const char *` (invalid C) when appending a char-array lookup to a string, and separately confuses the type of a variable assigned from String#ord causing it to be passed as `const char *` to an integer-array-get function."
+      },
+      {
+        "gem": "goran",
+        "error": "/tmp/spinel_out/out.c:123:62: error: incompatible type for argument 1 of 'sp_box_int' (sp_Class passed where mrb_int expected); out.c:129:33: error: invalid operands to binary <= (have 'mrb_int' and 'sp_RbVal')",
+        "bug": "Spinel generates invalid C for Goran.serve: it passes an sp_Class literal to sp_box_int (expecting mrb_int), produces an invalid <= comparison between mrb_int and sp_RbVal for the upto loop bound, and passes sp_RbVal where sp_proc_call expects sp_Proc*, causing multiple C compilation errors."
+      },
+      {
+        "gem": "ssl_requirement",
+        "error": "out.c:55:47: error: incompatible type for argument 1 of 'sp_box_int' — sp_Class passed where mrb_int expected, from `SslRequirement.ancestors.include?(SslRequirement)`",
+        "bug": "Spinel incorrectly passes a `sp_Class` value directly to `sp_box_int` (which expects `mrb_int`) when compiling `Array#include?` called with a Module/Class argument, causing a C type error at compile time."
+      },
+      {
+        "gem": "e164",
+        "error": "out.c:183: warning: initialization of 'sp_PolyArray *' from 'long int' makes pointer from integer without a cast; out.c:185: warning: returning 'long int' from a function with return type 'const char *' makes pointer from integer without a cast",
+        "bug": "Spinel fails to resolve Array methods (unshift, join, shift, []) on poly_array types in E164's parsing methods, emitting 0 for each call and producing type-mismatched C code with pointer/integer conversion errors."
+      },
+      {
+        "gem": "emoji_flag",
+        "error": "/tmp/spinel_out.41fXiD/out.c:101:45: error: incompatible types when returning type 'sp_RbVal' but 'const char *' was expected",
+        "bug": "Spinel cannot resolve Array#shift on a str_array (result of String#split), emits `(mrb_int)0` in place of the string result, causing a C type-mismatch compilation error when the variable typed as `const char *` is assigned an integer zero."
+      },
+      {
+        "gem": "safe_timeout",
+        "error": "out.c:41:5: error: unknown type name 'sp_Spawner'; did you mean 'SPS_Spawner'?",
+        "bug": "Spinel generates `sp_Spawner` as the C type name for the autoloaded `Spawner` class but the runtime uses the `SPS_Spawner` prefix, causing a C compilation failure with \"unknown type name 'sp_Spawner'\"."
+      },
+      {
+        "gem": "library_stdnums",
+        "error": "out.c:306:17: warning: assignment to 'const char *' from 'long long int' makes pointer from integer without a cast [-Wint-conversion] (in sp_StdNum_ISBN_cls_checkdigit); out.c:373:80: warning: passing argument 1 of 'sp_int_to_s' makes integer from pointer without a cast (in sp_StdNum_ISBN_cls_valid_p)",
+        "bug": "Spinel fails to resolve methods mixed in via `extend Helpers` (e.g. `reduce_to_basics`, `checkdigit`) when called without an explicit receiver inside a module that uses `extend`, emitting integer 0 for all such calls and generating C code with integer/pointer type confusion that crashes at runtime."
+      },
+      {
+        "gem": "stduritemplate",
+        "error": "/tmp/spinel_out.lat59q/out.c:278:17: error: invalid operands to binary << (have 'const char *' and 'const char *'), /tmp/spinel_out.lat59q/out.c:420:69: error: invalid operands to binary + (have 'const char *' and 'char *')",
+        "bug": "Spinel miscompiles Ruby string-append (`token << c`) and string-concat expressions into invalid C binary `<<` and `+` on `const char *` operands, producing a C compiler error for ordinary in-place string mutation."
+      },
+      {
+        "gem": "urlmatch",
+        "error": "/tmp/spinel_out.GajNJ5/out.c:127:5: error: 'cvar_Toplevel_pattern_match' undeclared (first use in this function)",
+        "bug": "Spinel emits a C class variable name (`cvar_Toplevel_pattern_match`) for `@@pattern_match` used across multiple `self.` methods in a module, but fails to declare/scope that variable properly, causing a C compile error when the cvar is read in a helper method."
+      },
+      {
+        "gem": "fixed_width_file_parser",
+        "error": "/tmp/spinel_out.t0lYZq/out.c:277:11: error: '_block' undeclared (first use in this function); did you mean 'mlock'?",
+        "bug": "Spinel fails to declare `_block` and `_benv` in the generated C function for `FixedWidthFileParser.parse`, causing a compile error when the method yields to a caller-provided block."
+      },
+      {
+        "gem": "harri",
+        "error": "/tmp/spinel_out.vAR5Vi/out.c:295:26: error: incompatible types when assigning to type 'sp_RbVal' from type 'mrb_int' {aka 'long int'}",
+        "bug": "Spinel emits a C type mismatch in Harri_Parser.parse_unused_import_error when assigning a poly-typed Array#drop result to an sp_RbVal variable, causing C compilation to fail with \"incompatible types when assigning to type 'sp_RbVal' from type 'mrb_int'\"."
+      },
+      {
+        "gem": "minisyntax",
+        "error": "/tmp/spinel_out.W0krFq/out.c:146:70: error: incompatible type for argument 3 of 'sp_StrIntHash_set'",
+        "bug": "Spinel types the @@languages class variable as sp_StrIntHash (string→int) instead of a general object hash, so passing a Module/Class to MiniSyntax.register causes a C type error: expected mrb_int but got sp_Class."
+      },
+      {
+        "gem": "plane1converter",
+        "error": "/tmp/spinel_out.ZIVmQG/out.c:125:56: error: incompatible type for argument 2 of 'sp_StrArray_push' — sp_RbVal passed where const char* expected; join also unresolved on poly_array",
+        "bug": "Spinel miscompiles the split/map/join pattern in Plane1Converter.conv: the generated C pushes an sp_RbVal into an sp_StrArray (which expects const char*), causing a C compilation failure with no external requires involved."
+      },
+      {
+        "gem": "pictureframe",
+        "error": "/tmp/spinel_out.i3jRAq/out.c:223:21: error: invalid initializer\n/tmp/spinel_out.i3jRAq/out.c:298:70: error: incompatible type for argument 2 of 'sp_str_repeat' (sp_RbVal passed where mrb_int expected)",
+        "bug": "Spinel miscompiles a mixed-type Array (strings stored via output[i]=…) as an IntArray, causing the generated C to pass string pointers to integer-typed sp_IntArray_set and sp_str_repeat, producing two C compiler errors (\"invalid initializer\", \"incompatible type\")."
+      },
+      {
+        "gem": "capybara_watcher",
+        "error": "/tmp/spinel_out.k37mk2/out.c:92:9: error: '_block' undeclared (first use in this function); did you mean 'mlock'?",
+        "bug": "Spinel generates C code that references undeclared `_block` and `_benv` variables inside a `NoMethodError` raise path for an unresolved `yield`-using `self.configure` method, causing a C compilation failure."
+      },
+      {
+        "gem": "mmh3",
+        "error": "out.c:64:22: error: incompatible types when assigning to type 'mrb_int' {aka 'long int'} from type 'sp_Range'",
+        "bug": "Spinel incorrectly assigns an `sp_Range` struct directly to an `mrb_int` loop variable when compiling `(0...n).step(k) do |var|` blocks, generating invalid C code that fails to compile."
+      },
+      {
+        "gem": "geohash_ruby",
+        "error": "out.c:338:13: error: invalid operands to binary + (have 'sp_RbVal' and 'const char *'), out.c:365:41: error: incompatible types when assigning to type 'const char *' from type 'sp_RbVal'",
+        "bug": "Spinel miscompiles String#[] subscript result (sp_RbVal) as a raw C char*, causing binary + and assignment type errors when building the generated C output for geohash_ruby's encode/adjacent methods."
+      },
+      {
+        "gem": "lzutf8",
+        "error": "out.c:217:7: error: unknown type name 'sp_Enumerator', out.c:326:51: error: incompatible type for argument 3 of 'sp_StrPolyHash_set'",
+        "bug": "Spinel generates invalid C for `Enumerator.new { |y| loop { ... } }` inside LZUTF8.decompress, producing an unknown type name 'sp_Enumerator' and a type mismatch on sp_StrPolyHash_set that prevent compilation."
+      },
+      {
+        "gem": "symbolizer",
+        "error": "/tmp/spinel_out.rwoq9G/out.c:112:14: error: incompatible types when returning type 'int' but 'sp_RbVal' was expected",
+        "bug": "Spinel emits invalid C for `normalize_value`'s `case/when/else` return — the `else value` branch generates `return 0` (int) instead of `return sp_RbVal`, causing a C type-mismatch compile error in `sp_Symbolizer_cls_normalize_value`."
+      },
+      {
+        "gem": "youtube_id",
+        "error": "/tmp/spinel_out.iMupDN/out.c:87:11: error: used struct type value where scalar is required",
+        "bug": "Spinel generates invalid C code for YoutubeID.from: sp_box_nil() (a struct-returning function) is used as a scalar in an if-condition, causing a C compiler error."
+      },
+      {
+        "gem": "grosser-pomo",
+        "error": "out.c:207:49: error: wrong type argument to unary exclamation mark\nout.c:207:85: error: incompatible types when assigning to type 'sp_RbVal' from type 'sp_IntArray *'",
+        "bug": "Spinel generates invalid C for `self.msgstr ||= []` in Pomo::Translation#add_text — the `||=` with an Array RHS on a polymorphic instance variable produces a type-mismatch in the emitted C (sp_RbVal vs sp_IntArray*), causing a C compile error even though the smoke never calls add_text."
+      },
+      {
+        "gem": "leb128",
+        "error": "/tmp/spinel_out.Mk40IU/out.c:102:16: error: invalid operands to binary | (have 'mrb_int' {aka 'volatile long int'} and 'sp_RbVal')",
+        "bug": "Spinel emits invalid C for the `|=` accumulator pattern in `LEB128.decode_unsigned` and `decode_signed`: the left-hand side is typed `mrb_int` (volatile long) while the right-hand side is `sp_RbVal`, causing a C compile-time type error."
+      },
+      {
+        "gem": "random_password_generator",
+        "error": "/tmp/spinel_out.XjSzPK/out.c:75:16: error: invalid operands to binary + (have 'sp_IntArray *' and 'sp_StrArray *'), /tmp/spinel_out.XjSzPK/out.c:78:16: error: invalid operands to binary + (have 'sp_IntArray *' and 'sp_StrArray *')",
+        "bug": "Spinel emits invalid C when concatenating arrays of different inferred element types (sp_IntArray and sp_StrArray) via `chars += range.to_a`, causing a binary `+` type mismatch compile error."
+      },
+      {
+        "gem": "aw",
+        "error": "/tmp/spinel_out.CiacsM/out.c:28:5: error: unknown type name 'sp_Fork'",
+        "bug": "Spinel emits `sp_Fork` as a C type name for the nested class `Aw::Fork`, but the type is never declared, causing a C compilation failure with \"unknown type name 'sp_Fork'\"."
+      },
+      {
+        "gem": "just_paginate",
+        "error": "warning: in JustPaginate.index_range: cannot resolve call to 'new' on class (emitting 0)\nout.c:179:32: warning: passing argument 1 of 'sp_box_obj' makes pointer from integer without a cast [-Wint-conversion]",
+        "bug": "Spinel cannot compile `Range.new(start, end)` — it emits a stub that raises `NoMethodError: undefined method 'new' for class` at runtime, crashing `JustPaginate.index_range` on ordinary Ruby code with no external dependencies."
+      },
+      {
+        "gem": "identifier",
+        "error": "/tmp/spinel_out.4n7ijk/out.c:102:5: error: aggregate value used where an integer was expected\n/tmp/spinel_out.4n7ijk/out.c:207:67: error: incompatible type for argument 2 of 'sp_StrArray_include'",
+        "bug": "Spinel emits invalid C for the `%` sprintf operator applied to an array of integers and for `Array#include?` receiving an sp_RbVal instead of a const char*, causing C compiler errors when compiling identifier's UUID generation and array membership check."
+      },
+      {
+        "gem": "secure_compare",
+        "error": "warning: in SecureCompare.compare: cannot resolve call to 'shift' on poly_array (emitting 0)\\nunhandled exception: undefined method 'shift' for poly_array",
+        "bug": "Spinel cannot resolve Array#shift on the poly_array type returned by String#unpack, causing an emitting-0 compile warning and a runtime crash with \"undefined method 'shift' for poly_array\"."
+      },
+      {
+        "gem": "holdon",
+        "error": "/tmp/spinel_out.mdZref/out.c:202:11: error: '_block' undeclared (first use in this function); did you mean 'mlock'?\n/tmp/spinel_out.mdZref/out.c:202:29: error: '_benv' undeclared (first use in this function)",
+        "bug": "Spinel fails to declare the block-parameter variables `_block` and `_benv` in the generated C function `sp_HoldOn_cls_breaker`, causing a C compilation error when compiling any method that accepts a block (yield-based block dispatch)."
+      },
+      {
+        "gem": "cloudservers",
+        "error": "/tmp/spinel_out.il11xm/out.c:159:33: error: 'CloudServers_VERSION' undeclared (first use in this function)",
+        "bug": "Spinel fails to emit a C declaration for the `CloudServers::VERSION` string constant defined in a sub-required file (`cloudservers/version.rb`), causing an \"undeclared\" C compiler error when the constant is referenced at the top level."
+      },
+      {
+        "gem": "range_compressor",
+        "error": "out.c:189:28: error: incompatible types when assigning to type 'mrb_int' {aka 'long int'} from type 'sp_RbVal'\nout.c:190:26: error: incompatible types when assigning to type 'mrb_int' {aka 'long int'} from type 'sp_RbVal'\nout.c:191:23: error: incompatible types when assigning to type 'mrb_int' {aka 'long int'} from type 'sp_RbVal'",
+        "bug": "Spinel incorrectly infers local variables initialized to nil (current_start, current_end, previous) as mrb_int instead of sp_RbVal when they are later assigned values from an iterator, causing C type mismatch errors in the generated code for RangeCompressor#compress."
+      },
+      {
+        "gem": "wavedash",
+        "error": "out.c:77:40: warning: assignment to 'mrb_int' {aka 'long int'} from 'const char *' makes integer from pointer without a cast [-Wint-conversion]",
+        "bug": "Spinel mis-infers the type of the `@@destination_encoding` class variable (initialized to `nil`, then assigned a String) as `mrb_int` instead of a string/poly type, causing the generated C to pass a truncated integer where a `const char *` is expected, resulting in a segfault at runtime."
+      },
+      {
+        "gem": "palm_civet",
+        "error": "out.c:108:5: error: aggregate value used where an integer was expected\n  108 |     lv_value = sp_box_str(sp_sprintf((&(\"\\xff\" \"%g\")[1]), sp_sprintf((&(\"\\xff\" \"%.1f\")[1]), (long long)lv_value)));",
+        "bug": "Spinel generates invalid C for chained sprintf/format-string calls (`\"%g\" % (\"%.1f\" % value)`) in PalmCivet.byte_size: the result of sp_sprintf (an aggregate struct) is passed as `(long long)` to an outer sp_sprintf, causing a C compile-time error \"aggregate value used where an integer was expected\"."
+      },
+      {
+        "gem": "lager",
+        "error": "/tmp/spinel_out.G9YpGV/out.c:109:43: error: 'Logger_UNKNOWN' undeclared (first use in this function)",
+        "bug": "After ignoring `require \"logger\"` due to missing loadpath, Spinel still emits a C reference to `Logger_UNKNOWN` (from `Logger::UNKNOWN` in lager's `log_level=` method), producing a C compilation error with an undeclared identifier."
+      },
+      {
+        "gem": "dynamics",
+        "error": "/tmp/spinel_out.5h7Sh0/out.c:274:23: error: incompatible types when assigning to type 'mrb_int' {aka 'long int'} from type 'sp_RbVal'",
+        "bug": "Spinel emits a C type mismatch (assigning sp_RbVal to mrb_int) when compiling a minimal smoke that only loads the Dynamics module and calls Module#is_a?, #respond_to?, and #name."
+      },
+      {
+        "gem": "flavicon",
+        "error": "/tmp/spinel_out.lvD9eR/out.c:27:5: error: unknown type name 'sp_Finder'; did you mean 'sp_Fiber'?",
+        "bug": "Spinel emits a reference to the undefined C type `sp_Finder` inside `sp_Flavicon_cls_find` even after issuing \"cannot resolve call / emitting 0\" warnings for the same method, causing C compilation to fail on ordinary Ruby code that uses `autoload` with an unresolvable path."
+      },
+      {
+        "gem": "haversine_distance",
+        "error": "out.c:46:27: error: invalid operands to binary * (have 'sp_Fixnum *' {aka 'struct sp_Fixnum_s *'} and 'mrb_float' {aka 'double'})",
+        "bug": "Spinel generates invalid C for `self * float_constant` inside a reopened Fixnum method — it emits `self *` directly where `self` is a `sp_Fixnum*` struct pointer rather than a dereferenced integer value, causing a C compile error."
+      },
+      {
+        "gem": "spacetree",
+        "error": "out.c:34:5: error: unknown type name 'sp_Parser'; did you mean 'SPS_Parser'?",
+        "bug": "Spinel emits `sp_Parser` as the C type name for `Spacetree::Parser` but the correct mangled name is `SPS_Parser`, causing a C compilation failure when compiling any Ruby that instantiates a class nested inside a module."
+      },
+      {
+        "gem": "dememoize",
+        "error": "out.c:182:81: error: 'union <anonymous>' has no member named 'sym'",
+        "bug": "Spinel generates invalid C code (`.v.sym` field access on an anonymous union that has no `sym` member) when compiling the `Dememoize.dememoize` method's `each` block that passes an iterated symbol as an argument to another module method."
+      },
+      {
+        "gem": "CanCanCanSee",
+        "error": "/tmp/spinel_out.PUFLjF/out.c:267:149: warning: passing argument 2 of 'sp_re_match_poly' makes pointer from integer without a cast [-Wint-conversion] ... out.c:390:213: error: incompatible type for argument 2 of 'sp_re_matchdata'",
+        "bug": "Spinel infers the instance variable @current_file as mrb_int (integer, from a =~ regex match result stored in the same ivar slot) instead of String, then emits a C call passing it as const char* to sp_re_match_poly, causing an incompatible-type C compiler error."
+      },
+      {
+        "gem": "sewell",
+        "error": "/tmp/spinel_out.XEFybE/out.c:540:30: error: incompatible type for argument 2 of 'sp_StrArray_push', 540 |       sp_StrArray_push(_t58, sp_re_match_poly((sp_re_pat_err_6 ? (sp_raise_cls(\"RegexpError\", sp_re_pat_err_6), (mrb_regexp_pattern *)NULL) : sp_re_pat_6), lv_x));",
+        "bug": "Spinel infers the `sanitize` method's splat parameter as `sp_IntArray *` from one call-site but passes a dynamically-built `mrb_regexp_pattern *` from another, producing a C type mismatch error in the generated code for `Sewell.from_hash`."
+      },
+      {
+        "gem": "thunder",
+        "error": "/tmp/spinel_out/out.c:230:16: error: invalid operands to binary << (have 'mrb_int' {aka 'long int'} and 'sp_StrIntHash *')",
+        "bug": "Spinel generates invalid C code in the compiled body of `Thunder#start` where a `<<` (array append) expression is emitted with mismatched types `mrb_int` and `sp_StrIntHash *`, causing a C compile error."
+      },
+      {
+        "gem": "gitpartyguest",
+        "error": "/tmp/spinel_out.wJ2IB1/out.c:37:103: error: 'REPOSERVER' undeclared (first use in this function); /tmp/spinel_out.wJ2IB1/out.c:61:21: error: 'SYNCHINC' undeclared (first use in this function)",
+        "bug": "Spinel emits unresolved Ruby top-level constants (REPOSERVER, SYNCHINC) as bare C identifiers in generated code, causing C compilation failures for any gem that references user-defined constants in method bodies."
+      },
+      {
+        "gem": "enum_csv",
+        "error": "/tmp/spinel_out.BUCMvW/out.c:102:34: error: expected identifier or '(' before 'enum'  (struct field named `enum` — C reserved keyword used verbatim by Spinel codegen)",
+        "bug": "Spinel emits C struct fields and variable references named `enum` (taken directly from the Ruby method parameter `def csv(enum, opts={})`) without sanitizing the C reserved keyword, causing a compilation error."
+      },
+      {
+        "gem": "lucy-goosey",
+        "error": "out.c:199:22: error: incompatible types when assigning to type 'const char *' from type 'mrb_bool' {aka '_Bool'}, out.c:213:25: error: invalid operands to binary << (have 'const char *' and 'int')",
+        "bug": "In Lucy::Goosey.parse_options, Spinel infers lv_value as `const char *` from one branch but assigns a boolean (true) in another branch, producing a hard C compile error due to incompatible type assignment."
+      },
+      {
+        "gem": "positify",
+        "error": "out.c:167:70: error: 'sp_SymIntHash' undeclared (first use in this function); did you mean 'sp_StrIntHash'?",
+        "bug": "Spinel emits `sp_SymIntHash_set`/`SP_BUILTIN_SYM_INT_HASH` when compiling symbol-keyed Hash access (`options[:max]`), but those identifiers do not exist in the Spinel runtime — the correct type is `sp_StrIntHash`."
+      },
+      {
+        "gem": "coordinate-converter",
+        "error": "warning: in Coordinates.utm_to_lat_long: cannot resolve call to 'chr' on string (emitting 0) / out.c:129: warning: assignment to 'const char *' from 'long int' makes pointer from integer without a cast / runtime: unhandled exception: undefined method 'chr' for string",
+        "bug": "Spinel does not support String#chr (a core Ruby method), causing the emitted C code to stub the call with an integer zero cast to a string pointer, which then raises an undefined method exception at runtime."
+      },
+      {
+        "gem": "rubisc",
+        "error": "/tmp/spinel_out.YJjHLe/out.c:248:11: error: '_block' undeclared (first use in this function); did you mean 'lv_block'?\n/tmp/spinel_out.YJjHLe/out.c:248:35: error: '_benv' undeclared (first use in this function)",
+        "bug": "Spinel generates undeclared C variables `_block` and `_benv` in `sp_Rubisc_FileUtil_cls_iterate_files` when compiling a method that accepts a `&block` parameter, producing a C compilation error."
+      },
+      {
+        "gem": "rank",
+        "error": "/tmp/spinel_out.cbqCrg/out.c:302:91: error: incompatible type for argument 3 of 'sp_Rank_cls_compare' /tmp/spinel_out.cbqCrg/out.c:318:24: error: incompatible types when assigning to type 'mrb_int' {aka 'long int'} from type 'sp_RbVal'",
+        "bug": "Spinel generates an incorrect C signature for `Rank.compare` — the variable holding the last-seen object is typed as `mrb_int` instead of `sp_SymIntHash *`, and the splat-attributes argument is emitted with a conflicting type (`sp_IntArray *` vs `sp_RbVal`), causing C compilation failure on dependency-free Ruby code."
+      },
+      {
+        "gem": "quotemedia",
+        "error": "out.c:39:5: error: unknown type name 'sp_Quotemedia_Chart'\nout.c:42:5: error: unknown type name 'sp_Quotemedia_Chart'",
+        "bug": "Spinel emits local variables typed as `sp_Quotemedia_Chart *` in the generated C but never defines that struct, causing a C compilation failure when a class is loaded via `autoload` from a nested require_relative file."
+      },
+      {
+        "gem": "robotstxt",
+        "error": "/tmp/spinel_out.fdHcde/out.c:34:5: error: unknown type name 'sp_Robotstxt_Parser'\n/tmp/spinel_out.fdHcde/out.c:48:5: error: unknown type name 'sp_Robotstxt_Parser'",
+        "bug": "Spinel emits C code referencing the undefined type `sp_Robotstxt_Parser` even though `robotstxt/parser.rb` was ignored due to load-path resolution failure, producing a C compilation error instead of gracefully eliding the unresolvable type."
+      },
+      {
+        "gem": "pwm",
+        "error": "out.c:131:56: error: incompatible type for argument 1 of 'sp_IntArray_length' — Spinel emits sp_range_new(...) where sp_IntArray* is expected when iterating (0..length-1).reduce",
+        "bug": "Spinel generates a C call passing an sp_Range to sp_IntArray_length/sp_IntArray_get when compiling a Range#reduce block like (0..n).reduce('') { ... }, causing a C type error at compile time."
+      },
+      {
+        "gem": "jericho",
+        "error": "out.c:311:73: error: incompatible type for argument 1 of 'sp_int_to_s' — sp_RbVal passed where mrb_int expected, from (scenario['name']).to_s used as hash key in Jericho.reporter",
+        "bug": "Spinel emits sp_int_to_s(_t19) with _t19 typed as sp_RbVal (result of a hash [] lookup) instead of mrb_int, causing a C compiler error in the generated code for Jericho.reporter's hash-key assignment."
+      },
+      {
+        "gem": "overpunch",
+        "error": "out.c:73:39: error: incompatible type for argument 2 of 'sp_str_tr' — sp_RbVal passed where const char * expected (lv_overpunch_set from NEG/POS_OVERPUNCH_SET constant used in String#tr call)",
+        "bug": "Spinel emits lv_overpunch_set as sp_RbVal but passes it directly to sp_str_tr which expects const char*, causing a C compile error when String#tr receives a local variable holding a runtime-selected constant string."
+      },
+      {
+        "gem": "item_models",
+        "error": "/tmp/spinel_out.xXA1fm/out.c:199:33: error: 'ItemModels_VERSION' undeclared (first use in this function), /tmp/spinel_out.xXA1fm/out.c:206:47: error: incompatible type for argument 1 of 'sp_box_int'",
+        "bug": "Spinel fails to emit a declaration for the `ItemModels::VERSION` string constant defined in a require_relative'd version file, producing an undeclared-identifier C compiler error and a type mismatch when the constant is referenced in the same module."
+      },
+      {
+        "gem": "IcentrisJira",
+        "error": "/tmp/spinel_out.bWtaZB/out.c:31:5: error: unknown type name 'sp_Net_HTTP'\n/tmp/spinel_out.bWtaZB/out.c:32:5: error: unknown type name 'sp_Net_HTTP_Get'",
+        "bug": "When `require \"net/http\"` is ignored via load-path, Spinel still emits C local-variable declarations referencing `sp_Net_HTTP` and `sp_Net_HTTP_Get` as type names without ever defining them, producing a C compiler error on ordinary Ruby code."
+      },
+      {
+        "gem": "snuggie",
+        "error": "out.c:36:5: error: unknown type name 'sp_Snuggie_Config'\nout.c:38:5: error: unknown type name 'sp_Snuggie_Errors_MissingArgument'\nout.c:41:33: error: 'Snuggie_Version' undeclared (first use in this function)",
+        "bug": "Spinel fails to codegen types for classes defined in autoloaded files (`autoload :Config, \"snuggie/config\"`), emitting unknown type names like `sp_Snuggie_Config` and `sp_Snuggie_Errors_MissingArgument` that cause C compilation to fail."
+      },
+      {
+        "gem": "hunger_unifonic",
+        "error": "/tmp/spinel_out.I6pG27/out.c:131:5: error: unknown type name 'sp_Faraday'; did you mean 'SPS_faraday'?",
+        "bug": "Spinel emits `sp_Faraday *` as a local variable type in the generated C for `HungerUnifonic.send_sms`, but that type name is undefined (the consistent name used elsewhere is `SPS_faraday`), causing a C compilation error even when the method is never called."
+      },
+      {
+        "gem": "mit_stalker",
+        "error": "warning: in MitStalker.parse_mitdir_response: cannot resolve call to 'reverse' on str_array (emitting 0)\\nwarning: in MitStalker.flip_full_name: cannot resolve call to 'reverse' on str_array (emitting 0)\\n/tmp/spinel_out.caWVXi/out.c:226:14: warning: assignment to 'sp_StrArray *' from 'long int' makes pointer from integer without a cast [-Wint-conversion]",
+        "bug": "Spinel's internal str_array type (the result of String#split) is missing Array#reverse, causing \"undefined method 'reverse' for str_array\" to be emitted at compile time and raised at runtime for ordinary core Ruby code with no external dependencies."
+      },
+      {
+        "gem": "pingr",
+        "error": "out.c:136:22: error: incompatible types when assigning to type 'mrb_int' {aka 'long int'} from type 'sp_RbVal'",
+        "bug": "Spinel incorrectly infers the C type of a module-level instance variable (@mode) as mrb_int instead of sp_RbVal, causing a C compilation error when the setter assigns a boxed symbol via sp_box_sym()."
+      },
+      {
+        "gem": "harunica",
+        "error": "out.c:27:5: error: 'cvar_Toplevel_test' undeclared (first use in this function)",
+        "bug": "Spinel generates undeclared C variable `cvar_Toplevel_test` for a `@@test` class variable defined inside the `Harunica` module, causing a C compilation failure even though the Ruby source is entirely ordinary and dependency-free."
+      },
+      {
+        "gem": "top_tests",
+        "error": "/tmp/spinel_out.R3dlJi/out.c:171:107: error: invalid operands to binary << (have 'long int' and 'sp_PolyArray *')",
+        "bug": "When `Class.new` cannot be resolved and Spinel emits `(mrb_int)0` as a placeholder, subsequent `<<` calls on that placeholder produce a C type error because the integer placeholder is incompatible with the `sp_PolyArray *` operand of the `<<` operator."
+      },
+      {
+        "gem": "bbcode",
+        "error": "/tmp/spinel_out.jr4Kb3/out.c:622:160: error: incompatible type for argument 2 of 'sp_re_match_poly' — expected 'const char *' but argument is of type 'sp_RbVal'",
+        "bug": "Spinel's codegen for regexp matching against a polymorphic (poly) variable passes a `sp_RbVal` directly to `sp_re_match_poly` instead of unwrapping it to `const char *`, producing a C type error when compiling `Bbcode.beautify_string`."
+      },
+      {
+        "gem": "free_email_checker",
+        "error": "/tmp/spinel_out.BjRtJk/out.c:179:17: error: 'Resolv_DNS_Resource_IN_MX' undeclared (first use in this function)\n/tmp/spinel_out.BjRtJk/out.c:180:9: error: unknown type name 'sp_Resolv_DNS'",
+        "bug": "Spinel ignores `require 'resolv-ipv6favor'` but still emits C code referencing undeclared types (`Resolv_DNS_Resource_IN_MX`, `sp_Resolv_DNS`) from that ignored require, causing a C compilation failure even though the smoke exercises only the file-based code path that does not call those APIs."
+      },
+      {
+        "gem": "kappamaki",
+        "error": "warning: in Kappamaki.attributes_from_sentence: cannot resolve call to 'to_h' on str_array_ptr_array (emitting 0)\\nwarning: in Kappamaki.symbolize_keys_deep!: cannot resolve call to 'keys' on poly (no concrete user-class arm) (emitting 0)",
+        "bug": "Spinel cannot resolve `to_h` on an Array-of-Arrays and `keys`/`delete` on polymorphic Hash arguments (no ignored external require involved), causing emitting-0 and runtime failures for pure standard-library Ruby code."
+      },
+      {
+        "gem": "baptist",
+        "error": "out.c:182:16: error: incompatible types when assigning to type 'sp_RbVal' from type 'mrb_int' {aka 'long int'}",
+        "bug": "Spinel emits 0 (mrb_int) for an unresolved Hash#merge call on a sym_poly_hash literal, then assigns that integer to an sp_RbVal slot, causing a C compiler type error that aborts compilation of any code calling Baptist.generate."
+      },
+      {
+        "gem": "nagios_mklivestatus",
+        "error": "/tmp/spinel_out.81b24s/out.c:97:5: error: unknown type name 'sp_Nagios_MkLiveStatus_Filter_Attr'\n/tmp/spinel_out.81b24s/out.c:99:5: error: unknown type name 'sp_Nagios_MkLiveStatus_Filter_Attr'",
+        "bug": "Spinel emits C type declarations for deeply namespaced classes (Nagios::MkLiveStatus::Filter::Attr and ::Query) that are never defined, causing C compiler errors due to unknown type names and undeclared constants."
+      }
+    ],
+    "loadpath_limit": 113,
+    "risky_smoke": 4,
+    "skipped": 8
+  }
+}

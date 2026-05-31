@@ -1,0 +1,7 @@
+puts Positify.it(5)
+puts Positify.it(-3)
+puts Positify.it(0)
+puts Positify.it(42)
+puts Positify.it(1)
+puts Positify.it("7")
+puts Positify.it(-100)

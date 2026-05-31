@@ -247,7 +247,11 @@ get '/catalog' do
   db.finalize
 
   rows = ""
-  db.prepare("SELECT gem, version, verdict, downloads, info, updated, homepage, human, tests, rubric FROM catalog WHERE " +
+  # downloads_fmt is pre-formatted at build time (Ruby, 64-bit). We display that
+  # instead of fmt_n(col_int(downloads)) — sqlite3_column_int is C 32-bit and
+  # wraps values >2^31 (bundler's 3.4B → -867M). Sort/filter still use the
+  # 64-bit `downloads` column SQL-side.
+  db.prepare("SELECT gem, version, verdict, info, updated, homepage, human, tests, rubric, downloads_fmt FROM catalog WHERE " +
              filt + " ORDER BY " + order + " LIMIT ? OFFSET ?")
   db.bind_int(1, min)
   db.bind_int(2, vflag)
@@ -258,14 +262,14 @@ get '/catalog' do
   db.bind_int(7, off)
   while db.step == 1
     g = db.col_str(0); ver = db.col_str(1); vd = db.col_str(2)
-    dl = db.col_int(3); info = db.col_str(4); upd = db.col_str(5); home = db.col_str(6)
-    hum = db.col_int(7); tst = db.col_int(8); rub = db.col_str(9)
+    info = db.col_str(3); upd = db.col_str(4); home = db.col_str(5)
+    hum = db.col_int(6); tst = db.col_int(7); rub = db.col_str(8); dlf = db.col_str(9)
     gcell = Tep.h(g)
     gcell = "<a href=\"" + Tep.h(home) + "\" rel=\"noopener nofollow\">" + Tep.h(g) + "</a>" if home.length > 0
     rows = rows + "<tr><td class=\"v " + vd + "\">" + V.glyph(vd) + " " + vd + "</td>" +
       "<td class=sig>" + V.signals(hum, tst, rub) + "</td>" +
       "<td class=g>" + gcell + " <span class=ver>" + Tep.h(ver) + "</span></td>" +
-      "<td class=num>" + V.fmt_n(dl) + "</td>" +
+      "<td class=num>" + dlf + "</td>" +
       "<td class=upd>" + Tep.h(upd[0,10]) + "</td>" +
       "<td class=desc>" + Tep.h(info[0,140]) + "</td></tr>\n"
   end

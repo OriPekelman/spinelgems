@@ -152,7 +152,8 @@ module Bundler
             tsv.write([r.gem, r.gem.downcase, clean.(r.version), r.verdict,
                        r.downloads.to_i, clean.(r.info), clean.(r.updated),
                        clean.(r.homepage), clean.(r.notes),
-                       r.human ? 1 : 0, r.tests ? 1 : 0, clean.(r.rubric)].join(us) + rs_)
+                       r.human ? 1 : 0, r.tests ? 1 : 0, clean.(r.rubric),
+                       fmt_n(r.downloads)].join(us) + rs_)
           end
           tsv.flush
           FileUtils.rm_f(db_path)
@@ -166,7 +167,13 @@ module Bundler
               verdict TEXT NOT NULL, downloads INTEGER NOT NULL DEFAULT 0,
               info TEXT, updated TEXT, homepage TEXT, notes TEXT,
               human INTEGER NOT NULL DEFAULT 0, tests INTEGER NOT NULL DEFAULT 0,
-              rubric TEXT
+              rubric TEXT,
+              -- pre-formatted "3.4B" for display: the Tep server reads downloads
+              -- via sqlite3_column_int (C 32-bit), which wraps values >2^31
+              -- (bundler's 3.4B showed as -867M). ORDER BY / filtering still use
+              -- the 64-bit `downloads` column SQL-side; only the display string
+              -- comes from here, so the truncation never reaches the page.
+              downloads_fmt TEXT
             );
             .mode ascii
             .import #{tsv.path} catalog

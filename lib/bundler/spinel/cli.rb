@@ -26,6 +26,7 @@ module Bundler
         when "build-index" then cmd_build_index(argv)
         when "build-site"  then cmd_build_site(argv)
         when "build-db"    then cmd_build_db(argv)
+        when "build-history" then cmd_build_history(argv)
         when "server"      then cmd_server(argv)
         when "ledger"  then cmd_ledger(argv)
         when "diff"    then cmd_diff(argv)
@@ -271,6 +272,16 @@ module Bundler
                         meta_path: File.expand_path(meta_path))
         db = site.build_db(File.expand_path(out))
         @out.puts "built catalog DB -> #{db}"
+        0
+      end
+
+      # Render the historical-record page (verdict-mix timeline + deltas across
+      # the per-rev corpus snapshots).
+      def cmd_build_history(argv)
+        require_relative "history"
+        out = (j = argv.index("--out")) ? argv[j + 1] : raise(Error, "build-history needs --out FILE")
+        f = History.new(Dir.pwd).build_html(File.expand_path(out))
+        @out.puts "built history -> #{f}"
         0
       end
 

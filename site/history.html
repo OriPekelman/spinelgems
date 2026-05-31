@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>History — SpinelGems</title><link rel="stylesheet" href="/assets/style.css"></head>
+<body>
+<header><a class="brand" href="/"><svg class="gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9z" fill="#7b2d8e"/><path d="M6 3 2 9l10 13z" fill="#5a1f6b" opacity=".55"/><path d="M18 3l4 6-10 13z" fill="#b14fc4"/><path d="M6 3h12l-6 6z" fill="#d98ee8"/></svg>SpinelGems</a>
+  <nav><a href="/">Home</a> <a href="/catalog">Catalog</a> <a href="/history.html">History</a>
+    <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav></header>
+<main>
+<h1>How the catalog has changed</h1>
+<p class="lede">Each row is a full re-probe of the ~190k-gem corpus at one <a href="https://github.com/matz/spinel">Spinel</a> revision. The harness's real product is a stream of focused compiler bugs; this is the loop closing — fixes landing upstream, gems graduating out of <code>rejected</code>.</p>
+<table class="timeline"><thead><tr><th>engine rev</th><th>date</th><th class="num">✓ clean</th><th class="num">~ risky</th><th class="num">✗ rejected</th><th>what landed</th></tr></thead><tbody>
+<tr><td class="g"><code>a03bb49</code></td><td class="upd">2026-05-28</td><td class="num">35.3k</td><td class="num">12.5k</td><td class="num">141.9k</td><td class="desc">the first full-corpus survey (189,742 gems)</td></tr>
+<tr><td class="g"><code>8d88ebe</code></td><td class="upd">2026-05-29</td><td class="num">34.8k <span class="down">−449</span></td><td class="num">11.4k <span class="down">−1.1k</span></td><td class="num">143.5k <span class="up">+1.6k</span></td><td class="desc">module/reflection + GC fixes (is_a?, .class, respond_to?, #1052)</td></tr>
+<tr><td class="g"><code>f8040f3</code></td><td class="upd">2026-05-31</td><td class="num">38.0k <span class="up">+3.1k</span></td><td class="num">14.0k <span class="up">+2.6k</span></td><td class="num">137.8k <span class="down">−5.7k</span></td><td class="desc">DCE for synthetic module class methods (#1062 fix), instance_methods const-fold (#1073), Array#transpose, map→array</td></tr>
+</tbody></table>
+<div class="delta-card"><h3><code>a03bb49</code> &rarr; <code>8d88ebe</code> <span class="up">&uarr; 64 graduated</span> <span class="down">&darr; 1.6k regressed</span></h3>
+<p>Mixed: the module-object fixes graduated gems, but <code>96b21e6</code> (module_function support) <strong>regressed</strong> ~160 gems whose objects were built from a variable-held class (the <code>brass</code> cluster) — caught by the re-probe and filed as <a href="https://github.com/matz/spinel/issues/1062">matz/spinel#1062</a>.</p>
+<p class="meta">Top transitions: risky-&gt;rejected <b>1.1k</b> &middot; clean-&gt;rejected <b>493</b> &middot; rejected-&gt;clean <b>42</b> &middot; rejected-&gt;risky <b>22</b></p>
+</div>
+<div class="delta-card"><h3><code>8d88ebe</code> &rarr; <code>f8040f3</code> <span class="up">&uarr; 6.2k graduated</span> <span class="down">&darr; 415 regressed</span></h3>
+<p><strong>Recovery + gains.</strong> matz bisected #1062 to <code>96b21e6</code> and fixed it (<code>e2e010c</code>); together with the new <code>instance_methods</code> const-fold (<a href="https://github.com/matz/spinel/issues/1073">#1073</a>) and <code>transpose</code>/map specializations, the brass cluster and thousands more moved out of <code>rejected</code>.</p>
+<p class="meta">Top transitions: rejected-&gt;clean <b>3.5k</b> &middot; rejected-&gt;risky <b>2.6k</b> &middot; clean-&gt;rejected <b>407</b> &middot; risky-&gt;rejected <b>8</b></p>
+</div>
+
+</main>
+<footer><div class="foot-wrap">
+  <div class="foot-built">
+    <span class="by"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9z" fill="#b31217"/><path d="M6 3 2 9l10 13z" fill="#7a0c0f"/><path d="M18 3l4 6-10 13z" fill="#d42b2b"/><path d="M6 3h12l-6 6z" fill="#e86a6a"/></svg> <a href="https://github.com/matz/spinel">Spinel</a>-compiled Ruby</span>
+    <span class="by">Built with <a href="https://github.com/OriPekelman/tep">Tep</a></span>
+    <span class="by"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="#ff6b57"/><g stroke="#ff6b57" stroke-width="1.7" stroke-linecap="round"><path d="M12 2.2v2.6"/><path d="M12 19.2v2.6"/><path d="M2.2 12h2.6"/><path d="M19.2 12h2.6"/><path d="M5.1 5.1l1.8 1.8"/><path d="M17.1 17.1l1.8 1.8"/><path d="M18.9 5.1l-1.8 1.8"/><path d="M6.9 17.1l-1.8 1.8"/></g></svg> Hosted on <a href="https://upsun.com">Upsun</a></span>
+  </div>
+  <p class="foot-note">Pre-release · verdicts keyed on the Spinel engine revision ·
+    <a href="https://github.com/OriPekelman/spinelgems">source &amp; RFC on GitHub</a></p>
+</div></footer>
+
+</body></html>

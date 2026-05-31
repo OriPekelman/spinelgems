@@ -9,3 +9,7 @@ survey-fresh/
 /harness/out/
 /public/
 /tmp/
+
+.current_issues.fgi.yml
+survey-8d88ebe/
+survey-f8040f3/

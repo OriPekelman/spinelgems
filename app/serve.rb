@@ -69,7 +69,7 @@ class V
     "<title>" + Tep.h(title) + "</title>" +
     "<link rel=stylesheet href=\"/assets/style.css\"></head>\n<body>\n" +
     "<header>" + V.brand +
-    "<nav><a href=\"/\">Home</a> <a href=\"/catalog\">Catalog</a> " +
+    "<nav><a href=\"/\">Home</a> <a href=\"/catalog\">Catalog</a> <a href=\"/history.html\">History</a> " +
     "<a href=\"https://github.com/OriPekelman/spinelgems\">GitHub</a></nav></header>\n" +
     "<main>\n" + body + "\n</main>\n" + V.footer + "\n</body>\n</html>\n"
   end

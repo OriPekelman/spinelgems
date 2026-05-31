@@ -110,6 +110,20 @@ td.desc { color: #46434f; max-width: 46ch; }
 .pager { display: flex; gap: 1rem; align-items: center; justify-content: center; margin: 1.4rem 0; color: var(--muted); font-size: .92rem; }
 .pager a { font-weight: 600; }
 
+/* ---- history ---- */
+table.timeline { border-collapse: collapse; width: 100%; font-size: .92rem; background: #fff;
+  border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); margin: 1.2rem 0; }
+table.timeline th { text-align: left; font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+  border-bottom: 1px solid var(--rule); padding: .6rem .8rem; background: var(--panel); }
+table.timeline td { border-bottom: 1px solid var(--rule-2); padding: .55rem .8rem; vertical-align: top; }
+table.timeline tbody tr:last-child td { border-bottom: none; }
+.up { color: var(--clean); font-weight: 600; font-variant-numeric: tabular-nums; }
+.down { color: var(--rejected); font-weight: 600; font-variant-numeric: tabular-nums; }
+.delta-card { background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: var(--radius); padding: .9rem 1.1rem; margin: 1rem 0; box-shadow: var(--shadow); }
+.delta-card h3 { margin: 0 0 .4rem; font-size: 1.05rem; display: flex; flex-wrap: wrap; gap: .6rem; align-items: baseline; }
+.delta-card p { margin: .35rem 0; }
+
 /* ---- footer ---- */
 footer { border-top: 1px solid var(--rule); margin-top: 3rem; background: var(--panel); }
 .foot-wrap { max-width: 1180px; margin: 0 auto; padding: 1.6rem clamp(1rem,4vw,2.5rem); color: var(--muted); font-size: .9rem; }

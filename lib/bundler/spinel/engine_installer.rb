@@ -160,7 +160,12 @@ module Bundler
       def init(dir, out: $stdout, rev: nil)
         FileUtils.mkdir_p(dir)
         engine_rev = rev || EngineInstaller::DEFAULT_REV
-        write(out, File.join(dir, "Gemfile"), gemfile(engine_rev))
+        write(out, File.join(dir, "Gemfile"), gemfile)
+        # The engine revision is a git SHA — NOT a valid `engine_version:` (bundler
+        # parses that as a Gem version requirement and `bundle lock` errors on a
+        # SHA). So the rev lives in a SPINEL_PIN file, which `install-engine`
+        # reads; the Gemfile keeps a version-literal advisory marker.
+        write(out, File.join(dir, "SPINEL_PIN"), "#{engine_rev}\n")
         write(out, File.join(dir, "app.rb"), app_rb)
         bin = File.join(dir, "bin", "build")
         FileUtils.mkdir_p(File.dirname(bin))
@@ -185,16 +190,18 @@ module Bundler
         end
       end
 
-      def gemfile(rev)
+      def gemfile
         <<~RUBY
           source "https://rubygems.org"
 
           # Spinel is the engine: code here is compiled ahead-of-time to a native
-          # binary, not run on CRuby. The compat ledger (bundler-spinel) gates the
-          # lock so you only resolve gems known to compile under this engine rev.
-          ruby "3.3.0", engine: "spinel", engine_version: "#{rev}"
+          # binary, not run on CRuby. `engine_version` is advisory and must be a
+          # version literal (bundler parses it as a Gem requirement); the actual
+          # engine revision install-engine builds is pinned in ./SPINEL_PIN.
+          ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
 
-          # The web framework — Sinatra-style, compiles via Spinel.
+          # The web framework — Sinatra-style, compiles via Spinel. Until tep is on
+          # RubyGems, point at the repo:  gem "tep", git: "https://github.com/OriPekelman/tep.git"
           gem "tep"
         RUBY
       end

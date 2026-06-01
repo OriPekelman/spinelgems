@@ -4,6 +4,16 @@ All notable changes to `bundler-spinel` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-06-01
+
+### Fixed
+- **`init` scaffold produced an unlockable Gemfile.** It wrote the engine git SHA
+  into `engine_version:`, which bundler parses as a Gem version requirement —
+  `bundle lock` died with `Illformed requirement [...]`. The scaffold now writes a
+  version-literal `engine_version: "0.0.0"` (advisory) and pins the real revision
+  in a `SPINEL_PIN` file, which `install-engine` already reads. Caught by a
+  clean-room `ruby:3.3` Docker run of the full onboarding flow.
+
 ## [0.1.0] — 2026-06-01
 
 First non-prerelease. Installable without `--pre`. Closes the onboarding gap
@@ -57,5 +67,6 @@ and the ledger format may all change before `0.0.1`. Install with `--pre`.
 - Wholesale `survey` with a thread-safe ledger, a per-compile wall-clock
   timeout (`analyze-timeout` reject reason), and a ledger-based report.
 
+[0.1.1]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.1.1
 [0.1.0]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.1.0
 [0.0.1.pre]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.0.1.pre

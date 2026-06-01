@@ -19,8 +19,8 @@ generated `vendor/spinel/deps` and compiles, identically to CRuby.
 source "https://rubygems.org"
 ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
 
-gem "tep", git: "https://…/tep.git"   # a sibling, via git:/path: (replaces rsync)
-gem "some_pure_ruby_lib"
+gem "tep"                             # published on RubyGems
+gem "some_unreleased_lib", git: "…"   # or a sibling via git:/path: (replaces rsync)
 ```
 
 `bundle lock` resolves normally (it ignores the engine marker); the marker only

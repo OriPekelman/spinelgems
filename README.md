@@ -37,8 +37,8 @@ limited and still growing. So we surveyed the ecosystem and publish a
 source "https://rubygems.org"
 ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
 
-gem "tep", git: "https://…/tep.git"   # siblings via path:/git:
-gem "some_pure_ruby_lib"
+gem "tep"                             # published on RubyGems
+gem "some_unreleased_lib", git: "…"   # or a sibling via path:/git:
 ```
 
 `bundle lock` resolves normally (it ignores the engine marker); the marker guards

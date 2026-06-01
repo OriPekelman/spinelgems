@@ -176,9 +176,11 @@ module Bundler
         out.puts "Scaffolded a Spinel + Tep project in #{dir}/"
         out.puts "Next:"
         out.puts "  cd #{dir}" unless File.expand_path(dir) == Dir.pwd
-        out.puts "  bundle install        # resolves deps (gated by the compat ledger)"
-        out.puts "  ./bin/build           # provisions Spinel, vendors deps, compiles app.rb"
+        out.puts "  ./bin/build           # ensures tep, resolves + vendors deps, provisions Spinel, compiles"
         out.puts "  ./app -p 4567         # run the native binary"
+        out.puts ""
+        out.puts "(The `engine: spinel` Gemfile marker makes `bundle install` refuse to run"
+        out.puts " under CRuby by design — bin/build uses `bundle lock` + `spinel-compat vendor`.)"
       end
 
       def write(out, path, body)
@@ -200,9 +202,9 @@ module Bundler
           # engine revision install-engine builds is pinned in ./SPINEL_PIN.
           ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
 
-          # The web framework — Sinatra-style, compiles via Spinel. Until tep is on
-          # RubyGems, point at the repo:  gem "tep", git: "https://github.com/OriPekelman/tep.git"
-          gem "tep"
+          # The web framework — Sinatra-style, compiles via Spinel.
+          # (For an unreleased sibling instead: gem "tep", git: "https://github.com/OriPekelman/tep.git")
+          gem "tep", "~> 0.11"
         RUBY
       end
 
@@ -219,12 +221,15 @@ module Bundler
       def build_sh
         <<~SH
           #!/usr/bin/env bash
-          # Provision the Spinel compiler, vendor deps where Spinel finds them,
-          # and compile app.rb to a native binary.
+          # From a fresh checkout to a native binary. The Gemfile's `engine: spinel`
+          # marker makes `bundle install` refuse to run under CRuby, so we resolve
+          # with `bundle lock` and place deps with `spinel-compat vendor` instead.
           set -e
-          spinel-compat install-engine          # fetch+build the pinned engine (cached)
-          spinel-compat vendor                  # place deps + write deps.rb
-          tep build app.rb -o app               # compile -> ./app
+          command -v tep >/dev/null 2>&1 || gem install tep   # the tep build CLI (a compile-time tool)
+          [ -f Gemfile.lock ] || bundle lock                  # resolve deps (NOT `bundle install`)
+          spinel-compat install-engine                        # fetch+build the pinned engine (cached)
+          spinel-compat vendor                                # place deps where Spinel follows them
+          tep build app.rb -o app                             # compile -> ./app
           echo "built ./app — run it with: ./app -p 4567"
         SH
       end

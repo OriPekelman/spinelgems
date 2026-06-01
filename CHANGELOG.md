@@ -18,6 +18,21 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   else probed next to the engine and at `~/sites/spinel-dev`) or can't attribute
   the divergence to a traced scalar, the verdict is returned unchanged.
 
+### Changed
+- **`init` scaffold uses the published tep gem.** Now that tep is on RubyGems
+  (`tep 0.11.0`), the generated `Gemfile` emits plain `gem "tep", "~> 0.11"`
+  instead of the `git:`-fallback comment. Docs (`README`, `docs/adoption.md`)
+  updated to the published-gem form. spinelgems#10.
+- **`init`'s `bin/build` made self-sufficient + correct.** A clean-room run
+  showed the old `bundle install && ./bin/build` flow couldn't run: the
+  `engine: spinel` marker makes `bundle install` refuse under CRuby (by design),
+  and `bundle lock` + `vendor` place tep's *lib* but never install the `tep`
+  *CLI*. `bin/build` now `gem install`s tep if absent, uses `bundle lock` (not
+  install), then provisions + vendors + compiles; the `init` next-steps reflect
+  this. (End-to-end compile is still blocked upstream — the published tep gem
+  ships C-helper sources but no built `.o`, so `tep build` can't link; tracked on
+  the tep side.)
+
 ## [0.1.1] — 2026-06-01
 
 ### Fixed

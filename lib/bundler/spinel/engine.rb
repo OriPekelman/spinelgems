@@ -18,13 +18,23 @@ module Bundler
     class Engine
       attr_reader :dir, :bin
 
-      def initialize(dir: ENV.fetch("SPINEL_DIR", File.expand_path("~/spinel")))
-        @dir = dir
+      def initialize(dir: nil)
+        # Resolution order: explicit SPINEL_DIR, then an engine provisioned by
+        # `spinel-compat install-engine` (~/.cache/spinel/current), then ~/spinel.
+        @dir = dir || ENV["SPINEL_DIR"] || default_dir
         # Prefer a checkout at `dir` (gives a git rev); otherwise fall back to a
         # `spinel` on PATH (installed binary — rev becomes a binary hash). This
         # makes the default work for most setups without configuration.
-        local = File.join(dir, "spinel")
+        local = File.join(@dir, "spinel")
         @bin = File.executable?(local) ? local : (which("spinel") || local)
+      end
+
+      # The provisioned-engine cache (install-engine) if it has a built binary,
+      # else the conventional ~/spinel. Keeps zero-config working after a
+      # `spinel-compat install-engine`.
+      def default_dir
+        cur = File.expand_path("~/.cache/spinel/current")
+        File.executable?(File.join(cur, "spinel")) ? cur : File.expand_path("~/spinel")
       end
 
       def available?

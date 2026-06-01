@@ -18,6 +18,8 @@ module Bundler
         cmd = argv.shift
         case cmd
         when "engine"  then cmd_engine
+        when "install-engine" then cmd_install_engine(argv)
+        when "init"    then cmd_init(argv)
         when "probe"   then cmd_probe(argv)
         when "verify"  then cmd_verify(argv)
         when "vendor"  then cmd_vendor(argv)
@@ -49,7 +51,28 @@ module Bundler
         @out.puts "spinel binary : #{e.bin} (#{e.available? ? 'found' : 'MISSING'})"
         @out.puts "engine rev    : #{e.rev}"
         @out.puts "ledger        : #{Ledger.new.path}"
+        unless e.available?
+          @out.puts ""
+          @out.puts "No engine found. Provision one with: spinel-compat install-engine"
+        end
         e.available? ? 0 : 1
+      end
+
+      # Provision the Spinel compiler from source (spinelgems#9). Optional REV
+      # arg pins the revision; --force rebuilds even if cached.
+      def cmd_install_engine(argv)
+        force = !!argv.delete("--force")
+        rev = argv.shift # nil → SPINEL_PIN file / default
+        EngineInstaller.new(rev: rev, out: @out).install(force: force)
+        0
+      end
+
+      # Scaffold a minimal Spinel + Tep project (spinelgems#9 stretch).
+      def cmd_init(argv)
+        rev = (i = argv.index("--rev")) ? argv[i + 1] : nil
+        dir = argv.find { |a| !a.start_with?("-") && a != rev } || "."
+        Scaffold.init(dir, out: @out, rev: rev)
+        0
       end
 
       def cmd_probe(argv)
@@ -384,6 +407,8 @@ module Bundler
           spinel-compat — Spinel gem-compatibility ledger
 
             spinel-compat engine                 show detected compiler + engine rev
+            spinel-compat install-engine [REV]    fetch+build the Spinel compiler -> ~/.cache/spinel
+            spinel-compat init [DIR]              scaffold a Spinel+Tep project (Gemfile, app.rb, bin/build)
             spinel-compat probe NAME [VERSION]    probe one gem, record a verdict
             spinel-compat verify NAME [--smoke F]  differential CRuby-vs-Spinel run -> verified
             spinel-compat vendor [LOCK] [--into D] place deps where Spinel finds them + deps.rb

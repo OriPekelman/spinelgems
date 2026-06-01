@@ -4,7 +4,7 @@ All notable changes to `bundler-spinel` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] — 2026-06-01
 
 ### Added
 - **`verify` self-localizes a miscompile.** When the differential smoke diverges
@@ -20,7 +20,7 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Changed
 - **`init` scaffold uses the published tep gem.** Now that tep is on RubyGems
-  (`tep 0.11.0`), the generated `Gemfile` emits plain `gem "tep", "~> 0.11"`
+  (`tep 0.11.1`), the generated `Gemfile` emits plain `gem "tep", ">= 0.11.1"`
   instead of the `git:`-fallback comment. Docs (`README`, `docs/adoption.md`)
   updated to the published-gem form. spinelgems#10.
 - **`init`'s `bin/build` made self-sufficient + correct.** A clean-room run
@@ -98,6 +98,7 @@ and the ledger format may all change before `0.0.1`. Install with `--pre`.
 - Wholesale `survey` with a thread-safe ledger, a per-compile wall-clock
   timeout (`analyze-timeout` reject reason), and a ledger-based report.
 
+[0.2.0]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.2.0
 [0.1.1]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.1.1
 [0.1.0]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.1.0
 [0.0.1.pre]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.0.1.pre

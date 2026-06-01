@@ -172,6 +172,12 @@ module Bundler
         write(out, bin, build_sh)
         File.chmod(0o755, bin)
         write(out, File.join(dir, ".gitignore"), gitignore)
+        # Pin the *real* CRuby (the one running this, which has spinel-compat) so
+        # version managers don't misread the Gemfile's `engine: "spinel"` marker.
+        # mise/asdf parse that as `ruby@spinel-0.0.0`, fail to find it, and fall
+        # back to a Ruby without bundler-spinel — `bin/build` then can't find
+        # `spinel-compat`. A config-tier .tool-versions overrides that parse.
+        write(out, File.join(dir, ".tool-versions"), "ruby #{RUBY_VERSION}\n")
         out.puts ""
         out.puts "Scaffolded a Spinel + Tep project in #{dir}/"
         out.puts "Next:"

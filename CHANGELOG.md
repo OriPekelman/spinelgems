@@ -4,6 +4,18 @@ All notable changes to `bundler-spinel` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-06-01
+
+### Fixed
+- **`init` scaffold tripped `mise`/`asdf` on the engine marker.** Version managers
+  read the Gemfile's `ruby "3.3.0", engine: "spinel", …` and tried to activate
+  `ruby@spinel-0.0.0` (missing) → fell back to a Ruby without `bundler-spinel`, so
+  `bin/build` failed with `spinel-compat: command not found` (first-user report,
+  tep#156). The scaffold now also writes a config-tier `.tool-versions` pinning the
+  real CRuby (`ruby <RUBY_VERSION>`), which overrides the Gemfile parse so the
+  manager activates the Ruby that has `spinel-compat`. Reproduced + verified the
+  fix against `mise` in a container.
+
 ## [0.2.0] — 2026-06-01
 
 ### Added
@@ -98,6 +110,7 @@ and the ledger format may all change before `0.0.1`. Install with `--pre`.
 - Wholesale `survey` with a thread-safe ledger, a per-compile wall-clock
   timeout (`analyze-timeout` reject reason), and a ledger-based report.
 
+[0.2.1]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.2.1
 [0.2.0]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.2.0
 [0.1.1]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.1.1
 [0.1.0]: https://github.com/OriPekelman/spinelgems/releases/tag/v0.1.0

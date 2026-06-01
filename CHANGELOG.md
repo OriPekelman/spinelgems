@@ -28,10 +28,12 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   `engine: spinel` marker makes `bundle install` refuse under CRuby (by design),
   and `bundle lock` + `vendor` place tep's *lib* but never install the `tep`
   *CLI*. `bin/build` now `gem install`s tep if absent, uses `bundle lock` (not
-  install), then provisions + vendors + compiles; the `init` next-steps reflect
-  this. (End-to-end compile is still blocked upstream — the published tep gem
-  ships C-helper sources but no built `.o`, so `tep build` can't link; tracked on
-  the tep side.)
+  install), exports `SPINEL` (so tep finds the provisioned engine), then
+  provisions + vendors + compiles; the `init` next-steps reflect this.
+  **The full onboarding now runs end-to-end** — validated in a clean `ruby:3.3`
+  container: `gem install bundler-spinel` → `init` → `./bin/build` → `./app`
+  serves a Spinel-compiled Tep app (needs `tep ≥ 0.11.1`, which builds its C
+  helpers on demand). spinelgems#10.
 
 ## [0.1.1] — 2026-06-01
 

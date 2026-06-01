@@ -202,9 +202,10 @@ module Bundler
           # engine revision install-engine builds is pinned in ./SPINEL_PIN.
           ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
 
-          # The web framework — Sinatra-style, compiles via Spinel.
+          # The web framework — Sinatra-style, compiles via Spinel. >= 0.11.1 builds
+          # its C helpers on demand (needed for `gem install tep` without `make`).
           # (For an unreleased sibling instead: gem "tep", git: "https://github.com/OriPekelman/tep.git")
-          gem "tep", "~> 0.11"
+          gem "tep", ">= 0.11.1"
         RUBY
       end
 
@@ -228,6 +229,7 @@ module Bundler
           command -v tep >/dev/null 2>&1 || gem install tep   # the tep build CLI (a compile-time tool)
           [ -f Gemfile.lock ] || bundle lock                  # resolve deps (NOT `bundle install`)
           spinel-compat install-engine                        # fetch+build the pinned engine (cached)
+          export SPINEL="${SPINEL:-$HOME/.cache/spinel/current/spinel}"  # tell tep where the engine is
           spinel-compat vendor                                # place deps where Spinel follows them
           tep build app.rb -o app                             # compile -> ./app
           echo "built ./app — run it with: ./app -p 4567"

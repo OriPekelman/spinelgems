@@ -1,6 +1,6 @@
 # bundler-spinel
 
-> ⚠️ **Pre-release / experimental** (`0.0.1.pre`). The CLI surface, the verdict
+> ⚠️ **Pre-release / experimental** (`0.1.0`). The CLI surface, the verdict
 > vocabulary, and the ledger format may still change. Browse the live catalog at
 > **<https://spinelgems.org>**.
 
@@ -47,13 +47,32 @@ gem "some_pure_ruby_lib"
 ## Quick start
 
 ```sh
-bundle plugin install bundler-spinel --git https://github.com/OriPekelman/spinelgems.git
+gem install bundler-spinel
+spinel-compat install-engine       # fetch + build the Spinel compiler (cached)
+spinel-compat init my_app          # scaffold a Gemfile + app.rb + bin/build
+cd my_app && bundle install && ./bin/build
+```
+
+Or add the gate to an existing project:
+
+```sh
+bundle plugin install bundler-spinel
 bundle spinel-lock                 # bundle lock + report incompatible gems
 spinel-compat vendor               # place deps -> vendor/spinel/<gem>/lib + deps.rb
 spinel-compat check Gemfile.lock   # gate: exit 1 if any gem is rejected
 ```
 
 Then `require_relative "vendor/spinel/deps"` from your Spinel entrypoint.
+
+> **The compiler builds from source.** `spinel-compat install-engine` clones
+> [Spinel](https://github.com/matz/spinel) and runs `make` (a few minutes, once
+> per revision; needs `git` + `make` + a C compiler), caching the result under
+> `~/.cache/spinel/`. This will become near-instant once there are **prebuilt
+> binaries per platform** — but Spinel is pre-release and moving fast (no stable
+> tags yet, revisions land daily), so building from source is deliberate for now:
+> it's portable, needs no release pipeline, and always matches the *exact* engine
+> revision your compatibility verdicts are keyed on. Prebuilts come once the
+> engine stabilizes; we're not there yet.
 
 Verdicts: `★ verified` · `○ loaded` · `✓ clean` · `~ risky` · `✗ rejected`. Trust
 `verified` (a behaviour smoke matches CRuby); `clean`/`loaded` are cheap lower

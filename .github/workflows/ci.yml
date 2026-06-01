@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Validate the onboarding flow (spinelgems#9) on every platform we expect
+  # users on. We deliberately DON'T ship prebuilt Spinel binaries — the engine
+  # is pre-release and moving fast (no stable tags), so `install-engine` builds
+  # from source. This matrix's job is to prove that build-from-source path works
+  # on x64 + arm64 / Linux + macOS, catching the x86-vs-arm footguns before
+  # users do. Flip to a prebuilt-artifact model only once Spinel cuts releases.
+  onboard:
+    name: install-engine + smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-14, macos-13]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      # ubuntu/macos runners already ship git + make + cc; nothing to install.
+      - name: Build + install the gem (as a user would get it)
+        run: |
+          gem build bundler-spinel.gemspec
+          gem install ./bundler-spinel-*.gem
+
+      - name: Provision the Spinel compiler from source
+        run: spinel-compat install-engine      # clones matz/spinel, make deps && make all, caches + smokes
+
+      - name: Engine resolves zero-config
+        run: spinel-compat engine
+
+      - name: Independent compile + run with the provisioned engine
+        run: |
+          echo 'puts(21 + 21)' > smoke.rb
+          "$HOME/.cache/spinel/current/spinel" smoke.rb -o smoke.bin
+          test "$(./smoke.bin)" = "42"
+
+      - name: init scaffolds a project
+        run: |
+          spinel-compat init scaffold_test
+          test -f scaffold_test/Gemfile
+          test -x scaffold_test/bin/build

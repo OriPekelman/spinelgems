@@ -4,6 +4,20 @@ All notable changes to `bundler-spinel` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`verify` self-localizes a miscompile.** When the differential smoke diverges
+  (CRuby and Spinel both run but disagree on stdout), `verify` now runs the
+  value-bisection harness (`spinel-dev tools/value-bisect/bisect.sh --json`) on
+  the still-on-disk harness and, when it pins the first scalar local to part
+  ways, appends a `localized:<file>:<line> <var> cruby=… spinel=…` reason. This
+  upgrades a bare `diff:L2 cruby=… spinel=…` ("the outputs differ") into a line
+  to look at ("`x` is wrong here"). Strictly best-effort and non-fatal: if the
+  harness can't be found (it's a separate repo — override with `SPINEL_BISECT`,
+  else probed next to the engine and at `~/sites/spinel-dev`) or can't attribute
+  the divergence to a traced scalar, the verdict is returned unchanged.
+
 ## [0.1.1] — 2026-06-01
 
 ### Fixed

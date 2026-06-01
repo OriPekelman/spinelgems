@@ -1,4 +1,5 @@
 require "open3"
+require_relative "localizer"
 
 module Bundler
   module Spinel
@@ -49,6 +50,15 @@ module Bundler
         # take, not just "rejected". Prepended to reasons as `rubric:<tag>`.
         unless verdict == "verified" || verdict == "loaded" || verdict == "clean"
           reasons = ["rubric:#{rubric(ruby_ok, ruby_err, spin_ok, spin_err, ruby_out, spin_out, gem_name)}"] + reasons
+        end
+        # Self-localize a miscompile: a `diff:L2 cruby=… spinel=…` reason says
+        # the outputs differ but not where the value went wrong. The bisector
+        # traces the still-on-disk harness (require_relative'd gem files included)
+        # and, when it pins a diverging scalar, appends `localized:<file>:<line>
+        # <var> cruby=… spinel=…`. Best-effort: nil when it can't localize.
+        if verdict == "rejected" && reasons.include?("miscompile")
+          loc = Localizer.new(@engine).localize(harness)
+          reasons += [loc] if loc
         end
         @ledger.record(@ledger.build(
           gem: gem_name, version: version, rev: @engine.rev,

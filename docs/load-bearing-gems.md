@@ -84,6 +84,61 @@ The transitive-centrality cut here is the novel part; the underlying data and th
   (PageRank/betweenness over npm, PyPI, RubyGems graphs) — the same shape of
   analysis applied to security/maintenance risk rather than compiler triage.
 
+## Buildability & impact — from "load-bearing" to *actionable*
+
+Raw load-bearing rank answers "what's deep," not "what should we do." Two more
+passes (`harness/load-bearing/buildability.rb`) turn it into a roadmap.
+
+**Buildability.** A gem is *buildable* only if it compiles **and** its whole
+transitive closure compiles. At `95557f5`:
+
+| | gems |
+|---|---:|
+| buildable (closure all green) | 50,688 |
+| **blocked** (compiles itself, but a rejected dep) | **29,139** |
+| rejected (doesn't compile) | 110,256 |
+
+So ~29k gems that the catalog shows as `clean` can't actually be used — a
+transitive dependency is rejected. "Clean" is a per-gem fact; buildable is the
+useful one.
+
+**Impact flow (sole-blocker).** For each blocked gem we track its *root blockers*
+— the rejected gems beneath it (capped, so the single-blocker case resolves
+exactly). Then **sole-impact(B)** = how many gems become buildable if you fix
+**B alone**. That's the "a single change flows up a whole subtree" signal you
+wanted. The top blockers by sole-impact: `thor` (495), `json` (257), `rack`
+(215), `redis` (155), `colorize` (103), `logger` (44)…
+
+**But not all blockers are first targets.** Classified by failure:
+`c-extension` (native — needs FFI/ext vendoring, a separate track) and
+`hard-feature` (heavy metaprogramming — the Rails ecosystem) are deferred for
+tep/spinelgems. Filtering to **compiler-fixable** blockers (the bug class this
+harness files) gives the real near-term roadmap — and deliberately reaches
+*beyond* the Rails-heavy top-50:
+
+| gem | sole-impact | lib size | failure |
+|---|---:|---|---|
+| **thor** | **495** | 4 files / 160 LOC | codegen (`handle_no_command_error` on class → 0) |
+| redis | 155 | small | unresolved-call |
+| colorize | 103 | 5 / 66 | analyze-failed |
+| ostruct | 46 | 2 / 152 | analyze-failed (stdlib) |
+| logger | 44 | 2 / 209 | unresolved-call (stdlib) |
+| rexml | 40 | 1 / 49 | analyze-failed (stdlib) |
+| trollop | 36 | 2 / 130 | unresolved-call |
+| os | 11 | 2 / 55 | unresolved-call |
+
+(full list: `harness/load-bearing/blockers.tsv`)
+
+**Two ways to fix a target — and small libs favour the second.** A blocker can be
+unblocked either by a **Spinel compiler fix** (file a focused issue, the usual
+pipeline) *or* by a **PR to the library itself** that sidesteps the limitation
+where it makes sense (e.g. `require` → `require_relative`, or making a bit of
+dynamic dispatch static). The size column is there for exactly this: a 4-file /
+160-LOC gem like `thor` is a tractable, maintainer-friendly PR — and fixing it in
+the lib unblocks ~500 downstream gems without waiting on the compiler. The
+small-and-load-bearing quadrant (`thor`, `colorize`, `trollop`, `os`,
+`awesome_print`, `clamp`…) is where library PRs have the best leverage-to-effort.
+
 ## Limitations & next steps
 
 - **Per-version**: deps are read from the cached version of each gem, not resolved

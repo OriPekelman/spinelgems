@@ -102,10 +102,14 @@ class V
     0
   end
 
-  # whitelist sort -> ORDER BY clause (never interpolate raw input)
-  def self.order_by(sort)
+  # whitelist sort -> ORDER BY clause (never interpolate raw input).
+  # `verdict` lets the verified view default to signals-first: a gem with a
+  # human attestation and/or passing tests outranks a bare-★ one, then by
+  # downloads. Explicit sort=name/updated still wins.
+  def self.order_by(sort, verdict = "")
     return "gem_lower ASC" if sort == "name"
     return "updated DESC, downloads DESC" if sort == "updated"
+    return "(human + tests) DESC, downloads DESC, gem_lower ASC" if verdict == "verified"
     "downloads DESC, gem_lower ASC"
   end
 
@@ -207,7 +211,7 @@ get '/catalog' do
   page = 1 if page < 1
   per = 100
   off = (page - 1) * per
-  order = V.order_by(sort)
+  order = V.order_by(sort, verdict)
   like = "%" + q + "%"
   # Integer "match-all" flags (1 = no filter). NOT empty-string compares:
   # Tep::SQLite bind_str("") binds NULL, so `? = ''` would be `NULL = ''` → NULL

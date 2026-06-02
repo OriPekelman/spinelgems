@@ -403,6 +403,13 @@ module Bundler
       # candidates.tsv / compat.jsonl for machine consumers).
       def verdict_page_html(verdict, all_rs, counts)
         full = all_rs.select { |r| r.verdict == verdict }
+        # Verified view: signals-first. A gem with a human attestation and/or
+        # passing own-tests outranks a bare-★ one (most-trusted on top), then by
+        # downloads — matching the dynamic /catalog order_by. all_rs is already
+        # downloads-sorted, so the stable sort keeps downloads as the tiebreak.
+        if verdict == "verified"
+          full = full.sort_by.with_index { |r, i| [-((r.human ? 1 : 0) + (r.tests ? 1 : 0)), i] }
+        end
         capped = (verdict == "rejected") && full.size > REJECTED_CAP
         shown = capped ? full.first(REJECTED_CAP) : full
 

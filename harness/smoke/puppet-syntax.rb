@@ -1,0 +1,7 @@
+puts PuppetSyntax.exclude_paths.sort.inspect
+puts PuppetSyntax.hieradata_paths.length
+puts PuppetSyntax.manifests_paths.inspect
+puts PuppetSyntax.templates_paths.length
+puts PuppetSyntax.fail_on_deprecation_notices.inspect
+puts PuppetSyntax.check_hiera_keys.inspect
+puts PuppetSyntax.check_hiera_data.inspect

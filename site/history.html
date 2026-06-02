@@ -13,6 +13,7 @@
 <tr><td class="g"><code>a03bb49</code></td><td class="upd">2026-05-28</td><td class="num">35.3k</td><td class="num">12.5k</td><td class="num">141.9k</td><td class="desc">the first full-corpus survey (189,742 gems)</td></tr>
 <tr><td class="g"><code>8d88ebe</code></td><td class="upd">2026-05-29</td><td class="num">34.8k <span class="down">−449</span></td><td class="num">11.4k <span class="down">−1.1k</span></td><td class="num">143.5k <span class="up">+1.6k</span></td><td class="desc">module/reflection + GC fixes (is_a?, .class, respond_to?, #1052)</td></tr>
 <tr><td class="g"><code>f8040f3</code></td><td class="upd">2026-05-31</td><td class="num">38.0k <span class="up">+3.1k</span></td><td class="num">14.0k <span class="up">+2.6k</span></td><td class="num">137.8k <span class="down">−5.7k</span></td><td class="desc">DCE for synthetic module class methods (#1062 fix), instance_methods const-fold (#1073), Array#transpose, map→array</td></tr>
+<tr><td class="g"><code>95557f5</code></td><td class="upd">2026-06-02</td><td class="num">55.6k <span class="up">+17.6k</span></td><td class="num">23.9k <span class="up">+9.9k</span></td><td class="num">110.3k <span class="down">−27.5k</span></td><td class="desc">module/class-body side effects + lexical const refs (#1256), Regexp.last_match(n) (#1257), preserve Float-in-Hash (#1258), Struct typing, JSON.generate, alias, +14 more</td></tr>
 </tbody></table>
 <div class="delta-card"><h3><code>a03bb49</code> &rarr; <code>8d88ebe</code> <span class="up">&uarr; 64 graduated</span> <span class="down">&darr; 1.6k regressed</span></h3>
 <p>Mixed: the module-object fixes graduated gems, but <code>96b21e6</code> (module_function support) <strong>regressed</strong> ~160 gems whose objects were built from a variable-held class (the <code>brass</code> cluster) — caught by the re-probe and filed as <a href="https://github.com/matz/spinel/issues/1062">matz/spinel#1062</a>.</p>
@@ -21,6 +22,10 @@
 <div class="delta-card"><h3><code>8d88ebe</code> &rarr; <code>f8040f3</code> <span class="up">&uarr; 6.2k graduated</span> <span class="down">&darr; 415 regressed</span></h3>
 <p><strong>Recovery + gains.</strong> matz bisected #1062 to <code>96b21e6</code> and fixed it (<code>e2e010c</code>); together with the new <code>instance_methods</code> const-fold (<a href="https://github.com/matz/spinel/issues/1073">#1073</a>) and <code>transpose</code>/map specializations, the brass cluster and thousands more moved out of <code>rejected</code>.</p>
 <p class="meta">Top transitions: rejected-&gt;clean <b>3.5k</b> &middot; rejected-&gt;risky <b>2.6k</b> &middot; clean-&gt;rejected <b>407</b> &middot; risky-&gt;rejected <b>8</b></p>
+</div>
+<div class="delta-card"><h3><code>f8040f3</code> &rarr; <code>95557f5</code> <span class="up">&uarr; 31.6k graduated</span> <span class="down">&darr; 4.1k regressed</span></h3>
+<p><strong>The biggest single jump yet.</strong> 22 upstream commits — including fixes for three issues this harness filed (<a href="https://github.com/matz/spinel/issues/1256">#1256</a> module-body, <a href="https://github.com/matz/spinel/issues/1257">#1257</a> <code>Regexp.last_match</code>, <a href="https://github.com/matz/spinel/issues/1258">#1258</a> Float-in-Hash) plus Struct typing, <code>alias</code>, <code>JSON.generate</code> for records and more — moved <strong>20,175</strong> gems out of <code>rejected</code>, among them <code>rspec</code>, <code>globalid</code>, <code>mini_portile2</code> and <code>coffee-rails</code>.</p>
+<p class="meta">Top transitions: rejected-&gt;clean <b>20.2k</b> &middot; rejected-&gt;risky <b>11.5k</b> &middot; clean-&gt;rejected <b>2.6k</b> &middot; risky-&gt;rejected <b>1.5k</b></p>
 </div>
 
 </main>

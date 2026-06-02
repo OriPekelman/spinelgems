@@ -26,6 +26,15 @@ module Bundler
                 "(<code>e2e010c</code>); together with the new <code>instance_methods</code> const-fold " \
                 "(<a href=\"https://github.com/matz/spinel/issues/1073\">#1073</a>) and <code>transpose</code>/map " \
                 "specializations, the brass cluster and thousands more moved out of <code>rejected</code>." },
+        { rev: "95557f5", date: "2026-06-02", commit: "module/class-body side effects + lexical const refs (#1256), Regexp.last_match(n) (#1257), preserve Float-in-Hash (#1258), Struct typing, JSON.generate, alias, +14 more",
+          file: "survey-95557f5/compat.jsonl",
+          note: "<strong>The biggest single jump yet.</strong> 22 upstream commits — including fixes for three " \
+                "issues this harness filed (<a href=\"https://github.com/matz/spinel/issues/1256\">#1256</a> module-body, " \
+                "<a href=\"https://github.com/matz/spinel/issues/1257\">#1257</a> <code>Regexp.last_match</code>, " \
+                "<a href=\"https://github.com/matz/spinel/issues/1258\">#1258</a> Float-in-Hash) plus Struct typing, " \
+                "<code>alias</code>, <code>JSON.generate</code> for records and more — moved <strong>20,175</strong> gems " \
+                "out of <code>rejected</code>, among them <code>rspec</code>, <code>globalid</code>, " \
+                "<code>mini_portile2</code> and <code>coffee-rails</code>." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

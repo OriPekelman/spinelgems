@@ -142,7 +142,7 @@ module Bundler
           <title>#{h title}</title><link rel="stylesheet" href="/assets/style.css"></head>
           <body>
           <header><a class="brand" href="/">#{gem}SpinelGems</a>
-            <nav><a href="/">Home</a> <a href="/catalog">Catalog</a> <a href="/history.html">History</a>
+            <nav><a href="/">Home</a> <a href="/catalog">Catalog</a> <a href="/load-bearing.html">Load-bearing</a> <a href="/history.html">History</a>
               <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav></header>
           <main>
           #{body}

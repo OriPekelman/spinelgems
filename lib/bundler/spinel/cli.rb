@@ -29,6 +29,7 @@ module Bundler
         when "build-site"  then cmd_build_site(argv)
         when "build-db"    then cmd_build_db(argv)
         when "build-history" then cmd_build_history(argv)
+        when "build-load-bearing" then cmd_build_load_bearing(argv)
         when "server"      then cmd_server(argv)
         when "ledger"  then cmd_ledger(argv)
         when "diff"    then cmd_diff(argv)
@@ -305,6 +306,13 @@ module Bundler
         out = (j = argv.index("--out")) ? argv[j + 1] : raise(Error, "build-history needs --out FILE")
         f = History.new(Dir.pwd).build_html(File.expand_path(out))
         @out.puts "built history -> #{f}"
+        0
+      end
+
+      def cmd_build_load_bearing(argv)
+        out = (j = argv.index("--out")) ? argv[j + 1] : raise(Error, "build-load-bearing needs --out FILE")
+        f = LoadBearing.new.build_html(File.expand_path(out))
+        @out.puts "built load-bearing -> #{f}"
         0
       end
 

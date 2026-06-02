@@ -459,7 +459,7 @@ module Bundler
           <body>
           <header>
             <a class="brand" href="/"><svg class="gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9z" fill="#7b2d8e"/><path d="M6 3 2 9l10 13z" fill="#5a1f6b" opacity=".55"/><path d="M18 3l4 6-10 13z" fill="#b14fc4"/><path d="M6 3h12l-6 6z" fill="#d98ee8"/></svg>SpinelGems</a>
-            <nav><a href="/">Home</a> <a href="/catalog">Catalog</a> <a href="/history.html">History</a>
+            <nav><a href="/">Home</a> <a href="/catalog">Catalog</a> <a href="/load-bearing.html">Load-bearing</a> <a href="/history.html">History</a>
               <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav>
           </header>
           <main>

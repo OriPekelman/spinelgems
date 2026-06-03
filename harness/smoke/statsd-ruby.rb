@@ -1,64 +1,79 @@
-# Smoke: statsd-ruby — test pure string formatting without network
-# Subclass Statsd to override connect/send_to_socket, avoiding actual sockets
-class FakeStatsd < Statsd
-  def initialize(host = '127.0.0.1', port = 8125)
-    @host = host || '127.0.0.1'
-    @port = port || 8125
-    self.delimiter = "."
-    @prefix = nil
-    @batch_size = 10
-    @batch_byte_size = nil
-    @flush_interval = nil
-    @postfix = nil
-    @socket = nil
-    @protocol = :udp
-    @s_mu = Mutex.new
-    @sent = []
-    # do NOT call connect
+require 'statsd_tcp'
+
+# Stub network I/O: override connect and send_to_socket so real
+# stat-formatting logic can be exercised without any socket.
+class StatsdTcp
+  def connect
+    @socket = :stub
   end
+
+  protected
 
   def send_to_socket(message)
-    @sent << message
+    (@_sent ||= []) << message
+    message.length
   end
 
+  public
+
   def last_sent
-    @sent.last
+    (@_sent ||= []).last
   end
 end
 
-sd = FakeStatsd.new('localhost', 8125)
+s = StatsdTcp.new('localhost', 8125)
 
-# namespace= sets prefix
-sd.namespace = 'myapp'
-puts sd.namespace
-puts sd.prefix
+# namespace= sets @prefix
+s.namespace = 'myapp'
+puts s.namespace
+puts s.prefix
 
-# postfix= sets @postfix
-sd.postfix = 'prod'
-puts sd.postfix
+# postfix= with value
+s.postfix = 'prod'
+puts s.postfix
 
-# delimiter
-sd.delimiter = '-'
-puts sd.delimiter
+# delimiter default and assignment
+puts s.delimiter
+s.delimiter = '-'
+puts s.delimiter
+s.delimiter = '.'
 
-# reset delimiter
-sd.delimiter = nil
-puts sd.delimiter
+# Stat formatting: count
+s.namespace = 'test'
+s.postfix = nil
+s.count('requests', 5)
+puts s.last_sent
 
-# stat formatting via count (goes through send_stats -> send_to_socket)
-sd2 = FakeStatsd.new
-sd2.namespace = 'test'
-sd2.count('requests', 5, 1)
-puts sd2.last_sent
+# increment (count=1)
+s.increment('hits')
+puts s.last_sent
 
-sd2.increment('hits')
-puts sd2.last_sent
+# decrement (count=-1)
+s.decrement('misses')
+puts s.last_sent
 
-sd2.decrement('misses')
-puts sd2.last_sent
+# gauge
+s.gauge('memory', 1024)
+puts s.last_sent
 
-sd2.gauge('memory', 1024)
-puts sd2.last_sent
+# timing
+s.timing('response', 42)
+puts s.last_sent
 
-sd2.timing('response', 42)
-puts sd2.last_sent
+# set
+s.set('users', 7)
+puts s.last_sent
+
+# explicit count, no namespace
+s.namespace = nil
+s.count('explicit', 99, 1)
+puts s.last_sent
+
+# Ruby :: delimiter replacement (:: -> .)
+s.increment('My::Module::Event')
+puts s.last_sent
+
+# MonotonicTime returns a positive numeric
+ms = StatsdTcp::MonotonicTime.time_in_ms
+puts ms > 0
+puts ms.is_a?(Numeric)

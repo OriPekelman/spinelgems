@@ -1,9 +1,21 @@
-fnv = FNV.new
-puts fnv.fnv1_32("hello")
-puts fnv.fnv1_64("hello")
-puts fnv.fnv1a_32("hello")
-puts fnv.fnv1a_64("hello")
-puts fnv.fnv1_32("")
-puts fnv.fnv1a_32("abc")
-puts FNV::INIT32
-puts FNV::PRIME64
+require 'fnv'
+
+# FNV-1 32-bit
+puts Fnv::Hash.fnv_1("hello")
+puts Fnv::Hash.fnv_1("world")
+
+# FNV-1a 32-bit
+puts Fnv::Hash.fnv_1a("hello")
+puts Fnv::Hash.fnv_1a("world")
+
+# FNV-1 64-bit
+puts Fnv::Hash.fnv_1("hello", size: 64)
+
+# FNV-1a 64-bit
+puts Fnv::Hash.fnv_1a("hello", size: 64)
+
+# FNV-1a 128-bit
+puts Fnv::Hash.fnv_1a("hello", size: 128)
+
+# empty string — offset basis returned unchanged
+puts Fnv::Hash.fnv_1a("")

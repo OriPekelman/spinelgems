@@ -403,13 +403,12 @@ module Bundler
       # candidates.tsv / compat.jsonl for machine consumers).
       def verdict_page_html(verdict, all_rs, counts)
         full = all_rs.select { |r| r.verdict == verdict }
-        # Verified view: signals-first. A gem with a human attestation and/or
-        # passing own-tests outranks a bare-★ one (most-trusted on top), then by
-        # downloads — matching the dynamic /catalog order_by. all_rs is already
-        # downloads-sorted, so the stable sort keeps downloads as the tiebreak.
-        if verdict == "verified"
-          full = full.sort_by.with_index { |r, i| [-((r.human ? 1 : 0) + (r.tests ? 1 : 0)), i] }
-        end
+        # Signals-first in every tier: a gem with a human attestation and/or
+        # passing own-tests outranks an unsignaled one (most-trusted on top),
+        # then by downloads — matching the dynamic /catalog order_by. all_rs is
+        # already downloads-sorted, so the stable sort keeps downloads as the
+        # tiebreak. Keeps signal-bearing low-download gems (e.g. tep) at the top.
+        full = full.sort_by.with_index { |r, i| [-((r.human ? 1 : 0) + (r.tests ? 1 : 0)), i] }
         capped = (verdict == "rejected") && full.size > REJECTED_CAP
         shown = capped ? full.first(REJECTED_CAP) : full
 
@@ -431,7 +430,7 @@ module Bundler
 
         body << %(<div class="filters">\n)
         body << %(  <input id="q" type="search" placeholder="filter by gem name…" autocomplete="off">\n)
-        body << %(  <label class="floor"><input type="checkbox" id="floor" checked> )
+        body << %(  <label class="floor"><input type="checkbox" id="floor"> )
         body << %(hide low-signal gems (&lt; #{fmt_n MIN_DOWNLOADS} downloads)</label>\n)
         body << %(</div>\n)
 
@@ -439,7 +438,7 @@ module Bundler
         body << %(<th class="num">downloads</th><th>updated</th><th>description</th></tr></thead><tbody>\n)
         shown.each do |r|
           gem_cell = r.homepage ? %(<a href="#{h r.homepage}" rel="noopener nofollow">#{h r.gem}</a>) : h(r.gem)
-          body << %(<tr data-gem="#{h r.gem.downcase}" data-dl="#{r.downloads}">)
+          body << %(<tr data-gem="#{h r.gem.downcase}" data-dl="#{r.downloads}" data-sig="#{r.human || r.tests ? 1 : 0}">)
           body << %(<td class="v #{r.verdict}" title="#{h r.notes}">#{GLYPH[r.verdict]} #{r.verdict}</td>)
           body << %(<td class="sig">#{signals_html(r)}</td>)
           body << %(<td class="g">#{gem_cell} <span class="ver">#{h r.version}</span></td>)
@@ -535,7 +534,8 @@ module Bundler
           const hideLow = floor.checked;
           for (const tr of rows) {
             const okQ = !term || tr.dataset.gem.includes(term);
-            const okF = !hideLow || (+tr.dataset.dl) >= FLOOR;
+            // signal-bearing rows (👤/✪) are never hidden by the floor
+            const okF = !hideLow || tr.dataset.sig === '1' || (+tr.dataset.dl) >= FLOOR;
             tr.style.display = (okQ && okF) ? '' : 'none';
           }
         }

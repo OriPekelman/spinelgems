@@ -109,8 +109,10 @@ class V
   def self.order_by(sort, verdict = "")
     return "gem_lower ASC" if sort == "name"
     return "updated DESC, downloads DESC" if sort == "updated"
-    return "(human + tests) DESC, downloads DESC, gem_lower ASC" if verdict == "verified"
-    "downloads DESC, gem_lower ASC"
+    # Signals-first in every tier: a 👤 human / ✪ tests gem leads its verdict,
+    # then by downloads. (On rejected, signals are suppressed so this is just
+    # downloads DESC.) Keeps signal-bearing low-download gems like tep visible.
+    "(human + tests) DESC, downloads DESC, gem_lower ASC"
   end
 
   # rubric tag -> human label (the "here's what it'd take" signal)
@@ -205,7 +207,11 @@ get '/catalog' do
   verdict = params["verdict"]
   q = params["q"]
   sort = params["sort"]
-  min = 1000
+  # No default downloads floor: results are download-ordered (popular first) and
+  # the verdict tiers + signal badges carry the curation, so the long tail just
+  # sorts to the bottom rather than being hidden. `min_downloads` stays as an
+  # optional user filter; signal-bearing gems bypass it (see filt below).
+  min = 0
   min = params["min_downloads"].to_i if params["min_downloads"].length > 0
   page = params["page"].to_i
   page = 1 if page < 1
@@ -221,7 +227,11 @@ get '/catalog' do
   vflag = 0 if verdict.length > 0
   qflag = 1
   qflag = 0 if q.length > 0
-  filt = "downloads >= ? AND (? = 1 OR verdict = ?) AND (? = 1 OR gem_lower LIKE ?)"
+  # A gem carrying a signal (👤 human / ✪ tests) is high-trust regardless of
+  # download count, so it bypasses the downloads floor — otherwise a
+  # human-attested but low-download gem like tep would be invisible, defeating
+  # the point of the signal.
+  filt = "(downloads >= ? OR human = 1 OR tests = 1) AND (? = 1 OR verdict = ?) AND (? = 1 OR gem_lower LIKE ?)"
 
   db = Tep::SQLite.new
   db.open(DB_PATH)

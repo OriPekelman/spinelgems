@@ -35,6 +35,16 @@ module Bundler
                 "<code>alias</code>, <code>JSON.generate</code> for records and more — moved <strong>20,175</strong> gems " \
                 "out of <code>rejected</code>, among them <code>rspec</code>, <code>globalid</code>, " \
                 "<code>mini_portile2</code> and <code>coffee-rails</code>." },
+        { rev: "a782696", date: "2026-06-03", commit: "StringScanner unscan/check + Error, Time#to_s + puts-nil, Dir.exist? + alias_method dispatch, missing int-hash keys as nil, RBS extractor heterogeneous-union→poly, subclass-initialize poly unification (13 commits)",
+          file: "survey-a782696/compat.jsonl",
+          note: "<strong>A consolidation rev.</strong> The base verdict mix is essentially flat after the previous " \
+                "jump — 13 upstream commits of correctness fixes (<code>StringScanner</code>, <code>Time#to_s</code>, " \
+                "<code>Dir.exist?</code>/<code>alias_method</code>, and the RBS-extractor union→poly change) graduated a " \
+                "small set of gems — <code>google-adwords-api</code>, <code>libdatadog</code>, <code>random_user_agent</code>, " \
+                "<code>twitter_username_extractor</code> and the <code>redcar-*</code> cluster — while a couple regressed " \
+                "and were caught by the re-probe. The bigger story this rev was off the catalog: the harness found " \
+                "<code>spinel_analyze</code> consuming 100+ GB on a cluster of auto-generated API-SDK gems (a compiler " \
+                "memory blow-up, filed upstream)." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

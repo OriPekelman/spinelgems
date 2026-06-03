@@ -62,12 +62,16 @@ echo "[harness-run] spinel : $("$CLI" engine | sed -n '1,2p' | tr '\n' ' ')"
 echo "[harness-run] ledger : $SPINEL_COMPAT_LEDGER  shards=$SHARDS"
 
 # -------- Phase 2a: behaviour smokes --------
+# `--full` force-requires every lib/ file before running the smoke, so a match
+# earns the *full-surface* ★ (probe `verify-full`), not the entrypoint-only
+# `verify` that overstated usability (the qdrant-ruby spike, spinelgems#4). The
+# catalog's `rows` picker only treats verify-full verified as ★.
 SMOKES=("$HERE"/harness/smoke/*.rb)
-echo "[harness-run] Phase 2a: ${#SMOKES[@]} behaviour smokes"
+echo "[harness-run] Phase 2a: ${#SMOKES[@]} behaviour smokes (--full)"
 printf '%s\n' "${SMOKES[@]}" \
   | xargs -P "$SHARDS" -I{} bash -c '
       s="$1"; g="$(basename "$s" .rb)"
-      "$0" verify "$g" --smoke "$s" 2>&1 \
+      "$0" verify "$g" --smoke "$s" --full 2>&1 \
         | sed "s|^|  [smoke:$g] |"
     ' "$CLI" {} > "$OUT/phase2a.log" 2>&1 || true
 echo "[harness-run] Phase 2a done -> $OUT/phase2a.log"

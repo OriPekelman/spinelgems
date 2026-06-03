@@ -4,7 +4,7 @@
 <title>History — SpinelGems</title><link rel="stylesheet" href="/assets/style.css"></head>
 <body>
 <header><a class="brand" href="/"><svg class="gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9z" fill="#7b2d8e"/><path d="M6 3 2 9l10 13z" fill="#5a1f6b" opacity=".55"/><path d="M18 3l4 6-10 13z" fill="#b14fc4"/><path d="M6 3h12l-6 6z" fill="#d98ee8"/></svg>SpinelGems</a>
-  <nav><a href="/">Home</a> <a href="/catalog">Catalog</a> <a href="/history.html">History</a>
+  <nav><a href="/">Home</a> <a href="/catalog">Catalog</a> <a href="/load-bearing.html">Load-bearing</a> <a href="/history.html">History</a>
     <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav></header>
 <main>
 <h1>How the catalog has changed</h1>
@@ -14,6 +14,7 @@
 <tr><td class="g"><code>8d88ebe</code></td><td class="upd">2026-05-29</td><td class="num">34.8k <span class="down">−449</span></td><td class="num">11.4k <span class="down">−1.1k</span></td><td class="num">143.5k <span class="up">+1.6k</span></td><td class="desc">module/reflection + GC fixes (is_a?, .class, respond_to?, #1052)</td></tr>
 <tr><td class="g"><code>f8040f3</code></td><td class="upd">2026-05-31</td><td class="num">38.0k <span class="up">+3.1k</span></td><td class="num">14.0k <span class="up">+2.6k</span></td><td class="num">137.8k <span class="down">−5.7k</span></td><td class="desc">DCE for synthetic module class methods (#1062 fix), instance_methods const-fold (#1073), Array#transpose, map→array</td></tr>
 <tr><td class="g"><code>95557f5</code></td><td class="upd">2026-06-02</td><td class="num">55.6k <span class="up">+17.6k</span></td><td class="num">23.9k <span class="up">+9.9k</span></td><td class="num">110.3k <span class="down">−27.5k</span></td><td class="desc">module/class-body side effects + lexical const refs (#1256), Regexp.last_match(n) (#1257), preserve Float-in-Hash (#1258), Struct typing, JSON.generate, alias, +14 more</td></tr>
+<tr><td class="g"><code>a782696</code></td><td class="upd">2026-06-03</td><td class="num">55.6k</td><td class="num">23.9k <span class="down">−4</span></td><td class="num">110.3k <span class="up">+5</span></td><td class="desc">StringScanner unscan/check + Error, Time#to_s + puts-nil, Dir.exist? + alias_method dispatch, missing int-hash keys as nil, RBS extractor heterogeneous-union→poly, subclass-initialize poly unification (13 commits)</td></tr>
 </tbody></table>
 <div class="delta-card"><h3><code>a03bb49</code> &rarr; <code>8d88ebe</code> <span class="up">&uarr; 64 graduated</span> <span class="down">&darr; 1.6k regressed</span></h3>
 <p>Mixed: the module-object fixes graduated gems, but <code>96b21e6</code> (module_function support) <strong>regressed</strong> ~160 gems whose objects were built from a variable-held class (the <code>brass</code> cluster) — caught by the re-probe and filed as <a href="https://github.com/matz/spinel/issues/1062">matz/spinel#1062</a>.</p>
@@ -26,6 +27,10 @@
 <div class="delta-card"><h3><code>f8040f3</code> &rarr; <code>95557f5</code> <span class="up">&uarr; 31.6k graduated</span> <span class="down">&darr; 4.1k regressed</span></h3>
 <p><strong>The biggest single jump yet.</strong> 22 upstream commits — including fixes for three issues this harness filed (<a href="https://github.com/matz/spinel/issues/1256">#1256</a> module-body, <a href="https://github.com/matz/spinel/issues/1257">#1257</a> <code>Regexp.last_match</code>, <a href="https://github.com/matz/spinel/issues/1258">#1258</a> Float-in-Hash) plus Struct typing, <code>alias</code>, <code>JSON.generate</code> for records and more — moved <strong>20,175</strong> gems out of <code>rejected</code>, among them <code>rspec</code>, <code>globalid</code>, <code>mini_portile2</code> and <code>coffee-rails</code>.</p>
 <p class="meta">Top transitions: rejected-&gt;clean <b>20.2k</b> &middot; rejected-&gt;risky <b>11.5k</b> &middot; clean-&gt;rejected <b>2.6k</b> &middot; risky-&gt;rejected <b>1.5k</b></p>
+</div>
+<div class="delta-card"><h3><code>95557f5</code> &rarr; <code>a782696</code> <span class="up">&uarr; 17 graduated</span> <span class="down">&darr; 21 regressed</span></h3>
+<p><strong>A consolidation rev.</strong> The base verdict mix is essentially flat after the previous jump — 13 upstream commits of correctness fixes (<code>StringScanner</code>, <code>Time#to_s</code>, <code>Dir.exist?</code>/<code>alias_method</code>, and the RBS-extractor union→poly change) graduated a small set of gems — <code>google-adwords-api</code>, <code>libdatadog</code>, <code>random_user_agent</code>, <code>twitter_username_extractor</code> and the <code>redcar-*</code> cluster — while a couple regressed and were caught by the re-probe. The bigger story this rev was off the catalog: the harness found <code>spinel_analyze</code> consuming 100+ GB on a cluster of auto-generated API-SDK gems (a compiler memory blow-up, filed upstream).</p>
+<p class="meta">Top transitions: clean-&gt;rejected <b>12</b> &middot; rejected-&gt;clean <b>12</b> &middot; risky-&gt;rejected <b>9</b> &middot; rejected-&gt;risky <b>5</b></p>
 </div>
 
 </main>

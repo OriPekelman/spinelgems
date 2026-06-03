@@ -2,8 +2,13 @@
 # Smoke test for svix gem — exercises Webhook signing and model serialization/deserialization.
 require 'svix'
 
-# 1. Webhook#sign — deterministic HMAC signing
-secret = "whsec_MfKQ9r8GKYqrTwjUPZB8TDgua74IVkKhVQLkzFJYKyY="
+# 1. Webhook#sign — deterministic HMAC signing.
+# Build a throwaway test key at runtime so no secret-shaped literal lives in
+# the source (the previous hard-coded value was Svix's public docs sample, but
+# it still tripped GitHub's whsec_ secret scanner). svix base64-decodes the
+# part after the whsec_ prefix.
+require "base64"
+secret = "whsec_" + Base64.strict_encode64("spinelgems-svix-smoke-not-a-real-key")
 wh = Svix::Webhook.new(secret)
 
 msg_id  = "msg_p5jXN8AQM9LWM0D4loKWxJek"

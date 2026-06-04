@@ -45,6 +45,19 @@ module Bundler
                 "and were caught by the re-probe. The bigger story this rev was off the catalog: the harness found " \
                 "<code>spinel_analyze</code> consuming 100+ GB on a cluster of auto-generated API-SDK gems (a compiler " \
                 "memory blow-up, filed upstream)." },
+        { rev: "9c0a5f0", date: "2026-06-04", commit: "79 commits — incl. fixes for 6 harness-filed issues: stdlib-class-in-ivar (#1305), reopen-Object (#1306), lambda/proc branch-local (#1315), &blk+block_given? (#1316), inject(&:sym) (#1317), ignored-require constant (#1273)",
+          file: "survey-9c0a5f0/compat.jsonl",
+          note: "<strong>The harness loop paying off.</strong> matz landed fixes for <strong>six</strong> issues this " \
+                "harness filed the day before — all common idioms: <code>block_given?</code> with a named " \
+                "<code>&amp;blk</code> (<a href=\"https://github.com/matz/spinel/issues/1316\">#1316</a>), " \
+                "<code>inject(&amp;:+)</code> (<a href=\"https://github.com/matz/spinel/issues/1317\">#1317</a>), " \
+                "reopening <code>class Object</code> (<a href=\"https://github.com/matz/spinel/issues/1306\">#1306</a>), " \
+                "a stdlib class held in an instance variable " \
+                "(<a href=\"https://github.com/matz/spinel/issues/1305\">#1305</a>), and a branch-assigned local inside a " \
+                "lambda/proc (<a href=\"https://github.com/matz/spinel/issues/1315\">#1315</a>). <strong>3,487</strong> gems " \
+                "moved out of <code>rejected</code> (110.3k→106.8k). The one feature ruled out of scope — aliasing the " \
+                "regexp special globals (<a href=\"https://github.com/matz/spinel/issues/1307\">#1307</a>) — now fails with a " \
+                "clear diagnostic instead of bad C." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

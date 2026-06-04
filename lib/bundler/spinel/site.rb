@@ -52,7 +52,7 @@ module Bundler
 
       # One-line semantics per verdict — used as the lede on each per-verdict page.
       BLURB = {
-        "verified" => "<strong>Full surface</strong> compiles and a behaviour smoke matches CRuby under a Spinel-compiled harness — every <code>lib/</code> file force-required (no <code>autoload</code> masking, no missing-dependency rescue), not just the entrypoint. The only verdict to trust where it matters. A constant/VERSION-only smoke that loads the entrypoint but leaves the gem's real code behind <code>autoload</code> is <em>not</em> enough — that overstated usability, so the bar was tightened to whole-surface. Sticky across engine revisions until a re-run catches a regression.",
+        "verified" => "<strong>Full surface</strong> compiles and a behaviour smoke matches CRuby under a Spinel-compiled harness — every <code>lib/</code> file force-required (no <code>autoload</code> masking, no missing-dependency rescue), not just the entrypoint. The only verdict to trust where it matters. A constant/VERSION-only smoke that loads the entrypoint but leaves the gem's real code behind <code>autoload</code> is <em>not</em> enough — that overstated usability, so the bar was tightened to whole-surface. Sticky across engine revisions until a re-run catches a regression. <strong>Or</strong>: for a gem the mechanical probe can't rank — a Spinel-<em>native</em> program rather than a <code>require</code>-library (e.g. <code>tep</code>, the translator that compiles this very site) — a <span class=\"badge human\">👤 human</span> attestation of real production use is the verification (the strongest signal we carry); a fresh behaviour failure still overrides it.",
         "loaded"   => "Compiles and loads identically under CRuby and Spinel via a require-only differential. Logic untested — a gem can load fine and still silently miscompile in the code paths the require-only smoke doesn't exercise. Weaker than <strong>verified</strong>; not a trust signal.",
         "clean"    => "Compiles clean (cheap static lower bound). No behaviour was exercised — the survey doesn't run the gem. Massively overstates compatibility; the harness is the trustworthy check.",
         "risky"    => "Compiles, but the source uses constructs Spinel degrades silently (<code>eval</code>, <code>define_method</code>, …). Allowed by default; fails under <code>spinel-compat check --strict</code>.",
@@ -312,6 +312,17 @@ module Bundler
           ever_verified << [v.gem, v.version] if v.verdict == "verified" && v.probe == "verify-full"
           current_entries[v.gem] << v if v.rev == target_rev
         end
+
+        # A human attestation of real production use is the strongest trust
+        # signal we carry — stronger than a hand smoke — and for a gem the
+        # mechanical probe *can't* rank, it's the only applicable verification.
+        # The require-probe assumes "gem = library you require"; a Spinel-native
+        # program like tep (a translator/framework, FFI + no CRuby runtime) can't
+        # pass it though it demonstrably works (it compiles this very site). So a
+        # human-attested (gem,version) earns ★ exactly like a verify-full pass —
+        # unless a fresh *behaviour* probe (verify/verify-full) contradicts the
+        # human's claim (handled by the `behaviour_rejected` guard below).
+        attestations.each_key { |k| ever_verified << k }
 
         current_entries.map do |name, vs|
           # Within the current rev, pick the *strongest* signal — not the

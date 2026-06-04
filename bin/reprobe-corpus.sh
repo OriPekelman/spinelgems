@@ -47,12 +47,25 @@ echo "[reprobe] spinel : $("$CLI" engine | sed -n '2p')"
 echo "[reprobe] list   : $LIST  shards=$SHARDS  ledger=$SPINEL_COMPAT_LEDGER"
 
 # Map each corpus gem to its newest cached source dir (no fetch, no network).
+# Gems on the analyze-bomb blacklist (survey-193k/analyze-bombs.txt) are NOT
+# probed: each makes spinel_analyze OOM/timeout (matz/spinel#1302) and burns the
+# full ~120s analyze timeout while only ever producing `rejected`. We emit a
+# synthetic `rejected` (probe=blacklist) for them so the catalog still lists
+# them, and skip the expensive probe. Remove a gem from the blacklist once
+# #1302 lands to re-probe it.
 CACHE="$(ruby -e 'require "fileutils"; puts File.expand_path(ENV["SPINEL_COMPAT_CACHE"] || "~/.cache/spinel-compat/gems")')"
 TSV="$OUT/cached.tsv"
-SP_LIST="$LIST" SP_CACHE="$CACHE" SP_TSV="$TSV" ruby -e '
-  require "set"
+BLACKLIST="$HERE/survey-193k/analyze-bombs.txt"
+FULL_REV="$("$CLI" engine 2>/dev/null | sed -n 's/.*engine rev *: //p')"
+SP_LIST="$LIST" SP_CACHE="$CACHE" SP_TSV="$TSV" SP_BLACKLIST="$BLACKLIST" \
+SP_REV="$FULL_REV" SP_LEDGER="$SPINEL_COMPAT_LEDGER" ruby -e '
+  require "set"; require "json"
   corpus = Set.new
   File.foreach(ENV["SP_LIST"]) { |l| n = l.strip; corpus << n unless n.empty? || n.start_with?("#") }
+  bomb = Set.new
+  if (bf = ENV["SP_BLACKLIST"]) && File.exist?(bf)
+    File.foreach(bf) { |l| n = l.strip; bomb << n unless n.empty? || n.start_with?("#") }
+  end
   idx = {}
   Dir.children(ENV["SP_CACHE"]).each do |e|
     p = File.join(ENV["SP_CACHE"], e); next unless File.directory?(p)
@@ -61,8 +74,25 @@ SP_LIST="$LIST" SP_CACHE="$CACHE" SP_TSV="$TSV" ruby -e '
     cur = idx[n]
     idx[n] = [v, p] if cur.nil? || (File.mtime(p) rescue Time.at(0)) > (File.mtime(cur[1]) rescue Time.at(0))
   end
-  File.open(ENV["SP_TSV"], "w") { |f| idx.each { |n, vv| f << [n, vv[0], vv[1]].join("\t") << "\n" } }
-  warn "[reprobe] corpus=#{corpus.size} cached=#{idx.size}"
+  rev = ENV["SP_REV"].to_s
+  probed = 0; skipped = 0
+  File.open(ENV["SP_TSV"], "w") do |tf|
+    File.open(ENV["SP_LEDGER"], "a") do |lf|
+      idx.each do |n, vv|
+        if bomb.include?(n)
+          lf << JSON.generate("gem" => n, "version" => vv[0], "rev" => rev,
+                              "verdict" => "rejected",
+                              "reasons" => ["analyze-oom: spinel_analyze OOM/timeout, skipped (matz/spinel#1302)"],
+                              "risks" => [], "probe" => "blacklist") << "\n"
+          skipped += 1
+        else
+          tf << [n, vv[0], vv[1]].join("\t") << "\n"
+          probed += 1
+        end
+      end
+    end
+  end
+  warn "[reprobe] corpus=#{corpus.size} cached=#{idx.size} probe=#{probed} blacklisted=#{skipped}"
 '
 
 # Fan out: one `probe --dir` per cached gem, all appending to the ledger.

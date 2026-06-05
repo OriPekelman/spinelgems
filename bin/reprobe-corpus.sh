@@ -98,6 +98,7 @@ SP_REV="$FULL_REV" SP_LEDGER="$SPINEL_COMPAT_LEDGER" ruby -e '
 # Fan out: one `probe --dir` per cached gem, all appending to the ledger.
 cat "$TSV" | xargs -P "$SHARDS" -d'\n' -I{} bash -c '
   IFS=$'"'"'\t'"'"' read -r g v d <<< "$1"
+  ulimit -v 6291456
   exec "$0" probe "$g" "$v" --dir "$d" >/dev/null 2>&1
 ' "$CLI" {} || true
 

@@ -71,7 +71,10 @@ echo "[harness-run] Phase 2a: ${#SMOKES[@]} behaviour smokes (--full)"
 printf '%s\n' "${SMOKES[@]}" \
   | xargs -P "$SHARDS" -I{} bash -c '
       s="$1"; g="$(basename "$s" .rb)"
-      "$0" verify "$g" --smoke "$s" --full 2>&1 \
+      # 180s cap so a miscompiled smoke that infinite-loops at runtime (or a
+      # runaway compile) can'\''t stall the whole xargs barrier — the gem just
+      # gets no verdict this run. (flutie did exactly this, 2026-06-05.)
+      timeout 180 "$0" verify "$g" --smoke "$s" --full 2>&1 \
         | sed "s|^|  [smoke:$g] |"
     ' "$CLI" {} > "$OUT/phase2a.log" 2>&1 || true
 echo "[harness-run] Phase 2a done -> $OUT/phase2a.log"
@@ -83,7 +86,7 @@ echo "[harness-run] Phase 2b: $LOADER_COUNT require-only loaders"
 grep -vE '^\s*(#|$)' "$LOADERS_FILE" \
   | xargs -P "$SHARDS" -I{} bash -c '
       g="$1"
-      "$0" verify "$g" 2>&1 \
+      timeout 180 "$0" verify "$g" 2>&1 \
         | sed "s|^|  [load:$g] |"
     ' "$CLI" {} > "$OUT/phase2b.log" 2>&1 || true
 echo "[harness-run] Phase 2b done -> $OUT/phase2b.log"

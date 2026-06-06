@@ -58,6 +58,17 @@ module Bundler
                 "moved out of <code>rejected</code> (110.3k→106.8k). The one feature ruled out of scope — aliasing the " \
                 "regexp special globals (<a href=\"https://github.com/matz/spinel/issues/1307\">#1307</a>) — now fails with a " \
                 "clear diagnostic instead of bad C." },
+        { rev: "5c9790c", date: "2026-06-05", commit: "17 commits — fixes for 3 harness-filed typed-collection issues: Hash#fetch on int_int_hash (#1329), Array#join on poly_array (#1332), Class-in-collection→poly (#1337); plus regex line-anchoring/gsub-buffer + first-class string type",
+          file: "survey-5c9790c/compat.jsonl",
+          note: "<strong>Typed-collection coverage.</strong> matz fixed three issues this harness filed hours earlier — all " \
+                "the same shape: a method that exists on the generic path but was missing on a <em>specialized</em> " \
+                "collection. <code>Hash#fetch</code> on an int→int hash " \
+                "(<a href=\"https://github.com/matz/spinel/issues/1329\">#1329</a>), <code>Array#join</code> on a mixed " \
+                "<code>poly_array</code> (<a href=\"https://github.com/matz/spinel/issues/1332\">#1332</a>), and a " \
+                "<code>Class</code> value stored in a Hash/Array now typed as poly instead of int " \
+                "(<a href=\"https://github.com/matz/spinel/issues/1337\">#1337</a>, which had broken every options-hash " \
+                "carrying an exception class). The compile+scan base barely moves on fixes like these — they're " \
+                "full-surface/runtime, so the graduation shows in the behaviour-verified tier." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

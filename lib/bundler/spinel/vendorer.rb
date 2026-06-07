@@ -270,18 +270,52 @@ module Bundler
         ven_dir = File.join(dest, dir_rel)
         FileUtils.mkdir_p(File.dirname(ven_dir))
         FileUtils.rm_rf(ven_dir)
-        FileUtils.cp_r(src_dir, ven_dir)
+        # Source-only copy: a path:-sourced dev checkout carries build state —
+        # build*/ dirs (whose CMakeCache pins the ORIGINAL source path and makes
+        # cmake refuse the copy), the .patched sentinel, .git. ggml: 205MB with
+        # build dirs, 24MB without. Top-level name filter covers the real cases.
+        FileUtils.mkdir_p(ven_dir)
+        Dir.children(src_dir).each do |c|
+          next if c.start_with?("build") || c == ".git" || c == ".patched"
+          # stale dev objects/archives would also poison make's mtime logic
+          next if c =~ /\.(o|a|so|dylib|bundle)\z/
+          FileUtils.cp_r(File.join(src_dir, c), File.join(ven_dir, c))
+        end
 
         # Declared patches (toy#45: pristine vendored ggml + vendor-patches/*.patch),
         # applied into the COPY before configure — mini_portile's patch_files
         # precedent. Globs resolve against the gem root; patch files are data,
         # which keeps the no-free-form-shell property of the schema.
-        patches = Array(entry["build"]["patches"]).flat_map { |g| Dir[File.join(src, g.to_s)].sort }
-        patches.each do |p|
-          out, st = Open3.capture2e("patch", "-p1", "-d", ven_dir, "-i", File.expand_path(p))
-          unless st.success?
-            warn "[vendor] patch failed (#{entry['name']}): #{File.basename(p)}: #{out.lines.last(2).join.strip}"
-            return nil
+        # `git apply` (not patch(1)): strict, no fuzz — patch(1) happily
+        # *re*-applies hunks fuzzily onto an already-patched tree. Works in
+        # non-repo dirs too (gem-shipped trees have no .git).
+        #
+        # Patches form an ordered STACK (later ones rewrite earlier ones'
+        # hunks), so already-applied detection is stack-level, not per-patch:
+        # a pristine tree forward-applies the FIRST patch; a fully-patched
+        # working tree (path:-sourced dev checkout, toy's `.patched` flow)
+        # reverse-applies the LAST. Anything else is genuine drift — fail.
+        patches = Array(entry["build"]["patches"])
+                  .flat_map { |g| Dir[File.join(src, g.to_s)].sort }
+                  .map { |p| File.expand_path(p) }
+        unless patches.empty?
+          _, pristine = Open3.capture2e("git", "-C", ven_dir, "apply", "--check", patches.first)
+          if pristine.success?
+            patches.each do |abs|
+              out, st = Open3.capture2e("git", "-C", ven_dir, "apply", abs)
+              unless st.success?
+                warn "[vendor] patch failed (#{entry['name']}): #{File.basename(abs)}: #{out.lines.last(2).join.strip}"
+                return nil
+              end
+            end
+          else
+            _, stacked = Open3.capture2e("git", "-C", ven_dir, "apply", "--reverse", "--check", patches.last)
+            unless stacked.success?
+              warn "[vendor] patches for #{entry['name']} neither apply (pristine) nor " \
+                   "reverse-apply (already patched) — source tree drifted from the patch set"
+              return nil
+            end
+            # already-patched working tree: nothing to do
           end
         end
 
@@ -323,7 +357,12 @@ module Bundler
           return nil
         end
 
-        ven_dir
+        # Project-relative {dir} when the vendor tree lives under the consumer's
+        # cwd (the normal `--into vendor/spinel` case) — substituted -L flags
+        # then survive moving the whole project, not just deleting the gem's
+        # source checkout. Compile from the project root (the documented flow).
+        pwd = Dir.pwd + File::SEPARATOR
+        ven_dir.start_with?(pwd) ? ven_dir.delete_prefix(pwd) : ven_dir
       end
 
       # A placeholder that substitutes ZERO files is drift (toy#45: a gem whose

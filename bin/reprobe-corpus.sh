@@ -102,10 +102,13 @@ SP_REV="$FULL_REV" SP_LEDGER="$SPINEL_COMPAT_LEDGER" ruby -e '
 '
 
 # Fan out: one `probe --dir` per cached gem, all appending to the ledger.
+# NB: no `exec` + a trailing `|| true` INSIDE the lambda — a probe exiting 255
+# makes xargs abort the ENTIRE fan-out (killed the 57af7f9 run at 13k/189k).
+# One bad gem must cost one verdict, never the sweep.
 cat "$TSV" | xargs -P "$SHARDS" -d'\n' -I{} bash -c '
   IFS=$'"'"'\t'"'"' read -r g v d <<< "$1"
   ulimit -v 6291456
-  exec "$0" probe "$g" "$v" --dir "$d" >/dev/null 2>&1
+  "$0" probe "$g" "$v" --dir "$d" >/dev/null 2>&1 || true
 ' "$CLI" {} || true
 
 # Aggregate report (pure ledger aggregation — no probes, no network).

@@ -29,14 +29,20 @@ elif command -v nproc >/dev/null 2>&1; then SHARDS="$(nproc)"
 else SHARDS=4; fi
 
 # Freeze the Spinel checkout (rev-stable for the whole run), like survey-run.sh.
+# SPINEL_NO_FREEZE=1 skips the self-freeze — set it when SPINEL_DIR already IS
+# a frozen copy (e.g. /srv/data/scratch/spinelgems-rp/spinel-frozen-<rev>).
+# The in-repo freeze this would otherwise create is exactly the stray nested
+# dir that corrupted the 9c0a5f0 freeze; harness-run.sh honors the same flag.
 SP_SRC="${SPINEL_DIR:-$HOME/spinel}"
 SP_REV="$(git -C "$SP_SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
-SP_FROZEN="$HERE/spinel-frozen-$SP_REV"
-if [ ! -d "$SP_FROZEN" ]; then
-  echo "[reprobe] freezing $SP_SRC -> $SP_FROZEN"
-  cp -al "$SP_SRC" "$SP_FROZEN" 2>/dev/null || cp -r "$SP_SRC" "$SP_FROZEN"
+if [ -z "${SPINEL_NO_FREEZE:-}" ]; then
+  SP_FROZEN="$HERE/spinel-frozen-$SP_REV"
+  if [ ! -d "$SP_FROZEN" ]; then
+    echo "[reprobe] freezing $SP_SRC -> $SP_FROZEN"
+    cp -al "$SP_SRC" "$SP_FROZEN" 2>/dev/null || cp -r "$SP_SRC" "$SP_FROZEN"
+  fi
+  export SPINEL_DIR="$SP_FROZEN"
 fi
-export SPINEL_DIR="$SP_FROZEN"
 
 OUT="${2:-$HERE/survey-$SP_REV}"
 mkdir -p "$OUT"

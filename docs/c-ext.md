@@ -218,3 +218,41 @@ works fine without; the hook is small when we want it.)
 - **Trust is unchanged.** This is placement/build wiring, not gating — a
   C-ext gem still probes `risky` and earns trust only through the `verified`
   rung (a behaviour smoke through the harness).
+
+## Build-units: heavy native deps (spinelgems#14)
+
+Per-`.c` `source` entries fit small shims (tep's `sphttp.c`). They can't
+express toy's case: `tinynn/*.c` shims *plus a vendored ggml CMake build*
+producing three static archives. That gap forced toy's consumers into a
+per-consumer post-vendor hook that rewrote vendored `-L` flags into
+**absolute paths into toy's checkout** — non-relocatable, unpublishable.
+
+A `build` entry declares the native build instead:
+
+```json
+{ "name": "ggml",
+  "build": {
+    "tool": "cmake",                       // or "make" — only these two
+    "dir": "vendor/ggml",                  // relative to gem root
+    "args": ["-DBUILD_SHARED_LIBS=OFF"],   // configure args (cmake) / make args
+    "targets": ["ggml", "ggml-cpu"],       // build targets (optional)
+    "artifacts": ["build/src/libggml.a"]   // verified to exist post-build
+  },
+  "placeholder": "@GGML_LINK@",
+  "link": ["-L{dir}/build/src", "-L{dir}/build/src/ggml-cpu"] }
+```
+
+At vendor time: the `dir` is **copied into the consumer's vendor tree**, the
+tool runs there, artifacts are verified, and `{dir}` in `link` expands to the
+*vendored* path (project-relative when `--into` is relative, the default) —
+self-contained and relocatable, the same end-state tep's small shims already
+had. A consumer override (`SPINEL_EXT_<PLACEHOLDER>` / `--ext`) supplies
+replacement flags and skips the build entirely (the prebuilt escape hatch).
+
+Why this doesn't break "Gemfiles are Gemfiles": CRuby gems already run
+arbitrary native builds at install time — `extconf.rb`, rake-compiler, and
+most on-point **nokogiri building its vendored libxml2 via mini_portile2**,
+plus rubygems' native Cargo builder. A *declared* cmake/make unit is the
+Spinel analogue of `extensions:` in a gemspec — strictly narrower than the
+extconf precedent (no free-form shell, declared artifacts, auditable), and
+it's what lets a heavy-native gem publish to RubyGems as a normal gem.

@@ -128,6 +128,31 @@ module Bundler
             next
           end
 
+          # Build-unit entry (spinelgems#14): a declared native build (cmake|make)
+          # producing archives *inside the consumer's vendor tree*, with `link`
+          # flags expanded relative to it ({dir} -> the vendored build dir). This
+          # is the heavy-native analogue of `source` per-.c entries — nokogiri's
+          # mini_portile2 precedent, Spinel-shaped. It replaces the per-consumer
+          # post-vendor absolute-path rewrite hooks (toy's prep/post_vendor_toy.rb)
+          # that made vendored trees non-relocatable and toy unpublishable.
+          # A consumer override (SPINEL_EXT_<PLACEHOLDER> / --ext) supplies the
+          # full replacement flags and skips the build (prebuilt escape hatch).
+          if e["build"]
+            if placeholder && (ov = overrides[placeholder] || ENV[ext_env_key(placeholder)])
+              substitute_placeholder(dest, placeholder, ov.to_s)
+              wired += 1
+              next
+            end
+            ven_dir = build_unit(src, dest, e) or next # build failed (warned)
+            if placeholder
+              parts = Array(e["link"]).map { |t| t.gsub("{dir}", ven_dir) }
+              parts.concat(Array(e["libs"]))
+              substitute_placeholder(dest, placeholder, parts.join(" ").strip)
+            end
+            wired += 1
+            next
+          end
+
           # Compile / place the .o (or take a prebuilt override path). Both forms
           # need this; post-#1011 const-fold form skips the substitution below.
           obj = nil
@@ -212,6 +237,72 @@ module Bundler
 
         warn "[vendor] ext compile failed (#{entry['placeholder'] || entry['name']}): #{out.lines.last(2).join.strip}"
         nil
+      end
+
+      # Build-unit (spinelgems#14): copy the gem's declared build dir into the
+      # vendor tree, run the declared tool there, verify the declared artifacts.
+      # Returns the vendored dir path (project-relative when `into` was given
+      # relative — the usual case — so substituted -L flags stay relocatable
+      # with the consumer project) or nil on failure (warned, entry skipped).
+      #
+      # The tool surface is deliberately constrained to cmake|make with declared
+      # args/targets/artifacts — no free-form shell. extconf.rb is precedent for
+      # arbitrary install-time code in gems, but there's no need to copy that
+      # mistake into spinel-ext.json: a declarative unit stays auditable and the
+      # detector-inferable, consumer-side philosophy survives.
+      def build_unit(src, dest, entry)
+        b = entry["build"]
+        dir_rel = b["dir"].to_s
+        src_dir = File.join(src, dir_rel)
+        unless File.directory?(src_dir)
+          warn "[vendor] build dir not found for #{entry['name'] || entry['placeholder']}: #{dir_rel}"
+          return nil
+        end
+
+        ven_dir = File.join(dest, dir_rel)
+        FileUtils.mkdir_p(File.dirname(ven_dir))
+        FileUtils.rm_rf(ven_dir)
+        FileUtils.cp_r(src_dir, ven_dir)
+
+        jobs = begin
+          require "etc"
+          Etc.nprocessors.to_s
+        rescue StandardError
+          "4"
+        end
+        cmds =
+          case b["tool"].to_s
+          when "cmake"
+            build_dir = File.join(ven_dir, "build")
+            cfg = ["cmake", "-S", ven_dir, "-B", build_dir, *Array(b["args"]).map(&:to_s)]
+            bld = ["cmake", "--build", build_dir, "-j", jobs]
+            targets = Array(b["targets"]).map(&:to_s)
+            bld.push("--target", *targets) unless targets.empty?
+            [cfg, bld]
+          when "make"
+            [["make", "-C", ven_dir, "-j", jobs,
+              *Array(b["args"]).map(&:to_s), *Array(b["targets"]).map(&:to_s)]]
+          else
+            warn "[vendor] unknown build tool #{b['tool'].inspect} for #{entry['name']} (cmake|make)"
+            return nil
+          end
+
+        cmds.each do |cmd|
+          out, st = Open3.capture2e(*cmd)
+          unless st.success?
+            warn "[vendor] build failed (#{entry['name']}): #{cmd.take(2).join(' ')} ... : " \
+                 "#{out.lines.last(3).join.strip}"
+            return nil
+          end
+        end
+
+        missing = Array(b["artifacts"]).reject { |a| File.exist?(File.join(ven_dir, a.to_s)) }
+        unless missing.empty?
+          warn "[vendor] build for #{entry['name']} succeeded but artifacts missing: #{missing.join(', ')}"
+          return nil
+        end
+
+        ven_dir
       end
 
       def substitute_placeholder(dest, placeholder, repl)

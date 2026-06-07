@@ -69,6 +69,20 @@ module Bundler
                 "(<a href=\"https://github.com/matz/spinel/issues/1337\">#1337</a>, which had broken every options-hash " \
                 "carrying an exception class). The compile+scan base barely moves on fixes like these — they're " \
                 "full-surface/runtime, so the graduation shows in the behaviour-verified tier." },
+        { rev: "57af7f9", date: "2026-06-07", commit: "~40 commits — 9 harness-filed issues closed in one wave: the ecosystem-spine front doors (alias→attr_reader #1356, &:sym-after-positional parse #1359), unary operator mangling (#1357), sp_sym_intern link (#1355), plus typed-collection nil steps (#801/#1180) and #line / --emit-symbol-map diagnostics (the #1338 RFC direction)",
+          file: "survey-57af7f9/compat.jsonl",
+          note: "<strong>The spine-gems wave.</strong> Auditing why <code>bundler</code>/<code>rake</code>/" \
+                "<code>minitest</code>/<code>thor</code> reject found two shallow front doors — " \
+                "<code>alias</code> to an <code>attr_reader</code>-generated method " \
+                "(<a href=\"https://github.com/matz/spinel/issues/1356\">#1356</a>, rake + thor) and " \
+                "<code>&amp;:sym</code> after a positional argument mis-parsed as a hash literal " \
+                "(<a href=\"https://github.com/matz/spinel/issues/1359\">#1359</a>, bundler + minitest) — and matz closed " \
+                "both within a day, alongside 7 more harness filings. All four spine gems now compile past their old " \
+                "blockers into distinct second-tier issues " \
+                "(<a href=\"https://github.com/matz/spinel/issues/1368\">#1368</a> et al.). C compile errors now map back " \
+                "to Ruby source lines via <code>#line</code>, on by default — the " \
+                "<a href=\"https://github.com/matz/spinel/issues/1338\">#1338</a> RFC direction. The behaviour-verified " \
+                "tier reached 144 mechanical ★ this run." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

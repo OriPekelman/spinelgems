@@ -264,6 +264,19 @@ module Bundler
         FileUtils.rm_rf(ven_dir)
         FileUtils.cp_r(src_dir, ven_dir)
 
+        # Declared patches (toy#45: pristine vendored ggml + vendor-patches/*.patch),
+        # applied into the COPY before configure — mini_portile's patch_files
+        # precedent. Globs resolve against the gem root; patch files are data,
+        # which keeps the no-free-form-shell property of the schema.
+        patches = Array(entry["build"]["patches"]).flat_map { |g| Dir[File.join(src, g.to_s)].sort }
+        patches.each do |p|
+          out, st = Open3.capture2e("patch", "-p1", "-d", ven_dir, "-i", File.expand_path(p))
+          unless st.success?
+            warn "[vendor] patch failed (#{entry['name']}): #{File.basename(p)}: #{out.lines.last(2).join.strip}"
+            return nil
+          end
+        end
+
         jobs = begin
           require "etc"
           Etc.nprocessors.to_s

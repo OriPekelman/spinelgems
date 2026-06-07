@@ -117,6 +117,10 @@ module Bundler
         end
 
         wired = 0
+        # name -> vendored build dir, for cross-entry {dir:NAME} link expansion
+        # (toy#45: tinynn's link line needs both its own dir and ggml's).
+        # Entries are processed in manifest order, so referenced units come first.
+        built_dirs = {}
         entries.each do |e|
           placeholder = e["placeholder"]
           name = e["name"]
@@ -144,10 +148,14 @@ module Bundler
               next
             end
             ven_dir = build_unit(src, dest, e) or next # build failed (warned)
+            built_dirs[name.to_s] = ven_dir if name
             if placeholder
-              parts = Array(e["link"]).map { |t| t.gsub("{dir}", ven_dir) }
+              parts = Array(e["link"]).map do |t|
+                t.gsub("{dir}", ven_dir)
+                 .gsub(/\{dir:([^}]+)\}/) { built_dirs[$1] || "{dir:#{$1}}" }
+              end
               parts.concat(Array(e["libs"]))
-              substitute_placeholder(dest, placeholder, parts.join(" ").strip)
+              substitute_placeholder(dest, placeholder, parts.join(" ").strip, name: name)
             end
             wired += 1
             next
@@ -318,11 +326,23 @@ module Bundler
         ven_dir
       end
 
-      def substitute_placeholder(dest, placeholder, repl)
+      # A placeholder that substitutes ZERO files is drift (toy#45: a gem whose
+      # ffi_cflags line moved out from under its manifest's literal-string
+      # placeholder) — warn loud. This replaces per-gem canary hacks like toy's
+      # CURRENT_FFI_CFLAGS lockstep constant with a systemic vendor-time check.
+      def substitute_placeholder(dest, placeholder, repl, name: nil)
+        hits = 0
         Dir[File.join(dest, "**", "*.rb")].each do |f|
           body = File.read(f)
-          File.write(f, body.gsub(placeholder, repl)) if body.include?(placeholder)
+          next unless body.include?(placeholder)
+          File.write(f, body.gsub(placeholder, repl))
+          hits += 1
         end
+        if hits.zero?
+          warn "[vendor] #{name || 'ext'}: placeholder matched NO vendored .rb — " \
+               "manifest drift? (#{placeholder.length > 60 ? placeholder[0, 57] + '...' : placeholder})"
+        end
+        hits
       end
 
       # @TEP_SPHTTP_O@ -> SPINEL_EXT_TEP_SPHTTP_O

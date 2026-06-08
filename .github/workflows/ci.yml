@@ -53,3 +53,31 @@ jobs:
           spinel-compat init scaffold_test
           test -f scaffold_test/Gemfile
           test -x scaffold_test/bin/build
+
+  # Regression coverage for the vendorer's spinel-ext.json C-ext wiring
+  # (spinelgems#15): per-.c compile + placeholder substitution + pkg_config
+  # sibling fold (tep's shape), the build-unit branch + {dir}/{dir:NAME} link
+  # expansion + prebuilt-override escape hatch (#14, toy's shape), the
+  # zero-substitution drift warning, and disabled_cflags. Framework-free,
+  # hermetic (cc/make/pkg-config zlib — never the sibling projects' trees).
+  vendorer-ext:
+    name: vendorer C-ext wiring (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - name: pkg-config + zlib headers (the test's hermetic pkg_config fixture)
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y pkg-config zlib1g-dev
+          else
+            brew list pkg-config >/dev/null 2>&1 || brew install pkg-config
+          fi
+      - name: wire_extensions regression suite
+        run: ruby test/vendorer_ext_test.rb

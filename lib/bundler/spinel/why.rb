@@ -12,7 +12,7 @@ module Bundler
     # The data is already in the ledger (the rubric tag, the spinel warnings
     # distilled into `reasons`, the static `risks`); this assembles it instead
     # of making a user grep C output. Where deeper localization helps, it points
-    # at `verify --explain` / spinel-dev's doctor rather than depending on them.
+    # at `why --probe` (live compiler output) / spinel-dev doctor for deeper localization.
     class Why
       # rubric/risk/reason signal -> structured explanation. :terminal is
       #   :native    — won't work without a Spinel-native port (terminal here)
@@ -45,13 +45,13 @@ module Bundler
         "codegen" => {
           category: "compiler bug (codegen)", terminal: :bug,
           cause: "ordinary Ruby produced a C compile error — a fixable Spinel codegen bug, not a limitation of your code.",
-          take: "file/track a matz/spinel issue. `verify --explain` (or spinel-dev doctor) localizes it to a file:line; " \
-                "the harness usually has a minimal reproducer already.",
+          take: "file/track a matz/spinel issue. `why <gem> --probe` shows the live compiler error; spinel-dev doctor " \
+                "localizes it to a file:line, and the harness usually has a minimal reproducer already.",
         },
         "miscompile" => {
           category: "compiler bug (silent miscompile)", terminal: :bug,
           cause: "it compiles and runs, but the output diverges from CRuby — the most dangerous failure, silently wrong.",
-          take: "file a matz/spinel issue with the diff below; `verify --explain --bisect` localizes it to a file:line + variable.",
+          take: "file a matz/spinel issue with the diff below; spinel-dev doctor + value-bisection localize it to a file:line + variable.",
         },
         "unsupported" => {
           category: "unsupported call (often metaprogramming)", terminal: :bug,
@@ -61,7 +61,7 @@ module Bundler
         "build-error" => {
           category: "build/run error", terminal: :bug,
           cause: "the Spinel build or run failed for a reason outside the other buckets.",
-          take: "inspect the reasons below; `verify --explain` surfaces the raw compiler line.",
+          take: "inspect the reasons below; `why <gem> --probe` re-runs the compiler and surfaces the raw error line.",
         },
         "smoke-error" => {
           category: "inconclusive (smoke broken under CRuby)", terminal: :dep,

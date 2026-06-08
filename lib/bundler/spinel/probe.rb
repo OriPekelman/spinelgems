@@ -53,15 +53,26 @@ module Bundler
       # Spinel will never support (threads, Mutex, TracePoint). Metaprogramming
       # tokens like `define_method` stay in RISK_TOKENS below — they degrade
       # silently, so the compile signal is still the right call there.
+      # Constructs that put a gem outside the AOT closed-world model entirely —
+      # rejected from a static scan, before a compile is even attempted.
+      # Thread/Mutex lived here until matz/spinel#1360 made them *run* (single-
+      # threaded, carrying the block's value): they're now compiled + flagged
+      # `risky` (below), not hard-rejected. TracePoint/set_trace_func stay —
+      # there is no degenerate-but-correct lowering for runtime tracing.
       HARD_REJECT_TOKENS = {
-        /\bThread\.(new|start|fork)\b/ => "Thread.new",
-        /\bMutex\.new\b/               => "Mutex.new",
-        /\bMutex_m\b/                  => "Mutex_m",
-        /\bTracePoint\b/               => "TracePoint"
+        /\bTracePoint\b/     => "TracePoint",
+        /\bset_trace_func\b/ => "set_trace_func"
       }.freeze
 
       # token => reason. Tokens Spinel cannot honour and may silently no-op.
       RISK_TOKENS = {
+        # Thread/Mutex run single-threaded since matz/spinel#1360 — correct for
+        # defensive use (a mutex guarding state, Thread.new for a value), but
+        # degenerate for genuine concurrency: compiles, flagged, fails
+        # `check --strict`. (Demoted from HARD_REJECT after #1360.)
+        /\bThread\.(new|start|fork)\b/ => "thread",
+        /\bMutex\.new\b/               => "mutex",
+        /\bMutex_m\b/                  => "mutex_m",
         /\beval\s*\(/                  => "eval",
         /\binstance_eval\b/            => "instance_eval",
         /\b(class|module)_eval\b/      => "class_eval",

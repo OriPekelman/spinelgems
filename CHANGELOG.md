@@ -21,6 +21,17 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   Spinel-compiled program links and runs, with zero absolute paths and survival
   across a project move. Strictly narrower than `extconf.rb` (no free-form
   shell; declared artifacts) — the Spinel analogue of a gemspec `extensions:`.
+- **`spinel-compat vendor` handles transitive gem→gem dependencies
+  (spinelgems#19).** Vendoring a gem that depends on another vendored gem now
+  works: `deps.rb` is emitted in **topological order** (every gem's runtime
+  dependencies load before it, via a DFS over `spec.dependencies` with a stable
+  alphabetical tiebreak and a cycle guard) instead of the lockfile's alphabetical
+  order, and it prepends each vendored gem's `lib` to `$LOAD_PATH` so a
+  dependent's plain `require "<depgem>"` resolves under CRuby too. Spinel (no load
+  path) ignores both and relies on the topo-ordered `require_relative`s, so the
+  one `deps.rb` is correct under both runtimes — verified identical output on a
+  two-gem fixture. Unblocks `tep` → `spinel_kit` (the new stdlib-surface gem)
+  on the clean `gem "spinel_kit"` + vendor path.
 - **`spinel-compat why <gem>` (spinelgems#12).** A legible "why doesn't this gem
   work (yet)?" report: a plain-English cause, a category (native C-ext / Spinel
   limitation / fixable compiler bug / dependency-blocked / metaprogramming), the

@@ -21,6 +21,7 @@ module Bundler
         when "install-engine" then cmd_install_engine(argv)
         when "init"    then cmd_init(argv)
         when "probe"   then cmd_probe(argv)
+        when "why"     then cmd_why(argv)
         when "verify"  then cmd_verify(argv)
         when "vendor"  then cmd_vendor(argv)
         when "check"   then cmd_check(argv)
@@ -90,6 +91,54 @@ module Bundler
         end
         print_verdict(v)
         v.rejected? ? 1 : 0
+      end
+
+      # why NAME [VERSION] [--rev REV] [--probe] [--dir PATH]
+      # Legible "why doesn't this gem work (yet)?" report (spinelgems#12).
+      # Reads the recorded verdict (dominant rev, like the catalog) by default;
+      # --probe / --dir explains a fresh live probe instead.
+      def cmd_why(argv)
+        require_relative "why"
+        dir = (i = argv.index("--dir")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
+        rev = (k = argv.index("--rev")) ? argv.delete_at(k + 1).tap { argv.delete_at(k) } : nil
+        live = !!argv.delete("--probe") || !!dir
+        name = argv.shift or raise Error, "usage: spinel-compat why NAME [VERSION] [--rev REV] [--probe] [--dir PATH]"
+        version = argv.shift
+
+        if live
+          engine = Engine.new
+          src = dir ? File.expand_path(dir) : GemFetcher.new.fetch(name, version || latest_version(name))
+          v = Probe.new(engine, Ledger.new).probe(name, version || "path", src)
+          Why.new(out: @out).report(v, source: "live probe")
+        else
+          v = ledger_pick(name, version: version, rev: rev)
+          unless v
+            @out.puts "  no recorded verdict for #{name}#{version ? " #{version}" : ''}. " \
+                      "Run `spinel-compat why #{name} --probe` to evaluate it now."
+            return 1
+          end
+          Why.new(out: @out).report(v, source: "ledger #{v.rev}")
+        end
+        0
+      end
+
+      # The authoritative ledger entry for a gem: a specific --rev if asked,
+      # else the entry at the ledger's dominant rev (the rev most rows share —
+      # the same target the catalog renders), else the most recent seen.
+      def ledger_pick(name, version: nil, rev: nil)
+        entries = []
+        rev_counts = Hash.new(0)
+        Ledger.new.each do |v|
+          rev_counts[v.rev] += 1
+          next unless v.gem == name
+          next if version && v.version != version
+          entries << v
+        end
+        return nil if entries.empty?
+        return entries.select { |v| v.rev == rev }.last if rev
+
+        target = rev_counts.max_by { |_, c| c }&.first
+        entries.select { |v| v.rev == target }.last || entries.last
       end
 
       def cmd_verify(argv)
@@ -418,6 +467,7 @@ module Bundler
             spinel-compat install-engine [REV]    fetch+build the Spinel compiler -> ~/.cache/spinel
             spinel-compat init [DIR]              scaffold a Spinel+Tep project (Gemfile, app.rb, bin/build)
             spinel-compat probe NAME [VERSION]    probe one gem, record a verdict
+            spinel-compat why NAME [--probe]      legible "why doesn't this work (yet)?" report
             spinel-compat verify NAME [--smoke F]  differential CRuby-vs-Spinel run -> verified
             spinel-compat vendor [LOCK] [--into D] place deps where Spinel finds them + deps.rb
             spinel-compat check [LOCK] [--strict] gate a Gemfile.lock (exit 1 if rejected)

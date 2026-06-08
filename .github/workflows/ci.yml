@@ -81,3 +81,5 @@ jobs:
           fi
       - name: wire_extensions regression suite
         run: ruby test/vendorer_ext_test.rb
+      - name: why-report classifier suite (spinelgems#12)
+        run: ruby test/why_test.rb

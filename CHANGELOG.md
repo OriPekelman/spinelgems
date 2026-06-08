@@ -4,6 +4,41 @@ All notable changes to `bundler-spinel` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-06-08
+
+### Added
+- **`spinel-compat vendor` build-units (spinelgems#14).** `spinel-ext.json` now
+  supports a `build` entry — a declared native build (`tool: cmake | make`, with
+  `dir`, `args`, `targets`, `artifacts`, and `patches`) run **inside the
+  consumer's vendor tree**, with link flags expanded relative to it (`{dir}` and
+  cross-entry `{dir:NAME}`). This lets a heavy-native gem — toy's vendored ggml
+  CMake build plus its tinynn shims — vendor **self-contained and relocatable**,
+  the same end state tep's small per-`.c` shims already had. A
+  `SPINEL_EXT_<PLACEHOLDER>` override substitutes prebuilt flags and skips the
+  build. Declared `patches` apply with stack-level already-applied detection, so
+  a `path:`-sourced dev checkout (already patched) vendors cleanly. Proven
+  end-to-end: a consumer vendors toy, the archives build in-tree, a
+  Spinel-compiled program links and runs, with zero absolute paths and survival
+  across a project move. Strictly narrower than `extconf.rb` (no free-form
+  shell; declared artifacts) — the Spinel analogue of a gemspec `extensions:`.
+- **`spinel-compat why <gem>` (spinelgems#12).** A legible "why doesn't this gem
+  work (yet)?" report: a plain-English cause, a category (native C-ext / Spinel
+  limitation / fixable compiler bug / dependency-blocked / metaprogramming), the
+  concrete evidence (the CRuby-vs-Spinel diff, the unresolved calls, the missing
+  require, the hard construct), and — most usefully — whether the verdict is
+  **terminal** (needs an upstream port or compiler feature) or **fixable** (a
+  tracked compiler bug that can graduate). Reads the dominant-rev ledger entry
+  like the catalog; `--probe` / `--dir` explains a fresh live probe instead.
+
+### Changed
+- **`spinel-ext.json` wiring now warns on manifest drift.** A declared
+  placeholder that matches no vendored `.rb` emits a loud warning at vendor time
+  — replacing the per-gem "cflags canary" constants consumers maintained by hand.
+- **Catalog/site rendering** advanced across several engine-rev reprobes (signals
+  lead every verdict tier; the download floor is off by default; human
+  attestations earn a verified rung; a load-bearing-gems roadmap page). These
+  affect the rendered spinelgems.org catalog, not the plugin's gating behaviour.
+
 ## [0.2.1] — 2026-06-01
 
 ### Fixed

@@ -1,9 +1,9 @@
 module Bundler
   module Spinel
-    # First published release: the Gemfile convention + `spinel-compat vendor`
-    # are proven, and `install-engine` now provisions the compiler too, so a
-    # newcomer can `gem install bundler-spinel` and onboard without an
-    # out-of-band Spinel build (spinelgems#9).
-    VERSION = "0.2.1"
+    # 0.3.0: `spinel-compat vendor` grows build-units (cmake/make native deps
+    # built inside the consumer's vendor tree — heavy-native gems like toy's
+    # ggml vendor self-contained + relocatable, #14), and a new
+    # `spinel-compat why <gem>` legible diagnostic (#12).
+    VERSION = "0.3.0"
   end
 end

@@ -83,6 +83,20 @@ module Bundler
                 "to Ruby source lines via <code>#line</code>, on by default — the " \
                 "<a href=\"https://github.com/matz/spinel/issues/1338\">#1338</a> RFC direction. The behaviour-verified " \
                 "tier reached 144 mechanical ★ this run." },
+        { rev: "cb23cc6", date: "2026-06-09", commit: "~23 commits — 12 harness-filed issues closed in one wave, incl. Mutex/Monitor#synchronize + Thread.new now running and carrying their block value (#1360), class-instance-vars in class methods (#1352), is_a?(IncludedModule)/ancestors (#1350), \\h/\\H regex (#1349), reopened-builtin optional defaults (#1348), bitwise/shift operator mangling (#1358/#1368), the captured-&block value/type family",
+          file: "survey-cb23cc6/compat.jsonl",
+          note: "<strong>Mutex/Thread come in from the cold.</strong> With matz/spinel#1360 landing " \
+                "(<code>Mutex#synchronize</code>/<code>Thread.new</code> now run single-threaded and carry their " \
+                "block's value), the static pre-filter no longer hard-rejects them — they're flagged " \
+                "<code>risky</code> (correct for defensive use, degenerate only for true concurrency). Re-probing " \
+                "the 8,833 gems that had been rejected on sight for <code>Mutex.new</code>/<code>Thread.new</code>, " \
+                "<strong>3,493 (39.5%) moved out of <code>rejected</code></strong> — they compile now; the static " \
+                "wall had been hiding it. The four spine gems (<code>bundler</code>/<code>rake</code>/" \
+                "<code>minitest</code>/<code>thor</code>) now reject for their <em>real</em> reason — the deep " \
+                "metaprogramming surface (<code>send</code>/<code>method_missing</code>/<code>cattr_accessor</code>) — " \
+                "not a misleading <code>hard:Mutex.new</code>. The differential re-audit also caught one regression in " \
+                "the wave: returning <code>self</code> from a reopened-builtin method " \
+                "(<a href=\"https://github.com/matz/spinel/issues/1386\">#1386</a>, <code>to-bool</code>), filed same day." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

@@ -65,17 +65,19 @@ module Bundler
         file.empty? ? "line #{v['line']}" : "#{file}:#{v['line']}"
       end
 
-      # Resolve bisect.sh. It lives in spinel-dev (separate from the compiler
-      # engine), so there's no fixed relation to the engine dir — probe a few
-      # conventional spots, newest-intent first: an explicit override, a sibling
-      # spinel-dev checkout next to the engine, the conventional ~/sites layout.
+      # Resolve bisect.sh. It lives in the spinel-dev tooling repo (separate from
+      # the compiler engine), so there's no fixed relation to the engine dir —
+      # probe a few conventional spots, newest-intent first: an explicit override,
+      # a sibling checkout next to the engine, the conventional ~/sites layout.
+      # The local checkout may be named spinel-tools (gx10) or spinel-dev (the
+      # GitHub repo name), so probe both.
       def bisect_script
         rel = "tools/value-bisect/bisect.sh"
-        candidates = [
-          ENV["SPINEL_BISECT"],
-          File.expand_path(File.join(@engine.dir, "..", "spinel-dev", rel)),
-          File.expand_path("~/sites/spinel-dev/#{rel}")
-        ]
+        candidates = [ENV["SPINEL_BISECT"]]
+        %w[spinel-tools spinel-dev].each do |repo|
+          candidates << File.expand_path(File.join(@engine.dir, "..", repo, rel))
+          candidates << File.expand_path("~/sites/#{repo}/#{rel}")
+        end
         candidates.find { |c| c && File.exist?(c) }
       end
     end

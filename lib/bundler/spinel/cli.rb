@@ -146,7 +146,11 @@ module Bundler
         smoke = (j = argv.index("--smoke")) ? argv.delete_at(j + 1).tap { argv.delete_at(j) } : nil
         full = !!argv.delete("--full")
         tests = !!argv.delete("--tests")
-        name = argv.shift or raise Error, "usage: spinel-compat verify NAME [VERSION] [--dir PATH] [--smoke FILE | --tests] [--full]"
+        # --rbs DIR / --no-rbs: explicit type root / opt out. Default :auto —
+        # use the gem's own sig/*.rbs when shipped (spinelgems#13).
+        rbs = (k = argv.index("--rbs")) ? argv.delete_at(k + 1).tap { argv.delete_at(k) } : :auto
+        rbs = false if argv.delete("--no-rbs")
+        name = argv.shift or raise Error, "usage: spinel-compat verify NAME [VERSION] [--dir PATH] [--smoke FILE | --tests] [--full] [--rbs DIR | --no-rbs]"
         engine = Engine.new
         if dir
           version = argv.shift || "path"
@@ -164,7 +168,7 @@ module Bundler
           smoke = File.join(Dir.tmpdir, "__spinel_tests_#{name}.rb")
           File.write(smoke, runner)
         end
-        v = Verifier.new(engine, Ledger.new).verify(name, version, gem_dir, smoke: smoke && File.expand_path(smoke), full: full)
+        v = Verifier.new(engine, Ledger.new).verify(name, version, gem_dir, smoke: smoke && File.expand_path(smoke), full: full, rbs: rbs)
         print_verdict(v)
         File.delete(smoke) if tests && smoke && File.exist?(smoke)
         (v.verified? || v.loaded?) ? 0 : 1
@@ -193,6 +197,11 @@ module Bundler
         ext = res[:extensions].to_i
         @out.puts "vendored #{res[:count]} gem(s)#{ext.positive? ? " (+#{ext} C ext)" : ''} -> #{res[:into]}"
         @out.puts "  require_relative \"#{res[:into]}/deps\" from your Spinel entrypoint"
+        sigs = res[:sig_gems] || []
+        unless sigs.empty?
+          @out.puts "  #{sigs.size} gem(s) ship sig/*.rbs type roots -> #{res[:into]}/sig"
+          @out.puts "  compile with: spinel ... --rbs #{res[:into]}/sig   (spinelgems#13)"
+        end
         0
       end
 
@@ -469,7 +478,8 @@ module Bundler
             spinel-compat probe NAME [VERSION]    probe one gem, record a verdict
             spinel-compat why NAME [--probe]      legible "why doesn't this work (yet)?" report
             spinel-compat verify NAME [--smoke F]  differential CRuby-vs-Spinel run -> verified
-            spinel-compat vendor [LOCK] [--into D] place deps where Spinel finds them + deps.rb
+                                  [--rbs DIR | --no-rbs]  type root: gem's sig/*.rbs (auto when shipped)
+            spinel-compat vendor [LOCK] [--into D] place deps where Spinel finds them + deps.rb (+ sig/ roots)
             spinel-compat check [LOCK] [--strict] gate a Gemfile.lock (exit 1 if rejected)
             spinel-compat survey GEM... | --list F  wholesale review -> reason histogram
             spinel-compat serve --store DIR        curated source (only vetted gems)

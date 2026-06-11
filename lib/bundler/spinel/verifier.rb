@@ -37,13 +37,20 @@ module Bundler
       # vocabulary is unchanged; the probe is tagged `verify-full` so the
       # whole-surface signal stays distinguishable in the ledger from the
       # entrypoint-only `verify`.
-      def verify(gem_name, version, dir, smoke: nil, full: false)
+      # rbs: a gem's shipped sig/*.rbs acts as the type root for the Spinel
+      # compile (spinelgems#13). `--rbs` re-pins *uncalled* public methods'
+      # param/return/ivar types that whole-program inference would otherwise
+      # widen to int/poly for lack of a call site — the failure mode hand-written
+      # seed blocks exist to patch. :auto (default) uses <dir>/sig when it
+      # contains .rbs files; a String is an explicit root; nil/false disables.
+      def verify(gem_name, version, dir, smoke: nil, full: false, rbs: :auto)
         @engine.ensure!
+        rbs_root = resolve_rbs_root(dir, rbs)
         harness = File.join(dir, HARNESS)
         File.write(harness, harness_source(gem_name, dir, smoke, full))
 
         ruby_out, ruby_err, ruby_ok = run_ruby(harness, dir)
-        spin_out, spin_err, spin_ok = run_spinel(harness)
+        spin_out, spin_err, spin_ok = run_spinel(harness, rbs_root)
 
         verdict, reasons = classify(ruby_ok, spin_ok, ruby_out, spin_out, spin_err, behavior: !smoke.nil?)
         # Tag *why* (the spinelgems#4 usability rubric) so a failure says what it'd
@@ -57,9 +64,14 @@ module Bundler
         # and, when it pins a diverging scalar, appends `localized:<file>:<line>
         # <var> cruby=… spinel=…`. Best-effort: nil when it can't localize.
         if verdict == "rejected" && reasons.include?("miscompile")
+          # Note: the bisector compiles without the sig root, so localization of
+          # an rbs-seeded build is best-effort (bisect.sh has no --rbs passthrough).
           loc = Localizer.new(@engine).localize(harness)
           reasons += [loc] if loc
         end
+        # Provenance: the verdict was reached with the gem's sig/ as type root —
+        # legible in the ledger/notes, ignored by the site's sticky logic.
+        reasons += ["rbs:sig"] if rbs_root
         @ledger.record(@ledger.build(
           gem: gem_name, version: version, rev: @engine.rev,
           verdict: verdict, reasons: reasons, probe: full ? "verify-full" : "verify"
@@ -180,9 +192,18 @@ module Bundler
         [out, err, st.success?]
       end
 
-      def run_spinel(file)
+      def resolve_rbs_root(dir, rbs)
+        return nil if rbs.nil? || rbs == false
+        return File.expand_path(rbs) if rbs.is_a?(String)
+        sig = File.join(dir, "sig")
+        Dir[File.join(sig, "**", "*.rbs")].empty? ? nil : sig
+      end
+
+      def run_spinel(file, rbs_root = nil)
         bin = file.sub(/\.rb$/, ".bin")
-        _, cerr, cst = Open3.capture3(@engine.bin, file, "-o", bin)
+        args = [@engine.bin, file, "-o", bin]
+        args += ["--rbs", rbs_root] if rbs_root
+        _, cerr, cst = Open3.capture3(*args)
         return ["", cerr, false] unless cst.success? && File.executable?(bin)
 
         out, err, st = Open3.capture3(bin)

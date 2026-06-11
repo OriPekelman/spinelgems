@@ -4,6 +4,22 @@ All notable changes to `bundler-spinel` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **A gem's `sig/*.rbs` acts as the type root (spinelgems#13).** Spinel infers
+  param types from call sites (whole-program, closed-world), so an *uncalled*
+  public method widens to `int`/`poly` — the failure mode hand-written seed
+  blocks exist to patch. `--rbs` was verified to re-pin uncalled methods' param,
+  return, and ivar types, so the tooling now treats a shipped `sig/` tree as
+  authoritative: `spinel-compat verify` auto-passes `--rbs <gem>/sig` when the
+  gem ships signatures (`--rbs DIR` to override, `--no-rbs` to opt out), and
+  records an `rbs:sig` provenance tag in the verdict reasons. `vendor` copies
+  each gem's `sig/` alongside `lib/`, aggregates all of them under
+  `<into>/sig/<gem>/`, and advertises the single `--rbs <into>/sig` root in
+  `deps.rb` and the CLI output. A spinel-native gem (SpinelKit, the Tep
+  batteries) ships one standard Ruby artifact — no seed soup, no manifest keys.
+
 ## [0.3.0] — 2026-06-08
 
 ### Added

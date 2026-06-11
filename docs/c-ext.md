@@ -256,3 +256,29 @@ plus rubygems' native Cargo builder. A *declared* cmake/make unit is the
 Spinel analogue of `extensions:` in a gemspec — strictly narrower than the
 extconf precedent (no free-form shell, declared artifacts, auditable), and
 it's what lets a heavy-native gem publish to RubyGems as a normal gem.
+
+### Declared patches (toy#45)
+
+A build-unit may declare `"patches": ["vendor-patches/*.patch"]` (globs against
+the gem root). They `git apply` into the **copied** vendor dir before
+configure — mini_portile's `patch_files` precedent, data not code. Patches form
+an ordered stack with stack-level already-applied detection: a pristine tree
+forward-applies, a fully-patched `path:`-sourced dev checkout is recognized and
+left alone, anything else fails loud as drift.
+
+### Opt-in units + variant build dirs (spinelgems#20)
+
+Two additions for optional heavy backends (toy's CUDA/Metal units):
+
+- **`"default": "disabled"`** (on an `optional` entry with a `name`) flips the
+  entry to opt-IN: a plain `vendor` treats it as opted out (placeholder ←
+  `disabled_cflags`, build never attempted — no CUDA cmake failures on a
+  CUDA-less box). The consumer enables it with `--with-ext NAME` (repeatable)
+  or `SPINEL_EXT_ENABLE=cuda,metal`. Explicit disable beats enable; an enable
+  name matching no optional entry in any vendored manifest warns loud.
+- **`"build_dir"`** (cmake only, default `"build"`, relative, no `..`): the
+  configure runs `-B <vendored dir>/<build_dir>`, so a CUDA unit builds the
+  same source into `build-cuda/` alongside the CPU unit's `build/`. Source
+  dirs are **copied once per vendor run**: a later entry sharing `dir` reuses
+  the already-placed (and already-patched) copy instead of rm_rf-recopying —
+  which would have wiped the first unit's artifacts.

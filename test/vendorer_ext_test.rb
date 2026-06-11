@@ -181,5 +181,107 @@ section "optional entry opted out substitutes disabled_cflags" do
   end
 end
 
+# ---------------------------------------------------------------------------
+# 6. Opt-in (default-disabled) entries (#20, toy's CUDA shape): off on a plain
+#    vendor (build never runs), on with the enable set, and explicit disable
+#    beats enable.
+# ---------------------------------------------------------------------------
+section "opt-in entry: off by default, --with-ext enables, disable wins (#20)" do
+  Dir.mktmpdir("vendorer-optin") do |src|
+    FileUtils.mkdir_p(File.join(src, "lib"))
+    FileUtils.mkdir_p(File.join(src, "gpu"))
+    File.write(File.join(src, "gpu/g.c"), "int gpu_v(void){return 3;}\n")
+    File.write(File.join(src, "gpu/Makefile"),
+               "libgpu.a: g.o\n\tar rcs $@ $<\ng.o: g.c\n\t$(CC) -c $< -o $@\n")
+    manifest = [
+      { "name" => "gpu", "optional" => true, "default" => "disabled",
+        "build" => { "tool" => "make", "dir" => "gpu", "artifacts" => ["libgpu.a"] },
+        "placeholder" => "@GPU_LINK@", "link" => ["-L{dir}", "-lgpu"],
+        "disabled_cflags" => "-DNO_GPU" },
+    ]
+    File.write(File.join(src, "spinel-ext.json"), JSON.dump(manifest))
+    mk = lambda do
+      dest = File.join(src, "_v#{rand(1_000_000)}")
+      FileUtils.mkdir_p(File.join(dest, "lib"))
+      File.write(File.join(dest, "lib/ffi.rb"), %(ffi_cflags "@GPU_LINK@"\n))
+      dest
+    end
+
+    dest = mk.call
+    wired = vendorer.send(:wire_extensions, src, dest, {}, [])
+    check(wired == 1, "default run wired #{wired} (expected 1, as disabled)")
+    check(!File.exist?(File.join(dest, "gpu")), "default run: build never ran")
+    check(File.read(File.join(dest, "lib/ffi.rb")).include?("-DNO_GPU"),
+          "default run: disabled_cflags substituted")
+
+    dest = mk.call
+    vendorer.send(:wire_extensions, src, dest, {}, [], ["gpu"])
+    check(File.exist?(File.join(dest, "gpu/libgpu.a")), "enabled run: unit built")
+    check(File.read(File.join(dest, "lib/ffi.rb")).include?("-lgpu"),
+          "enabled run: link flags substituted")
+
+    dest = mk.call
+    vendorer.send(:wire_extensions, src, dest, {}, ["gpu"], ["gpu"])
+    check(!File.exist?(File.join(dest, "gpu")), "disable beats enable: build never ran")
+    check(File.read(File.join(dest, "lib/ffi.rb")).include?("-DNO_GPU"),
+          "disable beats enable: disabled_cflags substituted")
+  end
+end
+
+# ---------------------------------------------------------------------------
+# 7. Copy-once over a shared source dir (#20): a second entry reusing `dir`
+#    must not rm_rf the first entry's just-built artifacts.
+# ---------------------------------------------------------------------------
+section "copy-once: second entry sharing dir keeps the first's artifacts (#20)" do
+  Dir.mktmpdir("vendorer-shared") do |src|
+    FileUtils.mkdir_p(File.join(src, "lib"))
+    FileUtils.mkdir_p(File.join(src, "eng"))
+    File.write(File.join(src, "eng/e.c"), "int eng_v(void){return 4;}\n")
+    File.write(File.join(src, "eng/Makefile"),
+               "liba.a: e.o\n\tar rcs $@ $<\nlibb.a: e.o\n\tar rcs $@ $<\n" \
+               "e.o: e.c\n\t$(CC) -c $< -o $@\n")
+    File.write(File.join(src, "spinel-ext.json"), JSON.dump([
+      { "name" => "eng-a",
+        "build" => { "tool" => "make", "dir" => "eng", "targets" => ["liba.a"],
+                     "artifacts" => ["liba.a"] } },
+      { "name" => "eng-b",
+        "build" => { "tool" => "make", "dir" => "eng", "targets" => ["libb.a"],
+                     "artifacts" => ["libb.a"] } },
+    ]))
+    dest = File.join(src, "_vendored")
+    FileUtils.mkdir_p(File.join(dest, "lib"))
+    File.write(File.join(dest, "lib/ffi.rb"), "# no placeholders\n")
+    wired = vendorer.send(:wire_extensions, src, dest, {}, [])
+    check(wired == 2, "shared-dir entries wired #{wired} (expected 2)")
+    check(File.exist?(File.join(dest, "eng/liba.a")),
+          "first entry's artifact survived the second entry (copy-once)")
+    check(File.exist?(File.join(dest, "eng/libb.a")), "second entry's artifact built")
+  end
+end
+
+# ---------------------------------------------------------------------------
+# 8. build_dir validation (#20): absolute or ..-escaping values are rejected
+#    before any tool runs.
+# ---------------------------------------------------------------------------
+section "build_dir: absolute / .. values rejected (#20)" do
+  Dir.mktmpdir("vendorer-bd") do |src|
+    FileUtils.mkdir_p(File.join(src, "lib"))
+    FileUtils.mkdir_p(File.join(src, "u"))
+    File.write(File.join(src, "u/CMakeLists.txt"), "project(u)\n")
+    %w[/abs ../escape].each do |bad|
+      File.write(File.join(src, "spinel-ext.json"), JSON.dump([
+        { "name" => "u",
+          "build" => { "tool" => "cmake", "dir" => "u", "build_dir" => bad,
+                       "artifacts" => ["x.a"] } },
+      ]))
+      dest = File.join(src, "_v_#{bad.delete('^a-z')}")
+      FileUtils.mkdir_p(File.join(dest, "lib"))
+      File.write(File.join(dest, "lib/ffi.rb"), "# none\n")
+      err = capture_stderr { vendorer.send(:wire_extensions, src, dest, {}, []) }
+      check(err.include?("bad build_dir"), "#{bad.inspect} rejected (#{err.strip.split("\n").last})")
+    end
+  end
+end
+
 puts(@fails.zero? ? "\nALL PASS" : "\n#{@fails} FAILURE(S)")
 exit(@fails.zero? ? 0 : 1)

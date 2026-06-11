@@ -190,10 +190,18 @@ module Bundler
           ext_disable << argv.delete_at(d + 1).to_s
           argv.delete_at(d)
         end
+        # --with-ext NAME : opt IN to a default-disabled entry, e.g. a CUDA
+        # build-unit (repeatable; also SPINEL_EXT_ENABLE). spinelgems#20.
+        ext_enable = []
+        while (w = argv.index("--with-ext"))
+          ext_enable << argv.delete_at(w + 1).to_s
+          argv.delete_at(w)
+        end
         lock = argv.shift || "Gemfile.lock"
         raise Error, "no #{lock}; run `bundle lock` first" unless File.exist?(lock)
 
-        res = Vendorer.new.vendor(lock, into: into, ext_overrides: ext_overrides, ext_disable: ext_disable)
+        res = Vendorer.new.vendor(lock, into: into, ext_overrides: ext_overrides,
+                                        ext_disable: ext_disable, ext_enable: ext_enable)
         ext = res[:extensions].to_i
         @out.puts "vendored #{res[:count]} gem(s)#{ext.positive? ? " (+#{ext} C ext)" : ''} -> #{res[:into]}"
         @out.puts "  require_relative \"#{res[:into]}/deps\" from your Spinel entrypoint"
@@ -480,6 +488,7 @@ module Bundler
             spinel-compat verify NAME [--smoke F]  differential CRuby-vs-Spinel run -> verified
                                   [--rbs DIR | --no-rbs]  type root: gem's sig/*.rbs (auto when shipped)
             spinel-compat vendor [LOCK] [--into D] place deps where Spinel finds them + deps.rb (+ sig/ roots)
+                                  [--with-ext NAME | --no-ext NAME]  opt in/out of optional C-ext units
             spinel-compat check [LOCK] [--strict] gate a Gemfile.lock (exit 1 if rejected)
             spinel-compat survey GEM... | --list F  wholesale review -> reason histogram
             spinel-compat serve --store DIR        curated source (only vetted gems)

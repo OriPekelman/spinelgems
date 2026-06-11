@@ -29,12 +29,18 @@ module Bundler
       end
 
       def vendor(lockfile = "Gemfile.lock", into: "vendor/spinel", warn_incompatible: true,
-                 ext_overrides: {}, ext_disable: [])
+                 ext_overrides: {}, ext_disable: [], ext_enable: [])
         parsed = Bundler::LockfileParser.new(File.read(lockfile))
         lock_dir = File.dirname(File.expand_path(lockfile))
         into = File.expand_path(into)
         FileUtils.mkdir_p(into)
         disable = (ext_disable + ENV["SPINEL_EXT_DISABLE"].to_s.split(",")).map(&:strip).reject(&:empty?)
+        enable = (ext_enable + ENV["SPINEL_EXT_ENABLE"].to_s.split(",")).map(&:strip).reject(&:empty?)
+        # Per-run state for build-units: copy-once over shared source dirs
+        # (spinelgems#20) + the optional-entry names actually seen, so a typo'd
+        # --with-ext warns loud instead of silently doing nothing.
+        @copied_build_dirs = {}
+        @ext_names_seen = []
 
         manifest = []
         exts = 0
@@ -53,7 +59,7 @@ module Bundler
           src = resolve_source(spec, lock_dir)
           dest = File.join(into, name)
           place(src, dest)
-          exts += wire_extensions(src, dest, ext_overrides, disable)
+          exts += wire_extensions(src, dest, ext_overrides, disable, enable)
           sig_gems << name if collect_sig(dest, sig_root, name)
           if (target = require_target(name, dest))
             manifest << { require: target, libdir: "#{File.basename(dest)}/lib" }
@@ -61,6 +67,10 @@ module Bundler
           note_compat(name, version) if warn_incompatible
         end
 
+        unless (unknown = enable - @ext_names_seen).empty?
+          warn "[vendor] --with-ext/SPINEL_EXT_ENABLE names matched no optional " \
+               "entry in any vendored manifest: #{unknown.join(', ')}"
+        end
         write_manifest(into, manifest, sig_gems)
         { into: into, count: manifest.size, extensions: exts, sig_gems: sig_gems }
       end
@@ -146,8 +156,13 @@ module Bundler
       #   - any static `libs`.
       # An `optional` entry the consumer opted out of (`name` in `disable` /
       # SPINEL_EXT_DISABLE) substitutes its `disabled_cflags` instead (category C).
-      # Returns the count wired. A no-op for gems without the manifest.
-      def wire_extensions(src, dest, overrides, disable)
+      # An `optional` entry declaring `"default": "disabled"` is opt-IN
+      # (spinelgems#20 — CUDA/Metal units must not build, or fail to configure,
+      # on a default `vendor`): it is treated as opted-out unless the consumer
+      # enables it (`--with-ext NAME` / SPINEL_EXT_ENABLE). Explicit disable
+      # beats enable. Returns the count wired. A no-op for gems without the
+      # manifest.
+      def wire_extensions(src, dest, overrides, disable, enable = [])
         manifest = File.join(src, "spinel-ext.json")
         return 0 unless File.exist?(manifest)
 
@@ -164,7 +179,7 @@ module Bundler
         sib_cflags = Hash.new { |h, k| h[k] = [] }
         entries.each do |e|
           next if e["source"] || !e["name"]              # only CFLAGS-only siblings
-          next if e["optional"] && disable.include?(e["name"].to_s)
+          next if ext_disabled?(e, disable, enable)
           (cf = pkg_config_cflags(e)) && sib_cflags[e["name"].to_s].concat(cf)
           sib_cflags[e["name"].to_s].concat(Array(e["cflags"])) if e["cflags"]
         end
@@ -177,9 +192,11 @@ module Bundler
         entries.each do |e|
           placeholder = e["placeholder"]
           name = e["name"]
+          (@ext_names_seen ||= []) << name.to_s if name && e["optional"]
 
-          # Opt-out (only meaningful with a placeholder to write disabled_cflags into).
-          if e["optional"] && name && disable.include?(name.to_s)
+          # Opted out — explicitly (`--no-ext`), or an opt-in (`"default":
+          # "disabled"`) entry the consumer didn't enable (spinelgems#20).
+          if ext_disabled?(e, disable, enable)
             substitute_placeholder(dest, placeholder, e["disabled_cflags"].to_s) if placeholder
             wired += 1
             next
@@ -244,6 +261,17 @@ module Bundler
       rescue JSON::ParserError => e
         warn "[vendor] #{File.basename(dest)}: ignoring bad spinel-ext.json (#{e.message})"
         0
+      end
+
+      # Is this optional entry off for this run? Explicit disable always wins;
+      # an opt-in entry (`"default": "disabled"`, spinelgems#20) is off unless
+      # its name is in the enable set. `default` is only meaningful on an
+      # `optional` entry with a `name`.
+      def ext_disabled?(entry, disable, enable)
+        return false unless entry["optional"] && entry["name"]
+        n = entry["name"].to_s
+        return true if disable.include?(n)
+        entry["default"].to_s == "disabled" && !enable.include?(n)
       end
 
       # System libs/cflags for an entry, resolved at the consumer's environment:
@@ -321,18 +349,28 @@ module Bundler
         end
 
         ven_dir = File.join(dest, dir_rel)
-        FileUtils.mkdir_p(File.dirname(ven_dir))
-        FileUtils.rm_rf(ven_dir)
-        # Source-only copy: a path:-sourced dev checkout carries build state —
-        # build*/ dirs (whose CMakeCache pins the ORIGINAL source path and makes
-        # cmake refuse the copy), the .patched sentinel, .git. ggml: 205MB with
-        # build dirs, 24MB without. Top-level name filter covers the real cases.
-        FileUtils.mkdir_p(ven_dir)
-        Dir.children(src_dir).each do |c|
-          next if c.start_with?("build") || c == ".git" || c == ".patched"
-          # stale dev objects/archives would also poison make's mtime logic
-          next if c =~ /\.(o|a|so|dylib|bundle)\z/
-          FileUtils.cp_r(File.join(src_dir, c), File.join(ven_dir, c))
+        # Copy-once (spinelgems#20): two entries may share one source dir —
+        # toy's CPU and CUDA ggml units differ only in configure args/build_dir.
+        # The rm_rf+recopy below would wipe the first entry's just-built tree,
+        # so a dir already placed this vendor run is reused as-is. (Patches stay
+        # declarable on both entries: the stack-level detection no-ops on an
+        # already-patched copy.)
+        @copied_build_dirs ||= {}
+        unless @copied_build_dirs[ven_dir]
+          FileUtils.mkdir_p(File.dirname(ven_dir))
+          FileUtils.rm_rf(ven_dir)
+          # Source-only copy: a path:-sourced dev checkout carries build state —
+          # build*/ dirs (whose CMakeCache pins the ORIGINAL source path and makes
+          # cmake refuse the copy), the .patched sentinel, .git. ggml: 205MB with
+          # build dirs, 24MB without. Top-level name filter covers the real cases.
+          FileUtils.mkdir_p(ven_dir)
+          Dir.children(src_dir).each do |c|
+            next if c.start_with?("build") || c == ".git" || c == ".patched"
+            # stale dev objects/archives would also poison make's mtime logic
+            next if c =~ /\.(o|a|so|dylib|bundle)\z/
+            FileUtils.cp_r(File.join(src_dir, c), File.join(ven_dir, c))
+          end
+          @copied_build_dirs[ven_dir] = true
         end
 
         # Declared patches (toy#45: pristine vendored ggml + vendor-patches/*.patch),
@@ -381,7 +419,15 @@ module Bundler
         cmds =
           case b["tool"].to_s
           when "cmake"
-            build_dir = File.join(ven_dir, "build")
+            # Variant build dirs over a shared source (spinelgems#20): toy's
+            # CUDA unit configures the same vendored ggml into build-cuda/
+            # alongside the CPU unit's build/. Relative, no escape.
+            bd = (b["build_dir"] || "build").to_s
+            if bd.start_with?("/") || bd.split(File::SEPARATOR).include?("..")
+              warn "[vendor] bad build_dir for #{entry['name']}: #{bd.inspect} (relative, no ..)"
+              return nil
+            end
+            build_dir = File.join(ven_dir, bd)
             cfg = ["cmake", "-S", ven_dir, "-B", build_dir, *Array(b["args"]).map(&:to_s)]
             bld = ["cmake", "--build", build_dir, "-j", jobs]
             targets = Array(b["targets"]).map(&:to_s)

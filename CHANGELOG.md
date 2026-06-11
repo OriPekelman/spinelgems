@@ -7,6 +7,17 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ## [Unreleased]
 
 ### Added
+- **Opt-in build-units + variant build dirs (spinelgems#20).** An `optional`
+  entry may declare `"default": "disabled"`: a plain `vendor` skips its build
+  entirely (placeholder ← `disabled_cflags`) until the consumer enables it via
+  `--with-ext NAME` / `SPINEL_EXT_ENABLE` — what a CUDA unit needs to not
+  attempt nvcc configures on a CUDA-less box. Explicit disable beats enable;
+  unknown enable names warn loud. cmake units take `"build_dir"` (default
+  `"build"`, relative-only) so two entries can build one shared source dir
+  into variant trees (`build/` vs `build-cuda/`), and source dirs are copied
+  once per vendor run — a second entry sharing `dir` no longer wipes the first
+  unit's just-built artifacts. Unblocks toy merging its staged
+  `spinel-ext-gpu.json` into `spinel-ext.json` (toy#45 Phase 3 → publish).
 - **A gem's `sig/*.rbs` acts as the type root (spinelgems#13).** Spinel infers
   param types from call sites (whole-program, closed-world), so an *uncalled*
   public method widens to `int`/`poly` — the failure mode hand-written seed

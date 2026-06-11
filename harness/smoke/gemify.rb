@@ -1,0 +1,6 @@
+puts Gemify.clean_name("Hello Awesome!")
+puts Gemify.clean_name("foo_bar-qux 123")
+puts Gemify.name_to_namespace("foo_bar-qux")
+puts Gemify.name_to_namespace("hello_world")
+puts Gemify.namespace_to_library("FooBar::Qux")
+puts Gemify.namespace_to_library("HTTParty")

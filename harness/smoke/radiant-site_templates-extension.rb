@@ -1,0 +1,4 @@
+puts RadiantSiteTemplatesExtension.class
+puts RadiantSiteTemplatesExtension.is_a?(Module)
+puts RadiantSiteTemplatesExtension.name
+puts RadiantSiteTemplatesExtension.ancestors.include?(RadiantSiteTemplatesExtension)

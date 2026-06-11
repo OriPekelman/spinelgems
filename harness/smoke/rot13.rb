@@ -1,0 +1,7 @@
+puts Rot13.rotate("Hello, World!")
+puts Rot13.rotate("Uryyb, Jbeyq!")
+puts Rot13.rotate("abc")
+puts Rot13.rotate("xyz")
+puts Rot13.rotate("ABC")
+puts Rot13.rotate("Hello, World!", 13)
+puts Rot13.rotate("rot13", 0)

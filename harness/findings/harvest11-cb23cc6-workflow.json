@@ -1,0 +1,319 @@
+{
+  "summary": "Harvest #11: behaviour smokes for 200 top-ranked unsmoked loaded gems @ cb23cc6; verify --full or attribute the failure (bug vs known limit). NO upstream filing this round.",
+  "agentCount": 200,
+  "logs": [
+    "verified=39 miscompile=27 codegen=25 loadpath=83 risky=5 skipped=21"
+  ],
+  "result": {
+    "total": 200,
+    "returned": 200,
+    "verified": [
+      "after_commit_action",
+      "thincloud-test",
+      "firstGem",
+      "full_lengther_next",
+      "google-analytics-data-v1alpha",
+      "rubocop-github-annotations-formatter",
+      "gitlab_ci_meta",
+      "appbombado_foundation",
+      "blue-shell",
+      "sequel-crushyform",
+      "contact",
+      "passwordmasker",
+      "brasilapi",
+      "check_slony",
+      "funky-simplehttp",
+      "circlemator",
+      "process",
+      "lucabook",
+      "rsmart_toolbox",
+      "mtbuild",
+      "trusty-snippets-extension",
+      "derp",
+      "helpful_configuration",
+      "pry-plus-byebug",
+      "rise-cli",
+      "logger_pipe",
+      "dir",
+      "mail-redirector",
+      "a1447ll_mini_test",
+      "selendroid",
+      "fatalistic",
+      "dragonfly-activerecord",
+      "cuesnap",
+      "openweathermap",
+      "device",
+      "simple_queues",
+      "radiant-locked_page_parts-extension",
+      "spbtv_code_style",
+      "urbanopt-rnm-us"
+    ],
+    "miscompile_bugs": [
+      {
+        "gem": "fresh_connection",
+        "diff": "L3 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "FreshConnection.respond_to?(:connection_manager) returns false under Spinel despite the method being defined in the same entrypoint file via `class << self`, indicating Spinel miscompiles respond_to? for singleton-class methods on a Module."
+      },
+      {
+        "gem": "require_relative",
+        "diff": "L1 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel returns false for `Object.new.respond_to?(:require_relative, true)` where CRuby returns true, indicating Spinel does not recognise the built-in Kernel#require_relative as a private instance method when queried via respond_to? with include_all=true."
+      },
+      {
+        "gem": "a",
+        "diff": "L3 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel incorrectly returns false for Module#respond_to? when the method is defined via `class << self` (singleton class extension), whereas CRuby correctly returns true."
+      },
+      {
+        "gem": "loc",
+        "diff": "L1 cruby=\"48.8566\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel returns 0 for attr_reader :lat/:lng on Loc::Location instances initialized via new(lat, lng), indicating instance variable assignment in initialize is not reflected by the generated reader methods."
+      },
+      {
+        "gem": "rack-authenticate",
+        "diff": "L1 cruby=\"Module\\n\" spinel=\"Integer\\n\"",
+        "bug": "Spinel returns Integer instead of Module for Rack::Authenticate.class, miscompiling a Module#class call on a plain module constant as if it were an integer literal."
+      },
+      {
+        "gem": "ibotta_geohash",
+        "diff": "L2 cruby=\"9q8znr0t\" spinel=\"unhandled exception: undefined method 'encode' for class\"",
+        "bug": "Spinel fails to resolve `class << self` singleton methods on a module (encode, decode, decode_center) even when defined in the directly inlined source file, emitting 0 at compile time and crashing at runtime with \"undefined method 'encode' for class\"."
+      },
+      {
+        "gem": "hrk",
+        "diff": "diff:L3 cruby=\"constant\\n\" spinel=\"\\n\"",
+        "bug": "Spinel evaluates `defined?(Hrk)` as nil/empty string instead of \"constant\" for a module that is correctly defined and accessible via other means (is_a?(Module) and .name both work)."
+      },
+      {
+        "gem": "retry-this",
+        "diff": "L1 cruby=\"ok_1\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles the block-parameter `attempt_number` threaded through `Enumerable#inject` in `RetryThis#retry_this`: the block argument received inside the user block is `0` (Spinel) instead of the correct integer `1` (CRuby) on the first attempt, indicating inject/yield propagation of loop variables is broken."
+      },
+      {
+        "gem": "bumpy",
+        "diff": "L1 cruby=\"1.0.1\\n\" spinel=\"\\n\"",
+        "bug": "Spinel miscompiles String#gsub with a regex block that uses $1 (last-match capture global) — the block body returns an empty string instead of the expected incremented integer string, so bump_version(\"1.0.0\") produces \"\" instead of \"1.0.1\"."
+      },
+      {
+        "gem": "singem",
+        "diff": "L3 cruby=\"false\\n\" spinel=\"true\\n\"",
+        "bug": "Spinel incorrectly reports `Singem::VERSION.frozen?` as `true` when CRuby returns `false`, indicating Spinel wrongly freezes string literals assigned to module constants without a frozen_string_literal magic comment."
+      },
+      {
+        "gem": "tvd-ssh",
+        "diff": "L2 cruby=\"0.0.14\\n\" spinel=\"\\n\"",
+        "bug": "File.read with a __FILE__-relative path inside a required file returns an empty string under Spinel instead of the file contents, causing TVDinner::Ssh::VERSION to be blank rather than \"0.0.14\"."
+      },
+      {
+        "gem": "spinto",
+        "diff": "diff:L4 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "String#end_with? returns false in Spinel when called on a path string constructed via File.join/File.dirname that ends with the expected suffix, but returns true in CRuby."
+      },
+      {
+        "gem": "rack-commonlogger",
+        "diff": "CRuby outputs \"2.0.0\\nString\\ntrue\\ntrue\\ntrue\"; Spinel crashes with \"unhandled exception: uninitialized constant Rack_CommonLogger::VERSION\"",
+        "bug": "Spinel fails to resolve Rack::CommonLogger::VERSION at runtime (crashes with \"uninitialized constant Rack_CommonLogger::VERSION\") when the constant is defined via require_relative from inside the class body, and mistyps the FORMAT %{...} string constant as int causing emitting-0 warnings on string method calls."
+      },
+      {
+        "gem": "libring",
+        "diff": "L1 cruby=\"user-42\\n\" spinel=\"0\\n\"",
+        "bug": "Libring::Contact#contact_code (and other attr_readers initialized in initialize) returns 0 in Spinel instead of the constructor argument string, indicating instance variable initialisation or attr_reader codegen is broken for string-typed ivars."
+      },
+      {
+        "gem": "link_url",
+        "diff": "L1 cruby=\"Visit <a href='http://www.example.com'>http://www.example.com</a> for more info.\" spinel=\"\" (all 7 output lines missing — binary runs but emits nothing)",
+        "bug": "Spinel cannot resolve `self.tlds` when one class method calls another class method within the same class (`cannot resolve call to 'tlds' on obj_LinkUrl, emitting 0`), causing the dynamically-built regex to be corrupt and all output to be silently dropped (empty output vs CRuby's 7 lines)."
+      },
+      {
+        "gem": "castanet",
+        "diff": "L1 cruby=\"true\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel emits `0` instead of `true` for a boolean `attr_accessor` field aliased with `alias_method :ok?, :ok` and assigned `true` inside a Ragel-generated `tap` block — `TicketValidate#ok?` returns `0` (falsy integer) instead of `true`."
+      },
+      {
+        "gem": "ilesspainfulclient-cucumber",
+        "diff": "L3 cruby=\"14\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel miscompiles String#length on an interpolated string containing ANSI escape sequences, returning 0 instead of the correct character count (14 for \"\\e[32mhello\\e[0m\")."
+      },
+      {
+        "gem": "rviz",
+        "diff": "L4 cruby=\"shape=box, color=blue, label=\\\"hello world\\\"\\n\" spinel=\"195158903697433, 195158903697481, 195158903698057\\n\"",
+        "bug": "Spinel's Hash#each block yields raw object IDs (or pointer values) instead of the actual key/value strings when iterating with |k,v| destructuring inside a module-included instance method, causing attrs_to_s to produce numeric garbage instead of formatted attribute strings."
+      },
+      {
+        "gem": "satoshi-unit",
+        "diff": "L1 cruby=\"8\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel returns the wrong value for symbol-keyed hash constant lookup: `Satoshi::UNIT_DENOMINATIONS[:btc]` evaluates to 0 (the :satoshi value) instead of 8 under Spinel AOT compilation."
+      },
+      {
+        "gem": "mtracker",
+        "diff": "L2 cruby=\"[:mtracker_log_pid_and_tid, :mtracker_log_pid_and_tid=, :mtracker_slack_url, :mtracker_slack_url=, :track]\\n\" spinel=\"[:decrement_nest_level, :increment_nest_level, :indent, :mtracker_log_pid_and_tid, :mtracker_log_pid_and_tid=, :mtracker_slack_url, :mtracker_slack_url=, :nest_level, :nest_level_key, :pid_and_tid, :put_track_info, :send_to_slack, :track]\\n\"",
+        "bug": "Spinel's Module#instance_methods returns private methods in the result even though Ruby's instance_methods should only include public and protected methods, causing the returned array to include all 13 methods instead of the correct 5 public/accessor methods."
+      },
+      {
+        "gem": "active-record-without-callbacks",
+        "diff": "L3 cruby=\"true\\n\" spinel=\"1\\n\"",
+        "bug": "Spinel prints `1` instead of `true` when `puts` is called on the return value of a proc that returns the literal `true`, indicating a miscompile in boolean-to-string conversion for proc/block return values."
+      },
+      {
+        "gem": "timecapsule",
+        "diff": "L2 cruby=\"helloworld\\n\" spinel=\"205080820241177\\n\"",
+        "bug": "Spinel miscompiles String#delete (called inside Timecapsule.delete_commas via value.delete(',')), returning a numeric value instead of the comma-stripped string."
+      },
+      {
+        "gem": "gitfinger",
+        "diff": "L3 cruby=\"false\\n\" spinel=\"true\\n\"",
+        "bug": "Spinel incorrectly reports a module-level String constant (Gitfinger::VERSION) as frozen, returning true for .frozen? where CRuby returns false."
+      },
+      {
+        "gem": "itunes_ingestion",
+        "diff": "L2 cruby=\"Free or Paid Apps, iPhone and iPod Touch\\n\" spinel=\"0\\n\"",
+        "bug": "Spinel mis-types the PRODUCT_TYPE_IDENTIFIER Hash constant as int, causing all string-keyed [] lookups to emit 0 instead of the expected string values (warning: cannot resolve call to '[]' on int)."
+      },
+      {
+        "gem": "frosty_meadow",
+        "diff": "L5 cruby=\"2.3.1\\n\" spinel=\"FrostyMeadow::Version\\n\"",
+        "bug": "Spinel ignores the `class << self` `to_s` override defined on a module, so `FrostyMeadow::Version.to_s` returns the default Module#to_s (\"FrostyMeadow::Version\") instead of the overridden value (\"2.3.1\")."
+      },
+      {
+        "gem": "rack-standards",
+        "diff": "L1 cruby=\"200\\n\" spinel=\"203875506144704\\n\"",
+        "bug": "Spinel miscompiles the return value of a proc-based mock Rack app: the integer status 200 from the proc is replaced with a garbage pointer value (203875506144704), and the localizer confirms `env` is typed as i:0 instead of h:{} at the call site."
+      },
+      {
+        "gem": "seapig-server",
+        "diff": "L4 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel reports `SeapigServer.constants.empty?` as false when the module declares no constants, whereas CRuby correctly returns true — Spinel incorrectly populates constants on a bare empty module."
+      }
+    ],
+    "codegen_bugs": [
+      {
+        "gem": "a--",
+        "error": "/tmp/spinel_out.m2ZJKH/out.c:63:47: error: incompatible type for argument 1 of 'sp_box_int'",
+        "bug": "Spinel emits `sp_box_int(sp_Class{...})` when compiling `Array#include?` with a Class argument (here `ancestors.include?(StandardError)`), but `sp_box_int` expects `mrb_int`, causing a C type error at compile time."
+      },
+      {
+        "gem": "any",
+        "error": "/tmp/spinel_out.xlEB8k/out.c:85:30: error: invalid operands to binary == (have 'sp_Class' and 'long long int'), /tmp/spinel_out.xlEB8k/out.c:86:30: error: invalid operands to binary == (have 'sp_Class' and 'char *')",
+        "bug": "Spinel emits invalid C binary `==` expressions when comparing a class object (sp_Class) with a primitive value (integer or string), crashing the C compiler instead of routing through the overridden `==` method on the class singleton."
+      },
+      {
+        "gem": "aslon_settings",
+        "error": "out.c:33:47: error: incompatible type for argument 1 of 'sp_box_int' — passes sp_Class to sp_box_int() which expects mrb_int, triggered by AslonSettings.ancestors.include?(AslonSettings)",
+        "bug": "Spinel emits `sp_box_int(((sp_Class){48LL}))` when compiling `Array#include?` with a Module argument, passing an `sp_Class` where `sp_box_int` expects `mrb_int`, causing a C compilation type error."
+      },
+      {
+        "gem": "dev_environment",
+        "error": "/tmp/spinel_out.7SRfjg/out.c:272:48: error: incompatible type for argument 1 of 'sp_box_int' — sp_Class passed where mrb_int expected in sp_PolyArray_include call for Array#include?(Hash)",
+        "bug": "Spinel emits `sp_box_int(sp_Class{...})` when the argument to `Array#include?` is a class literal (e.g. `Environment.ancestors.include?(Hash)`), producing a C type error because `sp_box_int` expects `mrb_int` not `sp_Class`."
+      },
+      {
+        "gem": "clause_extractor",
+        "error": "/tmp/spinel_out.Jausgg/out.c:239:35: error: incompatible type for argument 2 of 'sp_IntArray_push' — sp_Range pushed into sp_IntArray (same error repeated at line 324 in main)",
+        "bug": "Spinel incorrectly infers an Array of Range objects as sp_IntArray (integer array) instead of a generic/range array, causing a C type mismatch error when Range values are pushed into it via sp_IntArray_push in ClauseExtractor.prioritize_ranges."
+      },
+      {
+        "gem": "inform",
+        "error": "out.c:162:33: error: 'self' undeclared (first use in this function) [in sp_Inform_cls_level]; out.c:174:5: error: 'self' undeclared (first use in this function) [in sp_Inform_cls_level_eq]",
+        "bug": "Spinel emits `self->iv_level` in the generated C for `class << self` methods that read/write instance variables (@level), but `self` is never declared in those C functions, causing a C compilation error."
+      },
+      {
+        "gem": "on",
+        "error": "out.c:227:39: error: incompatible type for argument 2 of 'sp_raise_cls' (sp_RbVal passed where const char * expected); out.c:298:14: error: too many arguments to function 'sp_On_new'",
+        "bug": "Spinel codegen for `On#validate_callback!` emits `sp_raise_cls(\"InvalidCallback\", lv_name)` passing an `sp_RbVal` as the message argument where `const char *` is required, and generates a `sp_On_new` call in main with too many arguments, causing C compilation failures on this ordinary pure-Ruby callback gem."
+      },
+      {
+        "gem": "transdeps",
+        "error": "out.c:59:54: error: expected '=', ',', ';', 'asm' or '__attribute__' before '~' token",
+        "bug": "Spinel emits the Ruby `=~` operator method as a C function named `sp_Transdeps_Specification__eq~`, which contains a tilde that is not a valid C identifier character, causing a C compilation error."
+      },
+      {
+        "gem": "wm_okta_helper",
+        "error": "/tmp/spinel_out.gQWWNh/out.c:60:11: error: wrong type argument to unary exclamation mark",
+        "bug": "Spinel emits `!(sp_re_match_poly(...))` where `sp_re_match_poly` returns a non-boolean type, causing a C compiler error \"wrong type argument to unary exclamation mark\" whenever a regex `=~` match is used as the predicate inside `all?`."
+      },
+      {
+        "gem": "arbiter",
+        "error": "/tmp/spinel_out.E6CLoo/out.c:156:20: error: invalid initializer; /tmp/spinel_out.E6CLoo/out.c:243:5: error: 'self' undeclared (first use in this function)",
+        "bug": "Spinel emits invalid C for a class whose methods use a hash instance variable (`@message_table`) that maps symbols to arrays: generated code uses `sp_RbVal _t = 0` (invalid initializer for a struct type) and leaves `self` undeclared inside `sp_Arbiter_cls_set_listeners`, producing multiple C compiler errors."
+      },
+      {
+        "gem": "radiant-site_templates-extension",
+        "error": "out.c:34:47: error: incompatible type for argument 1 of 'sp_box_int' — sp_Class passed where mrb_int expected in sp_PolyArray_include call for Array#include? with a Module argument",
+        "bug": "Spinel generates C code that passes an sp_Class (module/class value) directly to sp_box_int (which expects mrb_int/long), causing a C compile error when Array#include? is called with a Module argument (e.g., ancestors.include?(SomeModule))."
+      },
+      {
+        "gem": "object_comparator",
+        "error": "out.c:84:25: error: incompatible type for argument 1 of 'sp_box_obj' — sp_ObjectComparator_InspectionString_new returns struct by value but sp_box_obj expects void*; same pattern in failing_message_for_should and failing_message_for_should_not",
+        "bug": "Spinel generates C code that passes an inner-class struct value (sp_ObjectComparator_InspectionString) directly to sp_box_obj (which expects void*) when instantiating a nested class inside outer class methods, producing a C type error that prevents compilation."
+      },
+      {
+        "gem": "catptcha",
+        "error": "warning: in (top level): cannot resolve call to 'puzzle_js' on class (emitting 0)\\nunhandled exception: undefined method 'puzzle_js' for class",
+        "bug": "Spinel cannot resolve singleton methods defined via `class << self` on a Module: calling `Catptcha.puzzle_js` emits 0 at compile time and raises \"undefined method 'puzzle_js' for class\" at runtime, despite the method being pure Ruby in the gem's own entry file with no external dependencies."
+      },
+      {
+        "gem": "envme",
+        "error": "out.c:128:37: warning: passing argument 1 of 'sp_box_int' makes integer from pointer without a cast — sp_file_expand_path(...) result (const char*) passed to sp_box_int (expects mrb_int); causes lib_path=0 at runtime, unhandled exception: undefined method 'configure' for class",
+        "bug": "Spinel generates incorrect C code for `File.expand_path`, boxing the returned `const char*` string pointer via `sp_box_int` (which expects `mrb_int`), causing `lib_path` to be set to integer 0 and crashing at runtime with `undefined method 'configure' for class`."
+      },
+      {
+        "gem": "base_action",
+        "error": "/tmp/spinel_out.qThKiM/out.c: In function 'sp_Actions_Base__implicit_144_error': out.c:199:19: warning: assignment to 'sp_StrIntHash *' from 'mrb_int' makes pointer from integer without a cast; /usr/bin/ld: undefined reference to `sp_Actions_Base_success_p', `sp_Actions_Base_error_p', `sp_Actions_Base_err_msg`, `sp_Actions_Base_error'; spinel: C compilation failed",
+        "bug": "Spinel generates an implicit setter for the `error` method (which shadows the `error` instance method name) with an incorrect integer-to-pointer type assignment, and fails to emit symbols for the `success?`, `error?`, `err_msg`, and `error` instance methods of Actions::Base, causing a linker undefined-reference error."
+      },
+      {
+        "gem": "couch",
+        "error": "out.c:34:47: error: incompatible type for argument 1 of 'sp_box_int' — sp_box_int(((sp_Class){48LL})) — sp_Class passed where mrb_int expected",
+        "bug": "Spinel emits `sp_box_int(((sp_Class){48LL}))` when boxing a module constant for `Array#include?`, passing an `sp_Class` struct where `mrb_int` is required, causing a C compilation failure."
+      },
+      {
+        "gem": "camel_snake_keys",
+        "error": "warning: in (top level): cannot resolve call to 'camelcase' on class (emitting 0)\nwarning: in (top level): cannot resolve call to 'snakecase' on class (emitting 0)\nwarning: in (top level): cannot resolve call to 'snake_keys' on class (emitting 0)\nwarning: in (top level): cannot resolve call to 'camel_keys' on class (emitting 0)\nunhandled exception: undefined method 'camelcase' for class",
+        "bug": "Spinel cannot resolve module singleton methods defined via `class << self` on a module (CamelSnakeKeys), emitting 0 for every call and crashing at runtime with \"undefined method\", even though no external requires are ignored."
+      },
+      {
+        "gem": "ni-logger",
+        "error": "/tmp/spinel_out.AJzfXt/out.c:169:19: error: 'self' undeclared (first use in this function)\n/tmp/spinel_out.AJzfXt/out.c:181:31: error: 'self' undeclared (first use in this function)",
+        "bug": "Spinel generates C code for singleton methods that access class-level instance variables (@options) without declaring the `self` parameter in the emitted C function, causing `'self' undeclared` compiler errors in sp_NI_LOGGER_cls_setup and sp_NI_LOGGER_cls_options."
+      },
+      {
+        "gem": "tts",
+        "error": "out.c:475:63: error: incompatible type for argument 2 of 'sp___oc_String_validate_text_length'",
+        "bug": "Spinel incorrectly infers the `chunks` accumulator array in `String#chunk_text` as `sp_IntArray` (integer array) instead of a string array, causing a C-level type error when pushing a string (`lv_chunk`) into it, despite the method being pure Ruby string manipulation with no external dependencies."
+      },
+      {
+        "gem": "gemify",
+        "error": "warning: in (top level): cannot resolve call to 'clean_name' on class (emitting 0)\nwarning: in (top level): cannot resolve call to 'name_to_namespace' on class (emitting 0)\nwarning: in (top level): cannot resolve call to 'namespace_to_library' on class (emitting 0)\nunhandled exception: undefined method 'clean_name' for class",
+        "bug": "Spinel cannot resolve method calls on a module that uses `extend self`, emitting 0 for every call and crashing at runtime with `undefined method 'clean_name' for class`."
+      },
+      {
+        "gem": "ormdev",
+        "error": "/tmp/spinel_out.P6Mf2l/out.c:67:47: error: incompatible type for argument 1 of 'sp_box_int'\n   puts(sp_PolyArray_include(_t1, sp_box_int(((sp_Class){22LL}))) ? \"true\" : \"false\");",
+        "bug": "Spinel emits `sp_box_int(((sp_Class){22LL}))` when compiling `Array#include?` called with a class constant (StandardError), passing an `sp_Class` value where `mrb_int` is expected, causing C compilation failure."
+      },
+      {
+        "gem": "high_water_mark",
+        "error": "out.c:61:47: error: incompatible type for argument 1 of 'sp_box_int' — sp_PolyArray_include(_t1, sp_box_int(((sp_Class){22LL}))) passes sp_Class where mrb_int expected",
+        "bug": "Spinel emits `sp_box_int(((sp_Class){22LL}))` when passing a Class constant to `Array#include?` (via `Module#ancestors.include?(StandardError)`), producing a C type mismatch because `sp_Class` cannot be implicitly converted to `mrb_int`."
+      },
+      {
+        "gem": "rot13",
+        "error": "sp_raise_cls(\"NoMethodError\", \"undefined method 'map' for range\"); — Spinel cannot resolve Range#map, emits 0 and raises NoMethodError at runtime",
+        "bug": "Spinel fails to compile ordinary Ruby Range#map (('a'..'z').map), emitting a runtime NoMethodError raiser instead of a working enumeration, causing rot13's core rotate method to always raise at runtime."
+      },
+      {
+        "gem": "github_repo_statistics",
+        "error": "/tmp/spinel_out.Rj0cXI/out.c:90:47: error: incompatible type for argument 1 of 'sp_box_int' — Spinel emits sp_box_int(((sp_Class){22LL})) when calling sp_PolyArray_include with a Class object, passing sp_Class struct where mrb_int is expected",
+        "bug": "When Array#include? is called with a Class constant as its argument, Spinel generates C code that wraps the sp_Class struct with sp_box_int (which expects mrb_int/long), causing a C type-mismatch compile error."
+      },
+      {
+        "gem": "text_parser",
+        "error": "/tmp/spinel_out/out.c:315:17: error: too few arguments to function 'sp___oc_String_parse'\n/tmp/spinel_out/out.c:320:17: error: incompatible types when assigning to type 'sp_RbVal' from type 'mrb_int'\n/tmp/spinel_out/out.c:521:30: error: incompatible type for argument 2 of 'sp_IntArray_push'",
+        "bug": "Spinel emits 0 for core built-ins Hash#merge (on sym_poly_hash), String#scan, and Array#sort_by used inside a module method mixed into String, producing cascading C type errors that prevent compilation of otherwise dependency-free Ruby."
+      }
+    ],
+    "loadpath_limit": 83,
+    "risky_smoke": 5,
+    "skipped": 21
+  }
+}

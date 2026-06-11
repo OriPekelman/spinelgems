@@ -1,0 +1,11 @@
+obj = A1447llMiniTest::MyClass.new
+puts obj.odd?(3)
+puts obj.odd?(4)
+puts obj.check_number?(1234)
+puts obj.check_number?(1235)
+puts obj.enough_length?("hello")
+puts obj.enough_length?("hi")
+puts obj.fizz_buzz(15)
+puts obj.fizz_buzz(9)
+puts obj.fizz_buzz(10)
+puts obj.hello("alice bob")

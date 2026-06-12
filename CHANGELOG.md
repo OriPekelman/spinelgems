@@ -6,6 +6,15 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed
+- **cmake build-units on macOS (spinelgems#21).** The Vendorer now sets the
+  SDK libc++ include path (`CPLUS_INCLUDE_PATH` via `xcrun --show-sdk-path`)
+  for cmake build-unit invocations on Darwin — without it every C++ unit died
+  with `fatal error: 'array' file not found` (toy#27's Mac cold-start LIB
+  leg; fix verified on an M2). Caller-set `CPLUS_INCLUDE_PATH` is preserved
+  (SDK path appends); missing/failing `xcrun` degrades to the previous
+  behavior.
+
 ### Added
 - **Opt-in build-units + variant build dirs (spinelgems#20).** An `optional`
   entry may declare `"default": "disabled"`: a plain `vendor` skips its build

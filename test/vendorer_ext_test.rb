@@ -283,5 +283,45 @@ section "build_dir: absolute / .. values rejected (#20)" do
   end
 end
 
+# ---------------------------------------------------------------------------
+# 9. macOS cmake build env (#21): the SDK libc++ path lands in
+#    CPLUS_INCLUDE_PATH on darwin+cmake, appending to a caller-set value;
+#    no-op elsewhere and when xcrun is unavailable.
+# ---------------------------------------------------------------------------
+section "build_env: darwin+cmake gets SDK libc++ include path (#21)" do
+  v = vendorer
+  check(v.send(:build_env, "cmake", platform: "aarch64-linux") == {},
+        "linux -> no env")
+  check(v.send(:build_env, "make", platform: "arm64-darwin23") == {},
+        "darwin make unit -> no env (cmake-only)")
+
+  Dir.mktmpdir("fake-xcrun") do |bin|
+    File.write(File.join(bin, "xcrun"), "#!/bin/sh\necho /Fake.sdk\n")
+    File.chmod(0o755, File.join(bin, "xcrun"))
+    old_path = ENV["PATH"]
+    old_cpp = ENV["CPLUS_INCLUDE_PATH"]
+    begin
+      ENV["PATH"] = "#{bin}:#{old_path}"
+      ENV.delete("CPLUS_INCLUDE_PATH")
+      env = v.send(:build_env, "cmake", platform: "arm64-darwin23")
+      check(env == { "CPLUS_INCLUDE_PATH" => "/Fake.sdk/usr/include/c++/v1" },
+            "darwin cmake -> SDK libc++ path (got #{env.inspect})")
+
+      ENV["CPLUS_INCLUDE_PATH"] = "/user/own"
+      env = v.send(:build_env, "cmake", platform: "arm64-darwin23")
+      check(env["CPLUS_INCLUDE_PATH"] == "/user/own:/Fake.sdk/usr/include/c++/v1",
+            "caller-set CPLUS_INCLUDE_PATH preserved, SDK appended")
+
+      # xcrun failing -> degrade to no env (build fails loud on its own)
+      File.write(File.join(bin, "xcrun"), "#!/bin/sh\nexit 1\n")
+      check(v.send(:build_env, "cmake", platform: "arm64-darwin23") == {},
+            "failing xcrun -> no env")
+    ensure
+      ENV["PATH"] = old_path
+      old_cpp ? ENV["CPLUS_INCLUDE_PATH"] = old_cpp : ENV.delete("CPLUS_INCLUDE_PATH")
+    end
+  end
+end
+
 puts(@fails.zero? ? "\nALL PASS" : "\n#{@fails} FAILURE(S)")
 exit(@fails.zero? ? 0 : 1)

@@ -441,8 +441,9 @@ module Bundler
             return nil
           end
 
+        env = build_env(b["tool"].to_s)
         cmds.each do |cmd|
-          out, st = Open3.capture2e(*cmd)
+          out, st = Open3.capture2e(env, *cmd)
           unless st.success?
             warn "[vendor] build failed (#{entry['name']}): #{cmd.take(2).join(' ')} ... : " \
                  "#{out.lines.last(3).join.strip}"
@@ -462,6 +463,26 @@ module Bundler
         # source checkout. Compile from the project root (the documented flow).
         pwd = Dir.pwd + File::SEPARATOR
         ven_dir.start_with?(pwd) ? ven_dir.delete_prefix(pwd) : ven_dir
+      end
+
+      # Build-unit environment (spinelgems#21): on macOS, a cmake unit with C++
+      # sources can't find the stdlib headers (`fatal error: 'array' file not
+      # found`) unless CPLUS_INCLUDE_PATH carries the SDK's libc++ path —
+      # toy#27's Mac cold-start LIB leg, verified fix on the M2. Tool-side, not
+      # per-gem env: the platform knowledge belongs here, or every gem with a
+      # C++ unit repeats it. A caller-set CPLUS_INCLUDE_PATH is preserved (the
+      # SDK path appends); xcrun absent/failing degrades to no env, and the
+      # build then fails with the original loud cmake error.
+      def build_env(tool, platform: RUBY_PLATFORM)
+        return {} unless tool == "cmake" && platform.include?("darwin")
+        sdk, st = Open3.capture2e("xcrun", "--show-sdk-path")
+        sdk = sdk.strip
+        return {} unless st.success? && !sdk.empty?
+        libcxx = File.join(sdk, "usr", "include", "c++", "v1")
+        paths = [ENV["CPLUS_INCLUDE_PATH"].to_s, libcxx].reject(&:empty?)
+        { "CPLUS_INCLUDE_PATH" => paths.join(File::PATH_SEPARATOR) }
+      rescue Errno::ENOENT
+        {}
       end
 
       # A placeholder that substitutes ZERO files is drift (toy#45: a gem whose

@@ -9,8 +9,9 @@
 >   hard-fails the compile — a new, separate effect we absorbed probe-side and
 >   that is itself an upstream filing candidate (see absorption doc).
 > - **Filing B** (raise-fallback `sp_box_int((sp_raise…))`, ~110 gems) →
->   **NOT addressed upstream; still the best unfiled candidate.** Re-confirm at
->   b60fbd7 before filing.
+>   **FIXED at b60fbd7** (re-verified 2026-06-15: mail_address/source_finder/
+>   twilito now `clean`; 0 raise-fallback-box hits in a 10-gem sample). The
+>   inference/box rewrite subsumed it — do NOT file.
 > - **Filing C** (initialize-yield `_block`) → covered by #1387-area fixes
 >   (`c0673d9`); retest.
 > - **Filing D** (`Foo::Bar`→`Foo_Bar` const rendering) → retest at b60fbd7.

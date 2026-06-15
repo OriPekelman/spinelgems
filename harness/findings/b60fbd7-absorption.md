@@ -100,7 +100,8 @@ finding + the expand-the-alias workaround.
   faster but uncapped memory; the new analyzer also segfaults on some gems.
 - **#1351** (flutie hang), **#1367** (layout-sensitive inference) — reprobe.
 - **triage filing B** (raise-fallback `sp_box_int((sp_raise…))`, ~110 gems) —
-  untouched upstream; best unfiled candidate.
+  **FIXED at b60fbd7** (re-verified: mail_address/source_finder/twilito clean;
+  0 hits in a 10-gem sample). Subsumed by the inference/box rewrite; not filed.
 
 ## 7. Leverage (new capabilities)
 - **RBS in/out** (`dcc682f` `--rbs` seeds, `4f5b371` `--emit-rbs`, `2b9a7be`

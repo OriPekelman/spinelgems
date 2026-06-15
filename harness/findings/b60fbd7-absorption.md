@@ -67,7 +67,7 @@ b60fbd7 catalog.
 (exit 0) or offer a flag — hard-failing the whole compile on a require Spinel
 *by design* can't follow (no load path) breaks the contract the vendoring
 story depends on. Freshly confirmed at b60fbd7; minimal repro:
-`require "no_such_lib"` at top level → exit 1.
+filed as **matz/spinel#1400** (`require` inside an `if` branch hard-fails; top-level warns+continues).
 
 ## 4. Our closed issues — confirmed at b60fbd7
 
@@ -90,8 +90,7 @@ Flags (closed upstream but verify against the filed repro):
 
 `A = M::N; A.foo(x)` is unsupported; direct `M::N.foo(x)` works. Gates
 **spinel_kit** graduation (its smoke does `J = SpinelKit::Json; puts J.escape`).
-Minimal repro + diagnosis in the draft at `/tmp/matz_const_alias.md` (filing was
-classifier-blocked to siblings; needs user). spinelkit#1 updated with the
+Filed upstream: **matz/spinel#1399**. spinelkit#1 updated with the
 finding + the expand-the-alias workaround.
 
 ## 6. Still open / not fixed

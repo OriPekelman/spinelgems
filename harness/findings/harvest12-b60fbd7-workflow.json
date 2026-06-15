@@ -1,0 +1,59 @@
+{
+  "summary": "Harvest #12: behaviour smokes for 200 newly-clean popular gems @ b60fbd7 (post-636-commit wave); verify --full or attribute. Filing OK (upstream active) but bank, do not file inline.",
+  "agentCount": 200,
+  "logs": [
+    "verified=4 miscompile=2 codegen=5 loadpath=151 risky=12 skipped=26"
+  ],
+  "result": {
+    "total": 200,
+    "returned": 200,
+    "verified": [
+      "rubygems-bundler",
+      "lint_roller",
+      "case_transform",
+      "aws-sigv2"
+    ],
+    "miscompile_bugs": [
+      {
+        "gem": "simplecov_json_formatter",
+        "diff": "L1 cruby=\"[:format]\\n\" spinel=\"[]\\n\"",
+        "bug": "Spinel returns empty `instance_methods(false)` for `SimpleCov::Formatter::JSONFormatter` even though the `format` method is defined directly in the gem's main entry file (not behind any ignored require), indicating Spinel drops public method definitions from a class body when other `require` calls in the same file are unresolved."
+      },
+      {
+        "gem": "ipaddress",
+        "diff": "L1 cruby=\"true\\n\" spinel=\"false\\n\"",
+        "bug": "Spinel miscompiles `IPAddress.valid_ipv4?(\"192.168.1.1\")` to return `false` instead of `true`; localized to ipaddress.rb:134 where `$~.captures.all? {|i| i.to_i < 256}` produces wrong result — `i` is read as integer 0 instead of the captured string \"192\"."
+      }
+    ],
+    "codegen_bugs": [
+      {
+        "gem": "xcpretty-travis-formatter",
+        "error": "spinel: unsupported super (no parent method): node 22 (ForwardingSuperNode)",
+        "bug": "Spinel fails to compile TravisFormatter (which inherits XCPretty::Simple) because it does not support ForwardingSuperNode (bare `super` calls forwarding all args), aborting before C-code generation with \"unsupported super (no parent method): node 22 (ForwardingSuperNode)\"."
+      },
+      {
+        "gem": "ruby-rc4",
+        "error": "spinel: unsupported call: node 12 (CallNode `eql?`) recv=LocalVariableReadNode/ty6 argc=1 arg0ty6",
+        "bug": "Spinel fails to compile `String#eql?` (or any generic `eql?` on a local variable of inferred type), exiting 1 with \"unsupported call\" before reaching the C stage, on perfectly ordinary Ruby code in RC4's key-blank check."
+      },
+      {
+        "gem": "sixarm_ruby_unaccent",
+        "error": "spinel: unsupported call: node 12 (CallNode `scan`) recv=-/ty-1 argc=1 arg0ty17",
+        "bug": "Spinel fails to compile String#scan called with a regex argument and a block, producing \"unsupported call: node 12 (CallNode `scan`)\" instead of emitting valid C."
+      },
+      {
+        "gem": "prettyprint",
+        "error": "/tmp/spinel_out_2887557_0.c:341:3: error: too few arguments to function 'sp_PrettyPrint_initialize' — generated call omits the block/proc parameter `lv_genspace` that was declared at line 233",
+        "bug": "Spinel codegen for `PrettyPrint.new` emits a call to `sp_PrettyPrint_initialize` with one fewer argument than the function's own generated declaration, dropping the optional block parameter `&genspace`, causing a C compile error."
+      },
+      {
+        "gem": "attr_required",
+        "error": "spinel: unsupported call: node 43 (CallNode `undef_optional_attributes`) recv=-/ty-1 argc=1 arg0ty37",
+        "bug": "Spinel aborts compilation with \"unsupported call\" on a `defined?`-guarded dynamic dispatch to `undef_optional_attributes` inside `AttrRequired::ClassMethods#attr_required`, which is ordinary Ruby with no external requires."
+      }
+    ],
+    "loadpath_limit": 151,
+    "risky_smoke": 12,
+    "skipped": 26
+  }
+}

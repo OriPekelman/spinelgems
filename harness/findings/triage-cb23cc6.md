@@ -1,5 +1,26 @@
 # Failure-cluster triage @ matz/spinel cb23cc6
 
+> **SUPERSEDED 2026-06-15 — HOLD lifted, most of this queue is FIXED.** matz
+> shipped 636 commits (cb23cc6→b60fbd7). Status of the filing queue below,
+> confirmed against the b60fbd7 build/reprobe (see
+> [`b60fbd7-absorption.md`](b60fbd7-absorption.md)):
+> - **Filing A** (19-gem parse regression) → FIXED by master `33873b1`
+>   (computed-require mis-parse). *Caveat:* unresolvable plain `require` now
+>   hard-fails the compile — a new, separate effect we absorbed probe-side and
+>   that is itself an upstream filing candidate (see absorption doc).
+> - **Filing B** (raise-fallback `sp_box_int((sp_raise…))`, ~110 gems) →
+>   **NOT addressed upstream; still the best unfiled candidate.** Re-confirm at
+>   b60fbd7 before filing.
+> - **Filing C** (initialize-yield `_block`) → covered by #1387-area fixes
+>   (`c0673d9`); retest.
+> - **Filing D** (`Foo::Bar`→`Foo_Bar` const rendering) → retest at b60fbd7.
+> - **Filing E** / #1386 evidence → #1386 CLOSED + fixed (`827e4de`); moot.
+> - harvest-11 box_int `Array#include?(Class)` ×9 → FIXED (`4766c81`);
+>   transdeps `=~` → FIXED (`6815e92`); frozen-literal → by design (`2f09340`,
+>   add to out-of-scope, don't file).
+>
+> The original HOLD note (now historical) follows.
+>
 > **HOLD — do not file yet.** Upstream is quiet (no commits past cb23cc6, no
 > issue activity since 06-08; matz appears to be away). This is the ranked
 > filing queue for when activity resumes. Filed-issue cross-refs verified

@@ -97,6 +97,18 @@ module Bundler
                 "not a misleading <code>hard:Mutex.new</code>. The differential re-audit also caught one regression in " \
                 "the wave: returning <code>self</code> from a reopened-builtin method " \
                 "(<a href=\"https://github.com/matz/spinel/issues/1386\">#1386</a>, <code>to-bool</code>), filed same day." },
+        { rev: "b60fbd7", date: "2026-06-15", commit: "636 commits — the largest wave yet. A type-inference + codegen rewrite (typed-array/poly ~222, inference/cast/box ~168, string ~124, block/yield ~101, module/singleton ~94) closing many harness-filed issues at once: reopened-builtin self (#1386), hash-block String type (#1382/#1394), circular require_relative (#1373), computed require (#1383), class-method yield (#1387), Scheduled-server boot + SIGTERM (#1369/#1384). New surfaces: value-type objects, --rbs/--emit-rbs/--emit-symbol-map.",
+          file: "survey-b60fbd7/compat.jsonl",
+          note: "<strong>The largest movement in the catalog's history.</strong> 636 upstream commits — a type-inference " \
+                "rewrite that resolved the entire <code>unresolved:&lt;method&gt;</code> reject family (~60k records → ~0): " \
+                "<strong>~49,000 gems moved out of <code>rejected</code></strong> (−46%), +22k to <code>clean</code>. The " \
+                "wave also changed unresolvable <code>require</code> to hard-fail the compile (post-#1383); because " \
+                "<code>require \"gem/version\"</code> is near-universal that spuriously rejected thousands, so the probe " \
+                "now classifies a require-only failure as the no-load-path limit (<code>risky [load-path:require]</code>, " \
+                "9,716 gems corrected). Cost side, caught by re-verifying every ★ at this rev: <strong>~34 of 175 " \
+                "behaviour-verified gems regressed</strong> (12 miscompiles incl. <code>after_commit_action</code>, 22 " \
+                "codegen incl. bare-<code>super</code>/<code>ForwardingSuperNode</code>) — the trust tier dropped 175→136. " \
+                "Fresh-verify overrode stickiness, so the ★ count is honest, not carried." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

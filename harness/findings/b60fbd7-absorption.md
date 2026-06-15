@@ -142,6 +142,11 @@ Each has a kept smoke under harness/smoke/ as a ready reproducer. Premium
 upstream material now that matz is active — likely the frozen-literal (2f09340),
 Array#dup-copy (d7b5450), operator-mangle (6815e92), poly re-narrowing changes.
 
+### filed upstream
+- **matz/spinel#1408** — `Module/Class#respond_to?` returns false for inherited builtins (`:name`/`:new`/`:instance_methods`); confirmed cb23cc6 true → b60fbd7 false. Covers the true→false cluster: bundler_signature_check, hudson, pry-plus.
+- **#1401** instance_methods(false)→[] (after_commit_action, basica, powder, yoshiki).
+- Remaining singles documented-not-filed (distinct one-offs, not a cluster): O_o (custom-exception hierarchy false→true), passw (float arithmetic →empty), test (global-var nil→[]), saj_collector/toolbox (VERSION.frozen? true→false).
+
 ### miscompiles (real behaviour regressions):
 - after_commit_action: rubric:miscompile miscompile diff:L3 cruby="[\"_after_commit_hook\", \"execute_after_commit\"]\n" spinel="[]\n"
 - basica: rubric:miscompile miscompile diff:L3 cruby="[:basic_auth]\n" spinel="[]\n"

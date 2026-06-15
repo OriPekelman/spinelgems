@@ -7,21 +7,29 @@
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<header><a class="brand" href="./">SpinelGems</a>
-  <nav><a href="./">Home</a> <a href="catalog.html">Catalog</a>
+<header>
+  <a class="brand" href="/"><svg class="gem" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9z" fill="#7b2d8e"/><path d="M6 3 2 9l10 13z" fill="#5a1f6b" opacity=".55"/><path d="M18 3l4 6-10 13z" fill="#b14fc4"/><path d="M6 3h12l-6 6z" fill="#d98ee8"/></svg>SpinelGems</a>
+  <nav><a href="/">Home</a> <a href="/catalog">Catalog</a>
     <a href="https://github.com/OriPekelman/spinelgems">GitHub</a></nav>
 </header>
 
 <main>
-  <p class="banner">⚠️ Pre-release / experimental. The CLI surface, the verdict
-  vocabulary, and the ledger format may all change. This site is not yet live.</p>
+  <p class="banner">⚠️ Pre-release / experimental — the CLI, verdict vocabulary,
+  and ledger format may still change.</p>
 
   <h1>Dependencies for <a href="https://github.com/matz/spinel">Spinel</a> projects</h1>
 
-  <p class="lede">Spinel-compiled projects have no shared way to declare or
-  exchange dependencies, so each vendors by hand. Rather than design a package
-  manager, <strong>borrow a format everyone already knows</strong> — a standard
-  <code>Gemfile</code> — and revisit later.</p>
+  <p class="lede">Spinel is a new ahead-of-time Ruby compiler. Spinel projects have
+  no shared way to declare or exchange dependencies, so each vendors by hand. Rather
+  than invent a package manager, <strong>borrow a format everyone already knows</strong>
+  — a standard <code>Gemfile</code> — to share Spinel code <em>and</em> to reach for the
+  enormous existing Ruby ecosystem.</p>
+
+  <p class="sub">The catch: most gems won't compile under Spinel <em>yet</em> — its
+  scope is deliberately limited and still growing. So we surveyed the ecosystem and
+  built a <a href="/catalog">catalog</a> of what works today, at each engine revision.</p>
+
+  <p><a class="cta" href="/catalog">Browse the catalog →</a></p>
 
   <h2>The convention</h2>
   <pre><code>source "https://rubygems.org"
@@ -33,7 +41,7 @@ gem "some_pure_ruby_lib"</code></pre>
   the marker guards <code>bundle install</code>. Nothing here is novel — that's
   the point.</p>
 
-  <h2>The plugin does two things</h2>
+  <h2>The bundler plugin does two things</h2>
   <ol>
     <li><strong>Makes it work.</strong> Spinel has no load path and inlines
       <code>require_relative</code>, so a dependency has to be <em>placed</em>
@@ -47,12 +55,12 @@ gem "some_pure_ruby_lib"</code></pre>
 
   <h2>The verdict ladder</h2>
   <table class="ladder">
-    <tr><td class="v verified">★ verified</td><td>compiles clean <em>and</em> the gem's own tests pass through a Spinel-compiled harness — the only verdict to trust where it matters</td></tr>
-    <tr><td class="v clean">✓ clean</td><td>compiles clean, no risky constructs found cheaply</td></tr>
+    <tr><td class="v verified">★ verified</td><td>full surface compiles <em>and</em> a behaviour smoke matches CRuby under a Spinel-compiled harness — the only verdict to trust where it matters</td></tr>
+    <tr><td class="v loaded">○ loaded</td><td>compiles and loads identically (require-only) — logic untested</td></tr>
+    <tr><td class="v clean">✓ clean</td><td>compiles clean (cheap lower bound); no behaviour run</td></tr>
     <tr><td class="v risky">~ risky</td><td>compiles, but uses constructs Spinel degrades silently (<code>define_method</code>, <code>eval</code>, <code>send</code>…)</td></tr>
-    <tr><td class="v rejected">✗ rejected</td><td>an unsupported call, or analyze failed — the gate fails the lock</td></tr>
+    <tr><td class="v rejected">✗ rejected</td><td>doesn't compile, or a caught miscompile — each reason names the missing feature</td></tr>
   </table>
-  <p><a class="cta" href="catalog.html">Browse Spinel-compatible gems →</a></p>
 
   <h2>Quick start</h2>
   <pre><code># make it work — place deps where Spinel finds them
@@ -68,7 +76,14 @@ spinel-compat check Gemfile.lock     # exit 1 if any gem is rejected</code></pre
   <code>clean</code>, where it matters.</p>
 </main>
 
-<footer>Pre-release · verdicts keyed on the Spinel engine revision ·
-  <a href="https://github.com/OriPekelman/spinelgems">source &amp; RFC</a></footer>
+<footer><div class="foot-wrap">
+  <div class="foot-built">
+    <span class="by"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 13L2 9z" fill="#b31217"/><path d="M6 3 2 9l10 13z" fill="#7a0c0f"/><path d="M18 3l4 6-10 13z" fill="#d42b2b"/><path d="M6 3h12l-6 6z" fill="#e86a6a"/></svg> <a href="https://github.com/matz/spinel">Spinel</a>-compiled Ruby</span>
+    <span class="by">Built with <a href="https://github.com/OriPekelman/tep">Tep</a></span>
+    <span class="by"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="#ff6b57"/><g stroke="#ff6b57" stroke-width="1.7" stroke-linecap="round"><path d="M12 2.2v2.6"/><path d="M12 19.2v2.6"/><path d="M2.2 12h2.6"/><path d="M19.2 12h2.6"/><path d="M5.1 5.1l1.8 1.8"/><path d="M17.1 17.1l1.8 1.8"/><path d="M18.9 5.1l-1.8 1.8"/><path d="M6.9 17.1l-1.8 1.8"/></g></svg> Hosted on <a href="https://upsun.com">Upsun</a></span>
+  </div>
+  <p class="foot-note">Pre-release · verdicts keyed on the Spinel engine revision ·
+    <a href="https://github.com/OriPekelman/spinelgems">source &amp; RFC on GitHub</a></p>
+</div></footer>
 </body>
 </html>

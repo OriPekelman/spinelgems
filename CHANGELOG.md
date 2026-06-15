@@ -7,6 +7,17 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ## [Unreleased]
 
 ### Fixed
+- **Probe: a require-only compile failure is the load-path limit, not
+  `analyze-failed` (spinel master b60fbd7 absorption).** Since matz/spinel's
+  #1383 fix, an unresolvable plain `require "gem/sub"` makes `spinel -c` exit
+  non-zero instead of warning and continuing. Because that idiom is
+  near-universal, the b60fbd7 corpus reprobe spuriously turned thousands of
+  previously-`clean` gems into `rejected:analyze-failed`. The probe now detects
+  a compile that failed *solely* on an unresolvable `require` (the
+  `CallNode \`require\`` form, with no real codegen error and no other
+  unsupported call) and classifies it `risky [load-path:require]` — the
+  documented no-load-path limitation a real Spinel project resolves by
+  vendoring. Real codegen errors still reject. +`test/probe_classify_test.rb`.
 - **Engine rev detection for worktrees + frozen copies.** `Engine#rev` fell
   back to an opaque `bin:<hash>` (a) in a git *worktree*, where `.git` is a
   file not a directory, and (b) for a frozen/detached engine copy with no

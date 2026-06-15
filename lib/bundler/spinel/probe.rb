@@ -37,6 +37,25 @@ module Bundler
       # and stdlib deps surface here. Informational, NOT a standalone reject:
       # it's as often a probe limitation as a real incompatibility.
       UNRESOLVED_REQUIRE = /require "([^"]+)" could not be resolved/.freeze
+      # Since the #1383 fix, an unresolvable plain `require` no longer warns +
+      # continues (exit 0) — it's emitted as an unsupported CallNode and the
+      # compile EXITS NON-ZERO. On the whole 189k corpus that turned ~thousands
+      # of previously-`clean` gems (the universal `require "gem/version"` idiom)
+      # into spurious `analyze-failed`. We detect this exact form so a
+      # require-ONLY compile failure is classified as the no-load-path
+      # limitation, not a codegen failure. (b60fbd7; see harness/findings.)
+      REQUIRE_CALL_FAIL = /unsupported call:.*CallNode `require`/.freeze
+      # A genuine codegen/compile failure — the C compiler choked, the analyzer
+      # died, or an unsupported construct OTHER than a plain require. Presence of
+      # any of these means the failure is real, not just the load-path limit.
+      HARD_COMPILE_ERROR = %r{
+        out\.c:\d+.*\berror:        |   # gcc error on emitted C
+        \bfatal\b                   |
+        \bSegmentation\ fault\b     |
+        \banalyze\ failed\b         |
+        unsupported\ puts\ argument |   # an unsupported non-require construct
+        unsupported\ call:\ (?!.*CallNode\ `require`)  # any non-require unsupported call
+      }ix.freeze
       ANALYZE_FAILED = /\b(analyze failed|fatal)\b/i.freeze
 
       # Spinel's analyze pass can spin for minutes on pathological inputs (no
@@ -119,6 +138,13 @@ module Bundler
           elsif sig[:timed_out]
             # Analyzer ran past the cap — pathological for Spinel, not the gem.
             ["rejected", ["analyze-timeout"]]
+          elsif sig[:require_only_fail]
+            # Compile failed solely on an unresolvable plain `require` (b60fbd7
+            # hard-fails these where cb23cc6 warned + continued). That's the
+            # no-load-path limitation, not a codegen failure — a real Spinel
+            # project vendors deps so the require resolves. Classify as the
+            # load-path limit (risky), keeping the needs: notes below.
+            ["risky", ["load-path:require"]]
           elsif sig[:analyze_failed] || !sig[:exit_ok]
             ["rejected", ["analyze-failed"]]
           elsif !static_only_risks(risks).empty?
@@ -145,18 +171,27 @@ module Bundler
         analyze_failed = false
         exit_ok = true
         timed_out = false
+        require_fail = false   # saw the new unresolvable-require hard-fail form
+        hard_error = false     # saw a genuine codegen/analyzer failure
         Dir.mktmpdir do |tmp|
           entries.each do |f|
             out, ok, hit_timeout = run_spinel(f, File.join(tmp, "out.c"))
             exit_ok &&= ok
             timed_out ||= hit_timeout
             analyze_failed ||= out =~ ANALYZE_FAILED ? true : false
+            require_fail ||= out =~ REQUIRE_CALL_FAIL ? true : false
+            hard_error ||= out =~ HARD_COMPILE_ERROR ? true : false
             out.scan(UNRESOLVED_CALL) { |m| calls << m[0] }
             out.scan(UNRESOLVED_REQUIRE) { |m| requires << m[0] }
           end
         end
+        # A compile that failed ONLY because a plain `require` is unresolvable
+        # (no real codegen error, no other unsupported call) is the documented
+        # no-load-path limitation, not a failure of the gem's own code.
+        require_only_fail = !exit_ok && !timed_out && require_fail && !hard_error && calls.empty?
         { calls: calls.uniq, requires: requires.uniq,
-          analyze_failed: analyze_failed, exit_ok: exit_ok, timed_out: timed_out }
+          analyze_failed: analyze_failed, exit_ok: exit_ok, timed_out: timed_out,
+          require_only_fail: require_only_fail }
       end
 
       # Run `spinel -c FILE -o OUT_C` with a wall-clock cap. Returns

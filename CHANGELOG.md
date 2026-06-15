@@ -7,6 +7,15 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 ## [Unreleased]
 
 ### Fixed
+- **Engine rev detection for worktrees + frozen copies.** `Engine#rev` fell
+  back to an opaque `bin:<hash>` (a) in a git *worktree*, where `.git` is a
+  file not a directory, and (b) for a frozen/detached engine copy with no
+  `.git`. Both now resolve to `git:<short-sha>`: worktree `.git` files are
+  honored (`File.exist?`, not `File.directory?`), and a `.spinel_rev` stamp
+  (a bare HEAD sha written at freeze time) is read first. Keeps the ledger
+  key — and the history/diff tooling that joins on it — consistent across the
+  build layouts a reprobe actually uses. `bin/reprobe-corpus.sh`'s frozen
+  engines now carry the stamp.
 - **cmake build-units on macOS (spinelgems#21).** The Vendorer now sets the
   SDK libc++ include path (`CPLUS_INCLUDE_PATH` via `xcrun --show-sdk-path`)
   for cmake build-unit invocations on Darwin — without it every C++ unit died

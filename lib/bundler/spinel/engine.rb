@@ -76,7 +76,17 @@ module Bundler
       private
 
       def compute_rev
-        if File.directory?(File.join(@dir, ".git"))
+        # A frozen/detached engine copy (bin/reprobe-corpus.sh's
+        # spinel-frozen-<rev>, or a build whose .git was stripped) can carry a
+        # `.spinel_rev` stamp — a bare HEAD sha written at freeze time — so it
+        # still keys to its real git rev instead of an opaque binary hash.
+        stamp = File.join(@dir, ".spinel_rev")
+        if File.file?(stamp) && !(s = File.read(stamp).strip[0, 12].to_s).empty?
+          return "git:#{s}"
+        end
+        # `.git` is a *file* in a git worktree (a gitdir pointer), not a dir —
+        # File.exist? covers both so worktree checkouts report git:, not bin:.
+        if File.exist?(File.join(@dir, ".git"))
           sha = capture("git", "-C", @dir, "rev-parse", "--short", "HEAD")
           if sha && !sha.empty?
             dirty = capture("git", "-C", @dir, "status", "--porcelain")

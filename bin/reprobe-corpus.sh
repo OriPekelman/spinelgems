@@ -41,6 +41,10 @@ if [ -z "${SPINEL_NO_FREEZE:-}" ]; then
     echo "[reprobe] freezing $SP_SRC -> $SP_FROZEN"
     cp -al "$SP_SRC" "$SP_FROZEN" 2>/dev/null || cp -r "$SP_SRC" "$SP_FROZEN"
   fi
+  # Stamp the rev so the frozen copy reports git:<sha> even though its .git is a
+  # worktree pointer (or absent) — keeps the ledger key consistent with the live
+  # checkout (engine.rb reads .spinel_rev first).
+  [ "$SP_REV" != "unknown" ] && printf '%s\n' "$SP_REV" > "$SP_FROZEN/.spinel_rev"
   export SPINEL_DIR="$SP_FROZEN"
 fi
 

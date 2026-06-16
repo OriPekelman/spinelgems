@@ -237,7 +237,11 @@ module Bundler
           spinel-compat install-engine                        # fetch+build the pinned engine (cached)
           export SPINEL="${SPINEL:-$HOME/.cache/spinel/current/spinel}"  # tell tep where the engine is
           spinel-compat vendor                                # place deps where Spinel follows them
-          tep build app.rb -o app                             # compile -> ./app
+          # vendor writes vendor/spinel/spinel-flags (e.g. `--rbs vendor/spinel/sig`
+          # for the aggregated sig type roots, spinelgems#13) so the compile uses
+          # what vendor produced with no hand-wiring.
+          SPINEL_FLAGS="$(cat vendor/spinel/spinel-flags 2>/dev/null || true)"
+          tep build app.rb $SPINEL_FLAGS -o app               # compile -> ./app
           echo "built ./app — run it with: ./app -p 4567"
         SH
       end

@@ -98,6 +98,58 @@ Dir.mktmpdir("rbsvendor") do |dir|
   vend.send(:write_manifest, into, [{ require: "g/lib/g", libdir: "g/lib" }], [])
   check(!File.read(File.join(into, "deps.rb")).include?("--rbs"),
         "no sig gems -> no --rbs note")
+
+  # spinel-flags: vendor emits the compile flags so the build auto-applies --rbs
+  # (no per-consumer hand-wiring). Project-relative, empty when no sig roots.
+  Dir.chdir(dir) do
+    rel_into = "vendor"
+    ff = vend.send(:write_compile_flags, rel_into, ["g"])
+    flags = File.read(ff).strip
+    check(flags == "--rbs vendor/sig", "spinel-flags carries project-relative --rbs (#{flags.inspect})")
+    vend.send(:write_compile_flags, rel_into, [])
+    check(File.read(ff).strip.empty?, "spinel-flags empty when no sig roots (cat-safe)")
+  end
+end
+
+# --- Vendorer: committed-sibling drift guard (audit gap 1) -------------------
+puts "\ndrift guard: a gem shipping lib/<X>/ + sig/<X>/ for an undeclared dep warns"
+Dir.mktmpdir("rbssib") do |src|
+  # a producer (like tep) that hand-copied a sibling gem (like spinel_kit)
+  FileUtils.mkdir_p(File.join(src, "lib", "spinel_kit"))
+  FileUtils.mkdir_p(File.join(src, "sig", "spinel_kit"))
+  File.write(File.join(src, "lib", "spinel_kit", "json.rb"), "module SpinelKit; end\n")
+  File.write(File.join(src, "sig", "spinel_kit", "json.rbs"), "module SpinelKit\nend\n")
+  # the producer's own tree (must NOT trip the guard)
+  FileUtils.mkdir_p(File.join(src, "lib", "tep"))
+  FileUtils.mkdir_p(File.join(src, "sig", "tep"))
+
+  vend = Bundler::Spinel::Vendorer.allocate
+  Dep = Struct.new(:name) unless defined?(Dep)
+  Spec = Struct.new(:name, :dependencies) unless defined?(Spec)
+
+  # case A: spinel_kit NOT declared -> warns
+  spec_a = Spec.new("tep", [])
+  w = vend.send(:committed_sibling_warnings, src, spec_a)
+  check(w.size == 1 && w.first.include?("hand-copied `spinel_kit`"),
+        "undeclared committed sibling -> 1 warning about spinel_kit (#{w.inspect})")
+  check(w.none? { |s| s.include?("hand-copied `tep`") }, "own namespace (tep) not flagged")
+
+  # case B: spinel_kit declared as a dependency -> no warning (vendor manages it)
+  spec_b = Spec.new("tep", [Dep.new("spinel_kit")])
+  check(vend.send(:committed_sibling_warnings, src, spec_b).empty?,
+        "declared dependency -> no warning")
+end
+
+# a gem with lib/<X>/ but NO matching sig/<X>/ is not the copy fingerprint
+puts "\ndrift guard: lib-only sub-namespace (no sig/<X>/) is NOT flagged"
+Dir.mktmpdir("rbssib2") do |src|
+  FileUtils.mkdir_p(File.join(src, "lib", "helpers"))
+  FileUtils.mkdir_p(File.join(src, "sig"))
+  File.write(File.join(src, "lib", "helpers", "x.rb"), "module Helpers; end\n")
+  vend = Bundler::Spinel::Vendorer.allocate
+  spec = Struct.new(:name, :dependencies).new("mygem", [])
+  check(vend.send(:committed_sibling_warnings, src, spec).empty?,
+        "lib/<X>/ without sig/<X>/ -> no warning")
 end
 
 puts(@fails.zero? ? "\nall checks passed" : "\n#{@fails} check(s) FAILED")

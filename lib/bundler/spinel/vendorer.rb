@@ -65,6 +65,7 @@ module Bundler
             manifest << { require: target, libdir: "#{File.basename(dest)}/lib" }
           end
           note_compat(name, version) if warn_incompatible
+          warn_committed_siblings(src, spec) if warn_incompatible
         end
 
         unless (unknown = enable - @ext_names_seen).empty?
@@ -72,7 +73,30 @@ module Bundler
                "entry in any vendored manifest: #{unknown.join(', ')}"
         end
         write_manifest(into, manifest, sig_gems)
-        { into: into, count: manifest.size, extensions: exts, sig_gems: sig_gems }
+        flags = write_compile_flags(into, sig_gems)
+        { into: into, count: manifest.size, extensions: exts, sig_gems: sig_gems, flags_file: flags }
+      end
+
+      # Emit `<into>/spinel-flags` — the engine flags a compile must pass to use
+      # what vendor produced, so the build step auto-applies them instead of the
+      # consumer hand-wiring `--rbs` (the per-project sig-symlink/Makefile hack).
+      # Today that's the aggregated sig type root (#13); the file is the seam for
+      # future global flags. A build script does:
+      #   spinel app.rb $(cat vendor/spinel/spinel-flags) -o app
+      # Project-relative when `into` is under cwd (the normal case) so the flag
+      # survives a project move. Always written (empty when no sig roots) so the
+      # `$(cat ...)` idiom never errors on a missing file.
+      def write_compile_flags(into, sig_gems)
+        path = File.join(into, "spinel-flags")
+        parts = []
+        unless sig_gems.empty?
+          sig_root = File.join(into, "sig")
+          pwd = Dir.pwd + File::SEPARATOR
+          rel = sig_root.start_with?(pwd) ? sig_root.delete_prefix(pwd) : sig_root
+          parts << "--rbs" << rel
+        end
+        File.write(path, parts.empty? ? "" : parts.join(" ") + "\n")
+        path
       end
 
       # Order specs so every gem's runtime dependencies come before it — a DFS
@@ -529,6 +553,44 @@ module Bundler
         label = v ? v.verdict : "unprobed"
         warn "[vendor] #{name} #{version}: #{label} for #{@engine.rev} " \
              "— may not compile (run `spinel-compat check`)"
+      end
+
+      # Drift guard: a gem that ships a *hand-copied* sibling gem inside its own
+      # tree — the fingerprint is BOTH `lib/<X>/` and `sig/<X>/` for an `<X>`
+      # that is neither the gem's own namespace nor a declared runtime dependency
+      # (tep carries `lib/spinel_kit/`+`sig/spinel_kit/` instead of depending on
+      # the gem; the copies have already gone stale). Copying both lib + sig is
+      # unambiguously vendoring, not a coincidental sub-namespace. Warn so the
+      # producer declares `gem "<X>"` and lets vendor manage it (#19 retired the
+      # interim that forced these copies) — this is the cross-repo-drift the
+      # convention exists to kill, surfaced at consume time. Returns warnings.
+      def committed_sibling_warnings(src, spec)
+        libdir = File.join(src, "lib")
+        sigdir = File.join(src, "sig")
+        return [] unless File.directory?(libdir) && File.directory?(sigdir)
+
+        own = own_namespaces(spec.name)
+        declared = spec.dependencies.map { |d| d.respond_to?(:name) ? d.name : d.to_s }
+        Dir.children(libdir).filter_map do |child|
+          x = child[%r{\A(.+?)(?:\.rb)?\z}, 1]
+          next if x.nil? || own.include?(x) || declared.include?(x)
+          next unless File.directory?(File.join(libdir, x))      # a lib/<X>/ tree
+          next unless File.directory?(File.join(sigdir, x))      # AND sig/<X>/ — the copy fingerprint
+          "[vendor] #{spec.name} ships a hand-copied `#{x}` (lib/#{x}/ + sig/#{x}/) " \
+            "but does not declare it as a dependency — it will drift. Declare " \
+            "`gem \"#{x}\"` so `spinel-compat vendor` manages it (spinelgems#19)."
+        end
+      end
+
+      def warn_committed_siblings(src, spec)
+        committed_sibling_warnings(src, spec).each { |w| warn w }
+      end
+
+      # Names that legitimately belong to this gem's own tree: its gem name and
+      # the dashed→slashed first segment (`a-b` → `a`), so a gem's own nested
+      # namespace never trips the sibling-copy guard.
+      def own_namespaces(name)
+        [name, name.tr("-", "/").split("/").first].compact.uniq
       end
 
       def write_manifest(into, entries, sig_gems = [])

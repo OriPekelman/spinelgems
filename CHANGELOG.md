@@ -4,6 +4,26 @@ All notable changes to `bundler-spinel` are documented here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Vendor emits `vendor/spinel/spinel-flags`** — the engine flags a compile
+  must pass to use what `vendor` produced (today the aggregated `--rbs
+  <into>/sig` type root, #13), so a build step auto-applies them
+  (`spinel app.rb $(cat vendor/spinel/spinel-flags) -o app`) instead of the
+  consumer hand-wiring `--rbs`/a sig-symlink. Always written (empty when no
+  sig roots) so the `$(cat …)` idiom never errors; the scaffold's `bin/build`
+  now sources it. Closes the last per-consumer hand-step in the vendoring
+  convention's happy path.
+- **Drift guard: committed-sibling-copy detection.** `vendor` now warns when a
+  gem ships a *hand-copied* sibling gem inside its own tree — the fingerprint
+  is BOTH `lib/<X>/` and `sig/<X>/` for an `<X>` that's neither the gem's own
+  namespace nor a declared dependency (e.g. `tep` carrying `lib/spinel_kit/` +
+  `sig/spinel_kit/` instead of depending on the gem; the copies drift). The
+  message tells the producer to declare `gem "<X>"` so `vendor` manages it.
+  This surfaces, at consume time, the cross-repo drift the convention exists
+  to eliminate (spinelgems#19). +tests.
+
 ## [0.4.0] — 2026-06-15
 
 ### Fixed

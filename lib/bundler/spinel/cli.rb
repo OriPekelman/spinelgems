@@ -208,7 +208,9 @@ module Bundler
         sigs = res[:sig_gems] || []
         unless sigs.empty?
           @out.puts "  #{sigs.size} gem(s) ship sig/*.rbs type roots -> #{res[:into]}/sig"
-          @out.puts "  compile with: spinel ... --rbs #{res[:into]}/sig   (spinelgems#13)"
+        end
+        if (ff = res[:flags_file])
+          @out.puts "  compile flags -> #{ff}  (e.g. `spinel app.rb $(cat #{ff}) -o app`)"
         end
         0
       end

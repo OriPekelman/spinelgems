@@ -109,6 +109,18 @@ module Bundler
                 "behaviour-verified gems regressed</strong> (12 miscompiles incl. <code>after_commit_action</code>, 22 " \
                 "codegen incl. bare-<code>super</code>/<code>ForwardingSuperNode</code>) — the trust tier dropped 175→136. " \
                 "Fresh-verify overrode stickiness, so the ★ count is honest, not carried." },
+        { rev: "478cc93", date: "2026-06-16", commit: "46 commits — the b60fbd7 follow-up wave. Every spinelgems-filed bug from b60fbd7 closed + fixed: const-alias receiver #1399 (a5f3044), require-in-conditional #1400 (3b17d67), instance_methods(false) #1401 (6902b50), respond_to? builtins #1408 (89c4832); plus thor proc-return #1372, Float→Integer map #1392 (landed via our PR #1407). New: `...` arg forwarding, instance_exec/eval trampolines, sprintf positional args, Math::DomainError.",
+          file: "survey-478cc93/compat.jsonl",
+          note: "<strong>The clean-up wave.</strong> matz closed every bug this harness filed in the b60fbd7 " \
+                "absorption — within a day, each by a named commit. The headline fix here is <strong>#1400</strong> " \
+                "(commit 3b17d67): an unresolvable <code>require</code> reaching codegen is now a runtime no-op, not a " \
+                "hard compile failure — so the require-penalty the previous rev had to correct probe-side is gone " \
+                "upstream (<code>load-path:require</code> fell 9,716 → 8). Net: <strong>+4,061 gems to <code>clean</code></strong> " \
+                "(79.7k → 83.7k), rejected 57.7k → 58.4k roughly flat. ★ 136 → 141 (4 cleanly restored: " \
+                "<code>bundler_signature_check</code>, <code>hudson</code>, <code>pry-plus</code>, <code>logger_pipe</code>; " \
+                "the rest of the b60fbd7 regressions were load-path-entangled, not the bugs that got fixed). Collaboration " \
+                "milestone: our fork PR (<code>fix/array-new-poly-size</code>) merged upstream as the #1392 fix, and matz " \
+                "added spinel-dev + spinelgems to the upstream README's community ecosystem." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

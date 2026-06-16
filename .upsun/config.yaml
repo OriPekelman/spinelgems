@@ -33,6 +33,17 @@ applications:
         #   spinel cc94707 carries every GC fix the serve path needs (#1052
         #   poly-local rooting, #1068 heap-typed params) — strictly safer than
         #   the prior 8d88ebe for the /catalog FFI-bind path.
+        #
+        # CATALOG DATA vs SERVE ENGINE are decoupled (2026-06-16): the catalog
+        # the site renders comes from survey-193k/compat.jsonl (now reprobed at
+        # matz/spinel 478cc93) via `build-db` under CRuby — independent of the
+        # engine the serve binary is compiled with. We do NOT bump the pin to
+        # 478cc93: the b60fbd7→478cc93 wave regressed the serve path — the serve
+        # app won't compile at b60fbd7 and boot-crashes at 478cc93 (SIGSEGV in
+        # sp_Response_set_cookie, a whole-program-inference miscompile of the
+        # seed-soup set_cookie call; filed upstream). cc94707 stays the working
+        # serve engine; the deploy still serves the *current* catalog. Re-test
+        # the pin bump once the serve-path regression is fixed upstream.
         SPINEL_PIN: "cc94707765c376e507ebac1ac2d902ac765c6da5"
         TEP_PIN: "af497ca"
 

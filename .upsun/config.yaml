@@ -34,16 +34,25 @@ applications:
         #   poly-local rooting, #1068 heap-typed params) — strictly safer than
         #   the prior 8d88ebe for the /catalog FFI-bind path.
         #
-        # CATALOG DATA vs SERVE ENGINE are decoupled (2026-06-16): the catalog
-        # the site renders comes from survey-193k/compat.jsonl (now reprobed at
-        # matz/spinel 478cc93) via `build-db` under CRuby — independent of the
-        # engine the serve binary is compiled with. We do NOT bump the pin to
-        # 478cc93: the b60fbd7→478cc93 wave regressed the serve path — the serve
-        # app won't compile at b60fbd7 and boot-crashes at 478cc93 (SIGSEGV in
-        # sp_Response_set_cookie, a whole-program-inference miscompile of the
-        # seed-soup set_cookie call; filed upstream). cc94707 stays the working
-        # serve engine; the deploy still serves the *current* catalog. Re-test
-        # the pin bump once the serve-path regression is fixed upstream.
+        # CATALOG DATA vs SERVE ENGINE are decoupled: the catalog the site
+        # renders comes from survey-193k/compat.jsonl (@ 478cc93) via `build-db`
+        # under CRuby — independent of the engine the serve binary is compiled
+        # with. cc94707 stays the working serve engine; the deploy serves the
+        # *current* catalog regardless.
+        #
+        # NATIVE BUMP TO 5959b64 ATTEMPTED + REVERTED (2026-06-17). It builds +
+        # boots + serves fine at spinel 5959b64 + tep 5c38c93 ON gx10, but 502'd
+        # on Upsun. Cause: tep's seed soup runs real I/O at module-load —
+        # `Tep::Shell.read("/etc/hostname")` (tep.rb:454, a type seed). gx10 has
+        # /etc/hostname; the Upsun container does NOT, so under the (correct)
+        # ENOENT-raising File.read in 5959b64 the seed throws at boot →
+        # serve_bin crashes → 502. (cc94707's older lenient File.read swallowed
+        # the missing file, which is why it survives. Also: web `start` only
+        # falls back to CRuby when serve_bin is MISSING, not when it crashes —
+        # see tep#214 for a crash-fallback.) NOT an upstream bug; the 5959b64
+        # ENOENT behavior is correct. FIX IS TEP-SIDE: retire the seed soup
+        # (tep#199/#217 → `--rbs sig`, no boot-time seed I/O) or guard the seed.
+        # Re-attempt the 5959b64 bump after that lands.
         SPINEL_PIN: "cc94707765c376e507ebac1ac2d902ac765c6da5"
         TEP_PIN: "af497ca"
 

@@ -30,22 +30,23 @@ applications:
         # SPINEL_PIN now tracks tep's own SPINEL_PIN (the commit tep is verified
         # to build+test against); TEP_PIN freezes tep so a future main advance
         # can't silently break the deploy again. Bump both together.
-        #   spinel cc94707 carries every GC fix the serve path needs (#1052
-        #   poly-local rooting, #1068 heap-typed params) — strictly safer than
-        #   the prior 8d88ebe for the /catalog FFI-bind path.
-        #
-        # CATALOG DATA vs SERVE ENGINE are decoupled (2026-06-16): the catalog
-        # the site renders comes from survey-193k/compat.jsonl (now reprobed at
-        # matz/spinel 478cc93) via `build-db` under CRuby — independent of the
-        # engine the serve binary is compiled with. We do NOT bump the pin to
-        # 478cc93: the b60fbd7→478cc93 wave regressed the serve path — the serve
-        # app won't compile at b60fbd7 and boot-crashes at 478cc93 (SIGSEGV in
-        # sp_Response_set_cookie, a whole-program-inference miscompile of the
-        # seed-soup set_cookie call; filed upstream). cc94707 stays the working
-        # serve engine; the deploy still serves the *current* catalog. Re-test
-        # the pin bump once the serve-path regression is fixed upstream.
-        SPINEL_PIN: "cc94707765c376e507ebac1ac2d902ac765c6da5"
-        TEP_PIN: "af497ca"
+        # NATIVE PIN BUMP to the latest engine (2026-06-17). The serve path is
+        # healthy again at spinel 5959b64 + tep 5c38c93, validated end-to-end
+        # locally (helper + `tep build app/serve.rb` + boot + GET / 200 + serves
+        # git:478cc93 / 141★). The two regressions that blocked it are resolved:
+        #   - the boot SIGSEGV in sp_Response_set_cookie (b60fbd7/478cc93) was a
+        #     same-leaf-name Response class collision — fixed by matz/spinel
+        #     a266211 (#1422/#1425).
+        #   - the residual PG `opts.each` whole-program miscompile (#1434) is in
+        #     tep's Postgres adapter, which tep#216 made OPT-IN. This serve uses
+        #     Tep::SQLite (catalog.db) only, so PG is out of its compile closure
+        #     (serve_bin links libsqlite3 + libssl, NOT libpq) and #1434 can't
+        #     bite it. #1434 stays open as a PG-consumer bug.
+        # Catalog data is still survey-193k/compat.jsonl @ 478cc93 (build-db,
+        # CRuby) — a fresh reprobe at 5959b64 is a follow-up; engine and catalog
+        # remain decoupled. Bump SPINEL_PIN+TEP_PIN together as a verified pair.
+        SPINEL_PIN: "5959b64e4a231a786d87b704923b4e0451dda3e0"
+        TEP_PIN: "5c38c93e05896190898a645cc35a4220b7059f9c"
 
     hooks:
       build: |

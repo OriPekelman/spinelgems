@@ -61,9 +61,14 @@ module Bundler
           place(src, dest)
           exts += wire_extensions(src, dest, ext_overrides, disable, enable)
           sig_gems << name if collect_sig(dest, sig_root, name)
-          if (target = require_target(name, dest))
-            manifest << { require: target, libdir: "#{File.basename(dest)}/lib" }
-          end
+          # Every placed gem's lib root goes on $LOAD_PATH (see write_manifest),
+          # so record an entry for *all* of them — even a gem with no top-level
+          # entrypoint (rspec-core ships only lib/rspec/core.rb, no lib/rspec-core.rb).
+          # Such a gem was previously dropped entirely, so a dependent's plain
+          # `require "rspec/core"` couldn't resolve and the whole closure failed
+          # to load. The require_relative auto-load (below) stays conditional on a
+          # resolvable entrypoint; the libdir is unconditional.
+          manifest << { require: require_target(name, dest), libdir: "#{File.basename(dest)}/lib" }
           note_compat(name, version) if warn_incompatible
           warn_committed_siblings(src, spec) if warn_incompatible
         end
@@ -537,13 +542,18 @@ module Bundler
       # and follows the gem's own require_relatives from there.
       def require_target(name, dest)
         base = File.basename(dest)
-        main = File.join(dest, "lib", "#{name}.rb")
-        if File.exist?(main)
-          "#{base}/lib/#{name}"
-        else
-          first = Dir[File.join(dest, "lib", "*.rb")].sort.first
-          first ? "#{base}/lib/#{File.basename(first, '.rb')}" : nil
+        # Preferred entrypoints, in order: the gem-named top file
+        # (lib/diff-lcs.rb), then the dash→slash convention a dashed gem usually
+        # follows (rspec-core → lib/rspec/core.rb), then any single top-level
+        # lib/*.rb. A gem with only a deeper/ambiguous layout returns nil — it's
+        # still on $LOAD_PATH (see vendor), just not force-required; its
+        # dependents require the right subpath themselves.
+        candidates = ["#{name}.rb", "#{name.tr('-', '/')}.rb"]
+        candidates.each do |rel|
+          return "#{base}/lib/#{rel.delete_suffix('.rb')}" if File.exist?(File.join(dest, "lib", rel))
         end
+        first = Dir[File.join(dest, "lib", "*.rb")].sort.first
+        first ? "#{base}/lib/#{File.basename(first, '.rb')}" : nil
       end
 
       def note_compat(name, version)
@@ -609,11 +619,11 @@ module Bundler
         # $LOAD_PATH lines and the inter-gem `require`, and instead loads
         # everything via the topo-ordered require_relatives below — so the same
         # deps.rb is correct for both runtimes. (spinelgems#19, gap 2)
-        es.map { |e| e[:libdir] }.uniq.each do |d|
+        es.map { |e| e[:libdir] }.compact.uniq.each do |d|
           body << %{$LOAD_PATH.unshift(File.expand_path(#{d.inspect}, __dir__))\n}
         end
         body << "\n"
-        es.each { |e| body << %{require_relative "#{e[:require]}"\n} }
+        es.each { |e| body << %{require_relative "#{e[:require]}"\n} if e[:require] }
         File.write(File.join(into, "deps.rb"), body)
       end
     end

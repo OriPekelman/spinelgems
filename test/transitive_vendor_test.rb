@@ -69,6 +69,47 @@ Dir.mktmpdir("transitive") do |into|
         "$LOAD_PATH prelude precedes the require_relative directives")
 end
 
+# --- require_target: nested-entry gems (rspec-core shape) -------------------
+# A dashed gem often ships only lib/<a>/<b>.rb (rspec-core -> lib/rspec/core.rb),
+# no top-level lib/<a>-<b>.rb. It must still resolve to that entry (dash->slash),
+# and a gem with NO resolvable entry must still land on $LOAD_PATH so a
+# dependent's plain `require` finds it.
+puts "\nrequire_target resolves dash->slash entry; libdir always on $LOAD_PATH"
+Dir.mktmpdir("reqtarget") do |dir|
+  # top-level lib/diff-lcs.rb wins
+  FileUtils.mkdir_p(File.join(dir, "diff-lcs", "lib", "diff"))
+  File.write(File.join(dir, "diff-lcs", "lib", "diff-lcs.rb"), "require 'diff/lcs'\n")
+  File.write(File.join(dir, "diff-lcs", "lib", "diff", "lcs.rb"), "module Diff; end\n")
+  check(V.send(:require_target, "diff-lcs", File.join(dir, "diff-lcs")) == "diff-lcs/lib/diff-lcs",
+        "top-level lib/<name>.rb preferred")
+
+  # nested-only lib/rspec/core.rb -> dash->slash
+  FileUtils.mkdir_p(File.join(dir, "rspec-core", "lib", "rspec"))
+  File.write(File.join(dir, "rspec-core", "lib", "rspec", "core.rb"), "module RSpec; end\n")
+  check(V.send(:require_target, "rspec-core", File.join(dir, "rspec-core")) == "rspec-core/lib/rspec/core",
+        "dash->slash entry when no top-level file")
+
+  # no resolvable entry (only deeply nested) -> nil, but still gets a libdir
+  FileUtils.mkdir_p(File.join(dir, "weird", "lib", "a", "b"))
+  File.write(File.join(dir, "weird", "lib", "a", "b", "c.rb"), "module X; end\n")
+  check(V.send(:require_target, "weird", File.join(dir, "weird")).nil?, "no entry -> nil")
+
+  # write_manifest: a libdir-only entry (require: nil) still unshifts $LOAD_PATH,
+  # emits no require_relative.
+  Dir.mktmpdir("manifest-nil") do |into|
+    V.send(:write_manifest, into,
+           [{ require: nil, libdir: "weird/lib" },
+            { require: "rspec-core/lib/rspec/core", libdir: "rspec-core/lib" }])
+    deps = File.read(File.join(into, "deps.rb"))
+    check(deps.include?(%($LOAD_PATH.unshift(File.expand_path("weird/lib", __dir__)))),
+          "nil-require gem still on $LOAD_PATH")
+    check(!deps.include?("require_relative \"\"") && !deps.match?(/require_relative\s*$/),
+          "nil-require gem emits no require_relative")
+    check(deps.include?(%(require_relative "rspec-core/lib/rspec/core")),
+          "entry gem still require_relative'd")
+  end
+end
+
 # --- gaps 1+2 end-to-end: the real fixture loads through a generated deps.rb -
 puts "\nthe two-gem fixture loads (provider's constant visible to the consumer)"
 fixture = File.expand_path("fixtures/transitive", __dir__)

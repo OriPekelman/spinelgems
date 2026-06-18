@@ -1,4 +1,4 @@
-gem	transitive_dependents	direct_dependents	spinel_verdict_478cc93
+gem	transitive_dependents	direct_dependents	spinel_verdict
 logger	41579	314	rejected
 json	37340	4305	rejected
 base64	37192	260	loaded
@@ -88,7 +88,7 @@ safe_yaml	4883	54	rejected
 activestorage	4880	27	risky
 actioncable	4867	18	risky
 rails	4851	3505	rejected
-crack	4775	139	clean
+crack	4775	139	loaded
 httparty	4480	3071	risky
 unf	4361	29	rejected
 rack-protection	4344	34	risky
@@ -97,7 +97,7 @@ ostruct	3898	155	rejected
 highline	3714	817	risky
 net-ssh	3226	452	rejected
 colorize	3204	1300	rejected
-netrc	3203	94	rejected
+netrc	3203	94	clean
 rest-client	2970	2405	risky
 mustermann	2908	36	rejected
 sinatra	2710	1334	rejected
@@ -124,7 +124,7 @@ ice_nine	1550	39	risky
 puma	1534	175	rejected
 http_parser.rb	1532	56	rejected
 temple	1477	19	risky
-rchardet	1436	25	clean
+rchardet	1436	25	loaded
 yajl-ruby	1428	415	rejected
 oauth2	1423	371	rejected
 git	1399	465	risky
@@ -139,7 +139,7 @@ ruby-hmac	1248	106	rejected
 haml	1237	548	risky
 parser	1219	172	rejected
 execjs	1133	150	risky
-dry-inflector	1088	58	clean
+dry-inflector	1088	58	loaded
 childprocess	1084	96	clean
 typhoeus	1075	933	risky
 log4r	1062	156	risky

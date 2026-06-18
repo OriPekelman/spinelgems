@@ -121,6 +121,20 @@ module Bundler
                 "the rest of the b60fbd7 regressions were load-path-entangled, not the bugs that got fixed). Collaboration " \
                 "milestone: our fork PR (<code>fix/array-new-poly-size</code>) merged upstream as the #1392 fix, and matz " \
                 "added spinel-dev + spinelgems to the upstream README's community ecosystem." },
+        { rev: "f3bb9af9", date: "2026-06-18", commit: "The post-478cc93 codegen + Ractor wave (≈#1413–#1476). Whole-program inference, codegen (poly dispatch, ivar/default-arg typing, loop control-flow, GC rooting of FFI/fresh temps) and a new Ractor API surface (make_shareable, select, RemoteError, introspection). The serve-path regression chain closed (#1420/#1422/#1425/#1434).",
+          file: "survey-f3bb9af9/compat.jsonl",
+          note: "<strong>A modest, honesty-improving wave for the bulk catalog.</strong> The big codegen movement " \
+                "was whole-program (serve/Ractor/training), not the single-gem compile-check this corpus runs — so the " \
+                "load-bearing blockers (<code>thor</code>, <code>json</code>, <code>logger</code>, <code>redis</code>, " \
+                "<code>rake</code>) did <em>not</em> clear. Net: <strong>+394 gems out of <code>rejected</code></strong> " \
+                "(58.4k → 57.9k), +326 <code>clean</code>. The ~32 <code>clean</code>→<code>rejected</code> moves are mostly " \
+                "the analyzer getting <em>more honest</em> — refusing cases it previously <strong>silently miscompiled</strong>: " \
+                "<code>base26</code>'s <code>each.with_index.inject</code> ran to empty output at 478cc93 and is correctly " \
+                "rejected now (filed <a href=\"https://github.com/matz/spinel/issues/1481\">#1481</a>; the broader " \
+                "<code>each.with_index</code>-yields-nothing miscompile is <a href=\"https://github.com/matz/spinel/issues/1483\">#1483</a>). " \
+                "Re-verified every ★ at this rev: only <strong>1 of 140 regressed</strong> (<code>stringglob</code>, invalid " \
+                "generated C under full-surface require), ★ holds at 215 mechanical + human attestations. The require-only " \
+                "<code>loaded</code> tier was materialized here for the first time (<strong>0 → 2,311</strong>)." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

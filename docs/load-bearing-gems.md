@@ -90,24 +90,26 @@ Raw load-bearing rank answers "what's deep," not "what should we do." Two more
 passes (`harness/load-bearing/buildability.rb`) turn it into a roadmap.
 
 **Buildability.** A gem is *buildable* only if it compiles **and** its whole
-transitive closure compiles. At `95557f5`:
+transitive closure compiles. At `478cc93`:
 
 | | gems |
 |---|---:|
-| buildable (closure all green) | 50,688 |
-| **blocked** (compiles itself, but a rejected dep) | **29,139** |
-| rejected (doesn't compile) | 110,256 |
+| buildable (closure all green) | 86,045 |
+| **blocked** (compiles itself, but a rejected dep) | **45,670** |
+| rejected (doesn't compile) | 58,368 |
 
-So ~29k gems that the catalog shows as `clean` can't actually be used — a
+So ~46k gems that the catalog shows as `clean` can't actually be used — a
 transitive dependency is rejected. "Clean" is a per-gem fact; buildable is the
-useful one.
+useful one. (Since `95557f5` rejected more than halved, 110k→58k; buildable rose
+51k→86k and *blocked* rose 29k→46k — gems graduate out of `rejected` into
+`blocked` as their own compile clears but a dep still doesn't.)
 
 **Impact flow (sole-blocker).** For each blocked gem we track its *root blockers*
 — the rejected gems beneath it (capped, so the single-blocker case resolves
 exactly). Then **sole-impact(B)** = how many gems become buildable if you fix
 **B alone**. That's the "a single change flows up a whole subtree" signal you
-wanted. The top blockers by sole-impact: `thor` (495), `json` (257), `rack`
-(215), `redis` (155), `colorize` (103), `logger` (44)…
+wanted. The top blockers by sole-impact: `thor` (882), `json` (540), `redis`
+(275), `ffi` (228), `colorize` (181), `logger` (156), `rake` (150)…
 
 **But not all blockers are first targets.** Classified by failure:
 `c-extension` (native — needs FFI/ext vendoring, a separate track) and
@@ -118,16 +120,21 @@ harness files) gives the real near-term roadmap — and deliberately reaches
 
 | gem | sole-impact | lib size | failure |
 |---|---:|---|---|
-| **thor** | **495** | 4 files / 160 LOC | codegen (`handle_no_command_error` on class → 0) |
-| redis | 155 | small | unresolved-call |
-| colorize | 103 | 5 / 66 | analyze-failed |
-| ostruct | 46 | 2 / 152 | analyze-failed (stdlib) |
-| logger | 44 | 2 / 209 | unresolved-call (stdlib) |
-| rexml | 40 | 1 / 49 | analyze-failed (stdlib) |
-| trollop | 36 | 2 / 130 | unresolved-call |
-| os | 11 | 2 / 55 | unresolved-call |
+| **thor** | **882** | 4 files / 110 LOC | analyze-failed |
+| redis | 275 | 2 / 19 | analyze-failed |
+| colorize | 181 | 5 / 42 | analyze-failed |
+| logger | 156 | 2 / 126 | analyze-failed |
+| rake | 150 | 5 / 572 | analyze-failed |
+| bundler | 134 | analyze-failed |
+| multi_json | 124 | analyze-failed |
+| public_suffix | 102 | analyze-failed |
+| concurrent-ruby | 84 | no-entrypoint |
+| tilt | 74 | analyze-failed |
+| rexml | 69 | analyze-failed (stdlib) |
+| ostruct | 66 | analyze-failed (stdlib) |
 
-(full list: `harness/load-bearing/blockers.tsv`)
+(full list: `harness/load-bearing/blockers.tsv`; site-facing join in
+`targets.tsv` via `assemble-targets.rb`)
 
 **Two ways to fix a target — and small libs favour the second.** A blocker can be
 unblocked either by a **Spinel compiler fix** (file a focused issue, the usual

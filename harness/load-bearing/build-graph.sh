@@ -21,5 +21,17 @@ cat "$OUT/paths.txt" | xargs -P "$P" -n 80 ruby "$HERE/extract-deps.rb" >> "$OUT
 sort -u "$OUT/edges_raw.tsv" > "$OUT/edges.tsv"
 echo "edges: $(wc -l < "$OUT/edges.tsv") | source gems: $(cut -f1 "$OUT/edges.tsv" | sort -u | wc -l)"
 
-ruby "$HERE/analyze.rb" "$OUT/edges.tsv" "$HERE/../../survey-193k/compat.jsonl" > "$OUT/loadbearing.tsv"
+COMPAT="$HERE/../../survey-193k/compat.jsonl"
+ruby "$HERE/analyze.rb" "$OUT/edges.tsv" "$COMPAT" > "$OUT/loadbearing.tsv"
 echo "ranking -> $OUT/loadbearing.tsv"
+
+# Refresh the committed head (transit + current verdicts) the impact pass reads.
+{ printf 'gem\ttransitive_dependents\tdirect_dependents\tspinel_verdict\n'; head -200 "$OUT/loadbearing.tsv"; } > "$HERE/top-load-bearing.tsv"
+
+# Buildability + blocker-impact (writes blockers.tsv), then assemble the
+# site-facing targets.tsv. After this run `spinel-compat build-load-bearing`
+# and update the BUILDABLE/BLOCKED/REJECTED constants in load_bearing.rb from
+# the buildability summary printed below.
+ruby "$HERE/buildability.rb" "$OUT/edges.tsv" "$COMPAT"
+ruby "$HERE/assemble-targets.rb" > "$HERE/targets.tsv"
+echo "targets -> $HERE/targets.tsv ($(wc -l < "$HERE/targets.tsv") rows)"

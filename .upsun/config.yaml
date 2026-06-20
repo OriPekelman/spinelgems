@@ -35,10 +35,10 @@ applications:
         #   the prior 8d88ebe for the /catalog FFI-bind path.
         #
         # CATALOG DATA vs SERVE ENGINE are decoupled: the catalog the site
-        # renders comes from survey-193k/compat.jsonl (@ 478cc93) via `build-db`
-        # under CRuby — independent of the engine the serve binary is compiled
-        # with. cc94707 stays the working serve engine; the deploy serves the
-        # *current* catalog regardless.
+        # renders comes from survey-193k/compat.jsonl (@ f973b129, reprobed
+        # 2026-06-20) via `build-db` under CRuby — independent of the engine the
+        # serve binary is compiled with. cc94707 stays the working serve engine;
+        # the deploy serves the *current* catalog regardless.
         #
         # NATIVE BUMP TO 5959b64 ATTEMPTED + REVERTED (2026-06-17). It builds +
         # boots + serves fine at spinel 5959b64 + tep 5c38c93 ON gx10, but 502'd

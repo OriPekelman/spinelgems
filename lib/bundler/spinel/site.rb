@@ -74,7 +74,7 @@ module Bundler
       #           #1043/#1062 — every suite tried still surfaces a miscompile).
       BADGE = {
         "human" => { glyph: "👤", label: "human-attested",
-          blurb: "A person has used this gem in a real Spinel/Tep program and attests it works — the highest-trust signal we carry. Version-pinned in <code>attestations.jsonl</code>." },
+          blurb: "A person has used this gem in a real Spinel/Tep program and attests it works — the highest-trust signal we carry. Recorded in <code>attestations.jsonl</code> from the attested version onward (a fresh behaviour failure still overrides it)." },
         "tests" => { glyph: "✪", label: "own-tests pass",
           blurb: "The gem's own test suite compiles, runs, and matches CRuby under a Spinel-compiled harness (<code>verify --tests</code>) — a stronger, zero-human-effort behaviour signal than a hand smoke." },
       }.freeze
@@ -248,10 +248,39 @@ module Bundler
         end
       end
 
-      # [gem, version] => attestation hash, from attestations.jsonl. The 👤 human
-      # signal: a person vouches a specific version works in real use.
-      def attestations
-        @attestations ||= load_jsonl(@attestations_path) { |h| [[h["gem"], h["version"]], h] }
+      # gem => [attestation hash, ...] from attestations.jsonl (a gem may carry
+      # more than one over time). The 👤 human signal: a person vouches a version
+      # works in real use.
+      def attestations_by_gem
+        @attestations_by_gem ||= begin
+          h = Hash.new { |hh, k| hh[k] = [] }
+          if @attestations_path && File.exist?(@attestations_path)
+            File.foreach(@attestations_path) do |line|
+              line = line.strip
+              next if line.empty?
+              a = (JSON.parse(line) rescue next)
+              h[a["gem"]] << a if a["gem"] && a["version"]
+            end
+          end
+          h
+        end
+      end
+
+      # The 👤 attestation that applies to (gem, version), or nil. Version-FLOOR,
+      # not exact: a person vouching version X means X *and every later release*
+      # carry the signal — a maintainer keeps a Spinel-native program (tep) working
+      # across minor bumps, and the require-probe can't re-rank it. This stops the
+      # ★ from silently dropping when a corpus reprobe picks up a newer cached
+      # release (the tep 0.11.2 → 0.11.5 regression). A fresh *behaviour* probe
+      # still overrides it (the behaviour_rejected guard in #rows). Picks the
+      # highest attested version that is <= the catalog version.
+      def attestation_for(gem, version)
+        cands = attestations_by_gem[gem]
+        return nil if cands.empty?
+        cv = (Gem::Version.new(version) rescue nil)
+        return nil unless cv
+        cands.select { |a| (Gem::Version.new(a["version"]) <= cv rescue false) }
+             .max_by { |a| Gem::Version.new(a["version"]) }
       end
 
       # [gem, version] => true, for gems whose OWN test suite passed under Spinel
@@ -321,8 +350,9 @@ module Bundler
         # pass it though it demonstrably works (it compiles this very site). So a
         # human-attested (gem,version) earns ★ exactly like a verify-full pass —
         # unless a fresh *behaviour* probe (verify/verify-full) contradicts the
-        # human's claim (handled by the `behaviour_rejected` guard below).
-        attestations.each_key { |k| ever_verified << k }
+        # human's claim (handled by the `behaviour_rejected` guard below). The
+        # attestation→verified lift is applied per row via #attestation_for
+        # (version-FLOOR), so a newer catalog version still inherits the ★.
 
         current_entries.map do |name, vs|
           # Within the current rev, pick the *strongest* signal — not the
@@ -341,7 +371,8 @@ module Bundler
             x.verdict == "rejected" && (x.probe == "verify" || x.probe == "verify-full")
           end
           md = meta[name] || {}
-          eff_verdict = if ever_verified.include?([name, v.version]) && !behaviour_rejected
+          attested = !attestation_for(name, v.version).nil?
+          eff_verdict = if (ever_verified.include?([name, v.version]) || attested) && !behaviour_rejected
                           "verified"
                         elsif v.verdict == "rejected"
                           "rejected"
@@ -349,10 +380,10 @@ module Bundler
                           v.verdict
                         end
           # Composable signals (orthogonal to the verdict):
-          # 👤 human — a version-matched attestation, suppressed if the gem is
+          # 👤 human — a version-floor attestation, suppressed if the gem is
           #            behaviour-rejected now (a caught regression postdates the
           #            human's "it worked").
-          human = attestations.key?([name, v.version]) && eff_verdict != "rejected"
+          human = attested && eff_verdict != "rejected"
           # ✪ tests — own suite passed at THIS rev.
           tests = test_passes.key?([name, v.version, target_rev])
           # the rubric tag (why-not-verified), surfaced from the picked entry's
@@ -502,7 +533,7 @@ module Bundler
       def signals_html(r)
         s = +""
         if r.human
-          a = attestations[[r.gem, r.version]] || {}
+          a = attestation_for(r.gem, r.version) || {}
           s << %(<span class="badge human" title="#{h a["note"]} — #{h a["by"]}, #{h a["date"]}">#{BADGE["human"][:glyph]} human</span>)
         end
         s << %(<span class="badge tests" title="own test suite matches CRuby under Spinel">#{BADGE["tests"][:glyph]} tests</span>) if r.tests

@@ -49,7 +49,7 @@ net-http	8557	40	rejected
 faraday-net_http_persistent	8510	33	rejected
 faraday-multipart	8510	181	rejected
 erubi	8507	34	rejected
-faraday	8507	3586	risky
+faraday	8507	3586	rejected
 faraday-retry	8507	94	rejected
 arel	8487	53	risky
 activerecord	8461	3004	risky

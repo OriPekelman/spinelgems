@@ -135,6 +135,19 @@ module Bundler
                 "Re-verified every ★ at this rev: only <strong>1 of 140 regressed</strong> (<code>stringglob</code>, invalid " \
                 "generated C under full-surface require), ★ holds at 215 mechanical + human attestations. The require-only " \
                 "<code>loaded</code> tier was materialized here for the first time (<strong>0 → 2,311</strong>)." },
+        { rev: "f973b129", date: "2026-06-20", commit: "A per-method codegen + diagnostics wave (≈#1499–#1509): method_missing dispatch for unresolved object calls, super into an included-module method, or/and/operator writes, alias under a statement modifier, block_given? in lowered methods, poly arithmetic→bigint (SP_TAG_BIGINT), and new compile-time diagnostics for send/public_send/eval with a runtime (non-constant) name. All three spinelgems issues from the f3bb9af9 reprobe fixed in this window: #1481 (15f4242c), #1483 (d4078d13), #1498 (40871cfe).",
+          file: "survey-f973b129/compat.jsonl",
+          note: "<strong>Stricter, more honest — driven by new diagnostics, not regressions.</strong> Net: rejected " \
+                "<strong>+1,215</strong> (57.9k → 59.1k), risky −1,647, clean +432. The big move is <strong>1,939 " \
+                "<code>risky</code>→<code>rejected</code></strong>: the new <code>send</code>/<code>public_send</code> " \
+                "diagnostic now refuses a <em>runtime</em> method name (<code>unsupported send with a runtime method name — " \
+                "AOT needs a compile-time-known name</code>) instead of silently compiling code that would fail at runtime. " \
+                "That's the closed-world limit surfaced honestly: ~2,000 dynamic-dispatch gems can't AOT-compile and are now " \
+                "marked so. Genuine fixes also landed — <strong>491 <code>rejected</code>→<code>clean</code></strong> " \
+                "(method_missing dispatch, or/and writes, super-into-module). The load-bearing blockers " \
+                "(<code>thor</code>/<code>json</code>/<code>logger</code>/<code>redis</code>) still don't clear — their " \
+                "failures are deeper (analyze-failed / C-extension). The 55 <code>clean</code>→<code>rejected</code> are the " \
+                "same <code>send</code>-diagnostic, not codegen regressions." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

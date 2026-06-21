@@ -148,6 +148,18 @@ module Bundler
                 "(<code>thor</code>/<code>json</code>/<code>logger</code>/<code>redis</code>) still don't clear — their " \
                 "failures are deeper (analyze-failed / C-extension). The 55 <code>clean</code>→<code>rejected</code> are the " \
                 "same <code>send</code>-diagnostic, not codegen regressions." },
+        { rev: "fc2e339a", date: "2026-06-21", commit: "A large promote/poly-dispatch wave (≈#1510–#1515, 104 commits): an experimental full int→poly widen under a <code>g_promote_mode</code> gate with the boxing/unboxing it needs (poly method dispatch, bound-method ABI adapters, op-assign through <code>sp_poly_*</code>), plus standalone codegen: find-pattern matching (<code>in [*head, x, *tail]</code>), <code>case/in</code> in value position, <code>enum_for</code>/<code>to_enum</code> materialization, integer literals wider than int64 kept as bigints, and a frozen-string GC use-after-free fix (fc2e339a). The method_missing dispatch added at f973b129 was reverted (warns instead); a new diagnostic refuses <code>eval</code> in print-argument position.",
+          file: "survey-fc2e339a/compat.jsonl",
+          note: "<strong>The biggest honest improvement yet for the bulk catalog.</strong> Net: rejected " \
+                "<strong>−1,645</strong> (59.1k → 57.5k), risky +1,636, clean +9. The dominant move is <strong>1,639 " \
+                "<code>rejected</code>→<code>risky</code></strong>: the promote/poly work plus more complete dispatch " \
+                "now <em>compile</em> gems that previously hard-rejected, leaving only a runtime-risk flag. Just <strong>14 " \
+                "regressions</strong>, almost all expected — 7 are analyze <em>timeouts</em> on huge generated SDK gems " \
+                "(load-induced, not codegen), 3 are the deliberate method_missing-dispatch revert. One genuine codegen " \
+                "regression was minimized and filed as <a href=\"https://github.com/matz/spinel/issues/1516\">#1516</a> " \
+                "(bitwise <code>&amp;</code> on a bignum receiver — the 64-bit-mask PRNG idiom). The load-bearing blockers " \
+                "(<code>thor</code>/<code>json</code>/<code>logger</code>/<code>redis</code>) still don't clear — fourth " \
+                "confirmation that the bulk-compile catalog moves only modestly per wave." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

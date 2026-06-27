@@ -160,6 +160,23 @@ module Bundler
                 "(bitwise <code>&amp;</code> on a bignum receiver — the 64-bit-mask PRNG idiom). The load-bearing blockers " \
                 "(<code>thor</code>/<code>json</code>/<code>logger</code>/<code>redis</code>) still don't clear — fourth " \
                 "confirmation that the bulk-compile catalog moves only modestly per wave." },
+        { rev: "28c173ce", date: "2026-06-27", commit: "249 commits (≈#1569–#1601): a broad Ruby-surface coverage wave (largely ryanseys PRs) — <code>Symbol#to_proc</code>/<code>casecmp</code>, named <code>sprintf</code> references in <code>String#%</code>, Array set-ops + in-place bang mutators (<code>map!</code>/<code>select!</code>/<code>merge!</code>), <code>case/in</code> pattern matching (array/hash/range/find patterns), MatchData named captures, real <code>dup</code>/<code>clone</code> via <code>initialize_copy</code>, <code>Integer#clamp</code>, <code>Float#%</code>, String-array <code>min</code>/<code>max</code>, Regexp introspection, <code>IO#write</code> to STDOUT/STDERR, <code>Mod::X = v</code> constant-path assignment — plus a major analyze-performance line (<a href=\"https://github.com/matz/spinel/issues/1601\">#1601</a>: nodes-by-kind index + O(n²)→indexed scans) and the flatten require-path canonicalization (cbde0f88) that resolves the layout-sensitivity root of <a href=\"https://github.com/matz/spinel/issues/1367\">#1367</a>. Poly-dispatch hardening: drop arms for yielding/DCE-pruned methods (#1583), guard <code>to_s</code>/<code>inspect</code> against the cls_id-0 scalar alias.",
+          file: "survey-28c173ce/compat.jsonl",
+          note: "<strong>A modest, honest improvement on the bulk catalog.</strong> Net: rejected " \
+                "<strong>−239</strong> (57.4k → 57.2k), clean +166, risky +71, verified +3. " \
+                "<strong>318 improvements</strong> (219 <code>rejected</code>→<code>clean</code>, 99 " \
+                "<code>rejected</code>→<code>risky</code>) outweigh <strong>79 regressions</strong> (51 " \
+                "<code>clean</code>→<code>rejected</code>, 28 <code>risky</code>→<code>rejected</code>). Every " \
+                "regression is a clean compile-time <em>diagnostic</em>, not a crash: the engine now <em>refuses</em> " \
+                "constructs it previously compiled silently — <code>STDOUT.tty?</code>, <code>#merge</code> on a Hash " \
+                "constant, <code>#clone</code> on a typed ivar (the new real <code>dup</code>/<code>clone</code> now " \
+                "dispatches and rejects shapes it can't type), <code>#encode</code> on a String constant, a proc over an " \
+                "uncaptured outer variable. Same stricter-but-honest shape as the f973b129 <code>send</code> diagnostic. " \
+                "This wave's headline is structural, not bulk-count: it carries the flatten require-path canonicalization " \
+                "(cbde0f88) that closes the layout-sensitivity root of " \
+                "<a href=\"https://github.com/matz/spinel/issues/1367\">#1367</a> and the #1601 analyze-performance line. " \
+                "The load-bearing blockers (<code>thor</code>/<code>json</code>/<code>logger</code>/<code>redis</code>) " \
+                "still don't clear — fifth confirmation the bulk catalog moves only modestly per wave." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

@@ -278,13 +278,35 @@ module Bundler
       # Source with comments + literal contents stripped, for the risk scan.
       # Ripper.lex is tolerant; if it can't lex (returns nil / raises) we fall
       # back to the raw source rather than under-report.
+      #
+      # SAFETY: CRuby's Ripper.lex/.sexp *segfault* (not raise) on some malformed
+      # input — e.g. a gem that ships an ERB template as a plain `.rb`
+      # (astrapi-0.0.7/lib/template_lexer.rb: `module <%=mm.name%>` inside a
+      # nested `case`; minimal 39-line repro filed at bugs.ruby-lang.org). A SEGV
+      # can't be rescued, so one such gem killed the whole single-threaded
+      # `survey` aggregation before report.md was written. Gate on Prism (the
+      # safe default parser, which never crashes and correctly reports the input
+      # as invalid): if the source doesn't parse, skip Ripper and fall back to
+      # the raw source. Remove the gate once the Ripper SEGV is fixed upstream.
       def code_only(src)
+        return src unless prism_parseable?(src)
+
         toks = Ripper.lex(src)
         return src if toks.nil? || toks.empty?
 
         toks.map { |(_pos, type, tok, _state)| NONCODE_TOKENS.include?(type) ? "" : tok }.join
       rescue StandardError
         src
+      end
+
+      # True only if Prism can fully parse `src`. Conservative: any error (or a
+      # missing Prism) returns false, so the caller skips Ripper rather than risk
+      # the un-rescuable SEGV.
+      def prism_parseable?(src)
+        require "prism"
+        Prism.parse(src).success?
+      rescue StandardError, LoadError
+        false
       end
     end
   end

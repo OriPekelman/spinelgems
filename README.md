@@ -1,68 +1,69 @@
-# bundler-spinel
+# SpinelGems — the Spinel compatibility catalog
 
-> ⚠️ **Pre-release / experimental** (`0.1.0`). The CLI surface, the verdict
-> vocabulary, and the ledger format may still change. Browse the live catalog at
+> ⚠️ **Pre-release / experimental** (`0.1.0`). The verdict vocabulary and the
+> ledger format may still change. Browse the live catalog at
 > **<https://spinelgems.org>**.
 
-**Use a standard `Gemfile` for your [Spinel](https://github.com/matz/spinel) project.**
+**Which of the ~189k gems on rubygems.org compile under [Spinel](https://github.com/matz/spinel)'s
+subset today — and so could become [`spin`](https://github.com/matz/spinel/blob/main/docs/spin.md) packages.**
 
-[Spinel](https://github.com/matz/spinel) is a new ahead-of-time Ruby compiler.
-Spinel projects have no shared way to declare or exchange dependencies, so each
-vendors by hand. Rather than invent a package manager, we propose a plain
-`Gemfile` — for two reasons:
+Spinel is an ahead-of-time Ruby compiler that accepts a deliberately-growing
+**subset** of Ruby. Its package manager is `spin`: a `spin.toml` manifest
+resolved against the serverless [spin-index](https://github.com/matz/spin-index)
+(no gemspec, no runtime `require`, no tarballs — sources splice into one
+whole-program AOT compile). Gems and spin packages are separate worlds; they meet
+only at the **name** — a rubygems name reused in spin means *"the same library,
+possibly a subset-compatible port."*
 
-- **Share Spinel code.** A `Gemfile` (with `path:` / `git:` siblings) becomes the
-  preferred way to declare and exchange dependencies *between* Spinel projects.
-- **Reach the Ruby ecosystem.** The same `Gemfile` lets a Spinel project pull from
-  the enormous existing body of Ruby gems.
+SpinelGems is the compatibility oracle underneath: a wholesale survey of the
+ecosystem, re-classified at each engine revision by whether each gem actually
+compiles under the subset. It exists to answer two questions:
 
-The catch: **most gems won't compile under Spinel yet.** Its scope is deliberately
-limited and still growing. So we surveyed the ecosystem and publish a
-**[catalog](https://spinelgems.org)** of what works today, at each engine revision.
+- **What could be ported?** The `clean` / `loaded` / `verified` tiers are the
+  candidate pool for spin-package ports — gems whose source already compiles.
+- **What should Spinel learn next?** Every `rejected` reason names the missing
+  feature; the cross-gem histogram is a prioritized roadmap, and the differential
+  harness files the caught miscompiles upstream as focused bugs.
 
-## The bundler plugin
+The corpus is the [intended seed](https://github.com/matz/spinel/blob/main/docs/internals/spin.md)
+for spin-index, and its per-revision verdicts mirror spin-index's own probe
+records (which compiler build a release passed or failed under).
 
-`bundler-spinel` makes the convention practical in two ways:
+> **History.** This project began as [#925](https://github.com/matz/spinel/issues/925),
+> an RFC to borrow a `Gemfile` as an interim dependency convention. That was
+> **superseded by `spin`** (2026-07). The `bundler-spinel` gem — the
+> `spinel-compat` probe/harness/vendor toolbelt — lives on as the *measurement
+> engine* behind the catalog; the Gemfile-consumption path is retired in favour
+> of `spin`.
 
-1. **Makes it work** — Spinel has no load path and inlines `require_relative`, so a
-   dependency has to be *placed* where Spinel will follow it. `spinel-compat vendor`
-   does that from a lockfile.
-2. **Gates** — Spinel silently no-ops unsupported Ruby (exit 0), so "it compiled"
-   ≠ "it works". The plugin probes gems and flags incompatible ones at `bundle lock`
-   time, with reasons that name the missing feature.
+## The measurement engine (`spinel-compat`)
 
-## The Gemfile convention
+The catalog is built by two passes over the corpus:
 
-```ruby
-source "https://rubygems.org"
-ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
-
-gem "tep"                             # published on RubyGems
-gem "some_unreleased_lib", git: "…"   # or a sibling via path:/git:
-```
-
-`bundle lock` resolves normally (it ignores the engine marker); the marker guards
-`bundle install`. Nothing here is novel — that's the point.
+1. **Compile + scan** — each gem's `lib/` entrypoints compile as a Spinel program;
+   the diagnostics classify it `clean` / `risky` / `rejected`. A cheap lower bound:
+   "the C came out," not "it works."
+2. **Differential CRuby parity** — for the ones that compile, a behaviour smoke
+   runs under CRuby and Spinel and the outputs are diffed. Match → `verified`;
+   mismatch → a caught miscompile, filed upstream. Same CRuby-as-oracle method
+   `spin test` uses.
 
 ## Quick start
 
 ```sh
 gem install bundler-spinel
-spinel-compat install-engine       # fetch + build the Spinel compiler (cached)
-spinel-compat init my_app          # scaffold a Gemfile + app.rb + bin/build
-cd my_app && bundle install && ./bin/build
+spinel-compat install-engine        # fetch + build the Spinel compiler (cached)
+
+spinel-compat probe tzinfo 2.0.6    # probe one gem at the current engine
 ```
 
-Or add the gate to an existing project:
+Rebuild the whole catalog at a new engine revision:
 
 ```sh
-bundle plugin install bundler-spinel
-bundle spinel-lock                 # bundle lock + report incompatible gems
-spinel-compat vendor               # place deps -> vendor/spinel/<gem>/lib + deps.rb
-spinel-compat check Gemfile.lock   # gate: exit 1 if any gem is rejected
+SPINEL_DIR=~/sites/spinel bin/reprobe-corpus.sh   # ~189k gems, xargs -P shards
+bin/harness-run.sh                                # differential CRuby-parity smokes
+spinel-compat build-site --out public             # render the static catalog site
 ```
-
-Then `require_relative "vendor/spinel/deps"` from your Spinel entrypoint.
 
 > **The compiler builds from source.** `spinel-compat install-engine` clones
 > [Spinel](https://github.com/matz/spinel) and runs `make` (a few minutes, once
@@ -80,9 +81,9 @@ bounds. [What the verdicts mean →](https://spinelgems.org)
 
 ## More
 
-- [RFC.md](RFC.md) — the proposal.
+- [RFC.md](RFC.md) — the original [#925](https://github.com/matz/spinel/issues/925) proposal (superseded by `spin`, kept for history).
 - [docs/cli.md](docs/cli.md) — the full `spinel-compat` toolbelt, verdict ladder, env vars.
-- [docs/adoption.md](docs/adoption.md) — adopting the convention + extracting libraries.
+- [docs/adoption.md](docs/adoption.md) — extracting libraries + the (legacy) Gemfile convention.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — how the gate, the ledger, and the verify rung work.
 - [harness/](harness/README.md) — the behaviour-`verified` testing ground (and bug pipeline).
 - [docs/verification-tiers.md](docs/verification-tiers.md) — why `verified` means *full surface*.

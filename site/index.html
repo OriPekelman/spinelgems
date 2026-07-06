@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SpinelGems — dependencies for Spinel projects</title>
+  <title>SpinelGems — the Spinel compatibility catalog</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -14,43 +14,44 @@
 </header>
 
 <main>
-  <p class="banner">⚠️ Pre-release / experimental — the CLI, verdict vocabulary,
-  and ledger format may still change.</p>
+  <p class="banner">⚠️ Pre-release / experimental — the verdict vocabulary and
+  ledger format may still change.</p>
 
-  <h1>Dependencies for <a href="https://github.com/matz/spinel">Spinel</a> projects</h1>
+  <h1>The <a href="https://github.com/matz/spinel">Spinel</a> compatibility catalog</h1>
 
-  <p class="lede">Spinel is a new ahead-of-time Ruby compiler. Spinel projects have
-  no shared way to declare or exchange dependencies, so each vendors by hand. Rather
-  than invent a package manager, <strong>borrow a format everyone already knows</strong>
-  — a standard <code>Gemfile</code> — to share Spinel code <em>and</em> to reach for the
-  enormous existing Ruby ecosystem.</p>
+  <p class="lede">Spinel is an ahead-of-time Ruby compiler that accepts a
+  deliberately-growing <strong>subset</strong> of Ruby. Its package manager is
+  <a href="https://github.com/matz/spinel/blob/main/docs/spin.md"><code>spin</code></a>
+  — a <code>spin.toml</code> manifest resolved against the serverless
+  <a href="https://github.com/matz/spin-index">spin-index</a>. SpinelGems is the
+  <strong>compatibility oracle underneath</strong>: a wholesale survey of the
+  ~189k gems on rubygems.org, re-classified at each engine revision by whether
+  they actually compile under the subset — i.e. which ones could become
+  <em>spin packages</em>.</p>
 
-  <p class="sub">The catch: most gems won't compile under Spinel <em>yet</em> — its
-  scope is deliberately limited and still growing. So we surveyed the ecosystem and
-  built a <a href="/catalog">catalog</a> of what works today, at each engine revision.</p>
+  <p class="sub">Gems and spin packages are <strong>separate worlds by design</strong>
+  — no gemspec, no runtime <code>require</code>, no tarballs; sources splice into
+  one whole-program AOT compile. They meet only at the <em>name</em>: a rubygems
+  name reused in spin means “the same library, possibly a subset-compatible port.”
+  SpinelGems measures which gems sit on the right side of that line — and is the
+  <a href="https://github.com/matz/spinel/blob/main/docs/internals/spin.md">intended
+  seed</a> for spin-index.</p>
 
   <p><a class="cta" href="/catalog">Browse the catalog →</a></p>
 
-  <h2>The convention</h2>
-  <pre><code>source "https://rubygems.org"
-ruby "3.3.0", engine: "spinel", engine_version: "0.0.0"
-
-gem "tep", git: "https://…/tep.git"   # siblings via path:/git: (replaces rsync)
-gem "some_pure_ruby_lib"</code></pre>
-  <p><code>bundle lock</code> resolves normally (it ignores the engine marker);
-  the marker guards <code>bundle install</code>. Nothing here is novel — that's
-  the point.</p>
-
-  <h2>The bundler plugin does two things</h2>
+  <h2>How it feeds spin</h2>
   <ol>
-    <li><strong>Makes it work.</strong> Spinel has no load path and inlines
-      <code>require_relative</code>, so a dependency has to be <em>placed</em>
-      where Spinel will follow it. <code>spinel-compat vendor</code> does that
-      from a lockfile.</li>
-    <li><strong>Gates.</strong> Spinel silently emits a no-op for unsupported
-      Ruby (exit 0), so “it compiled” ≠ “it works”. The plugin probes gems and
-      flags incompatible ones at <code>bundle lock</code> time, with reasons that
-      name the missing feature.</li>
+    <li><strong>Candidate ports.</strong> The <code>clean</code> / <code>loaded</code>
+      / <code>verified</code> tiers are the pool a spin-package port can start from
+      — the gems whose source already compiles under the subset today.</li>
+    <li><strong>Compatibility as metadata.</strong> Every verdict is keyed on the
+      exact engine revision (the compiler’s git SHA) — the same shape as spin-index’s
+      probe records, which note <em>which compiler build</em> a release passed or
+      failed its tests under. Bump the engine → re-probe → a gem rejected today
+      clears the moment the feature it needs lands.</li>
+    <li><strong>Index seed.</strong> The ~189k-gem probe corpus is the intended seed
+      for spin-index’s name → (repo, releases) map, and the running measurement of
+      the subset’s reach.</li>
   </ol>
 
   <h2>The verdict ladder</h2>
@@ -62,17 +63,32 @@ gem "some_pure_ruby_lib"</code></pre>
     <tr><td class="v rejected">✗ rejected</td><td>doesn't compile, or a caught miscompile — each reason names the missing feature</td></tr>
   </table>
 
-  <h2>Quick start</h2>
-  <pre><code># make it work — place deps where Spinel finds them
-bundle lock
-spinel-compat vendor                 # -> vendor/spinel/&lt;gem&gt;/lib + deps.rb
+  <h2>How the catalog is built</h2>
+  <ol>
+    <li><strong>Compile + scan (a lower bound).</strong> Each gem’s <code>lib/</code>
+      entrypoints are compiled as a Spinel program and the diagnostics classified
+      → <code>clean</code> / <code>risky</code> / <code>rejected</code>. This only
+      means “the C came out,” not “it works.”</li>
+    <li><strong>Differential CRuby parity (the trustworthy check).</strong> For the
+      ones that compile, a per-gem behaviour smoke runs once under CRuby and once
+      Spinel-compiled, and the outputs are diffed. Match → <code>verified</code>;
+      mismatch → a caught miscompile, filed upstream. CRuby-as-oracle is exactly
+      spin’s own verification methodology (<code>spin test</code>).</li>
+  </ol>
 
-# gate — flag what Spinel can't compile, early
-spinel-compat check Gemfile.lock     # exit 1 if any gem is rejected</code></pre>
+  <h2>Using spin</h2>
+  <pre><code>spin new mylib --lib          # scaffold a package (spin.toml, tests)
+spin add ansi --git https://github.com/you/spinel-ansi
+spin test                     # run against CRuby as a parity oracle
+spin publish                  # PR a release into spin-index (tests gate)</code></pre>
+  <p>The full guide is
+  <a href="https://github.com/matz/spinel/blob/main/docs/spin.md">docs/spin.md</a>;
+  the design record is
+  <a href="https://github.com/matz/spinel/blob/main/docs/internals/spin.md">internals/spin.md</a>.</p>
 
-  <p class="note">The probe is a <strong>lower bound</strong> — Spinel's lack of
-  a load path means multi-file plain-<code>require</code> gems under-probe, and
-  silent miscompiles are invisible to it. Trust <code>verified</code>, not
+  <p class="note">The probe is a <strong>lower bound</strong> — Spinel’s
+  whole-program model means multi-file gems under-probe, and silent miscompiles are
+  invisible to a compile-only pass. Trust <code>verified</code>, not
   <code>clean</code>, where it matters.</p>
 </main>
 
@@ -83,7 +99,7 @@ spinel-compat check Gemfile.lock     # exit 1 if any gem is rejected</code></pre
     <span class="by"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="#ff6b57"/><g stroke="#ff6b57" stroke-width="1.7" stroke-linecap="round"><path d="M12 2.2v2.6"/><path d="M12 19.2v2.6"/><path d="M2.2 12h2.6"/><path d="M19.2 12h2.6"/><path d="M5.1 5.1l1.8 1.8"/><path d="M17.1 17.1l1.8 1.8"/><path d="M18.9 5.1l-1.8 1.8"/><path d="M6.9 17.1l-1.8 1.8"/></g></svg> Hosted on <a href="https://upsun.com">Upsun</a></span>
   </div>
   <p class="foot-note">Pre-release · verdicts keyed on the Spinel engine revision ·
-    <a href="https://github.com/OriPekelman/spinelgems">source &amp; RFC on GitHub</a></p>
+    <a href="https://github.com/OriPekelman/spinelgems">source on GitHub</a></p>
 </div></footer>
 </body>
 </html>

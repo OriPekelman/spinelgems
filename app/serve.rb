@@ -60,7 +60,7 @@ class V
     "<path d=\"M5.1 5.1l1.8 1.8\"/><path d=\"M17.1 17.1l1.8 1.8\"/><path d=\"M18.9 5.1l-1.8 1.8\"/><path d=\"M6.9 17.1l-1.8 1.8\"/></g></svg> " +
     "Hosted on <a href=\"https://upsun.com\">Upsun</a></span></div>" +
     "<p class=foot-note>Pre-release &middot; verdicts keyed on the Spinel engine revision &middot; " +
-    "<a href=\"https://github.com/OriPekelman/spinelgems\">source &amp; RFC on GitHub</a></p></div></footer>"
+    "<a href=\"https://github.com/OriPekelman/spinelgems\">source on GitHub</a></p></div></footer>"
   end
 
   def self.page(title, body)

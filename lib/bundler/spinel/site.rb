@@ -89,7 +89,7 @@ module Bundler
             <span class="by"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="#ff6b57"/><g stroke="#ff6b57" stroke-width="1.7" stroke-linecap="round"><path d="M12 2.2v2.6"/><path d="M12 19.2v2.6"/><path d="M2.2 12h2.6"/><path d="M19.2 12h2.6"/><path d="M5.1 5.1l1.8 1.8"/><path d="M17.1 17.1l1.8 1.8"/><path d="M18.9 5.1l-1.8 1.8"/><path d="M6.9 17.1l-1.8 1.8"/></g></svg> Hosted on <a href="https://upsun.com">Upsun</a></span>
           </div>
           <p class="foot-note">Pre-release · verdicts keyed on the Spinel engine revision ·
-            <a href="https://github.com/OriPekelman/spinelgems">source &amp; RFC on GitHub</a></p>
+            <a href="https://github.com/OriPekelman/spinelgems">source on GitHub</a></p>
         </div></footer>
       FOOT
 
@@ -404,13 +404,16 @@ module Bundler
       # about, and only pays the cost of that tier.
       def catalog_landing_html(rs, counts)
         body = +""
-        body << %(<p class="lede">Compatibility ledger as of <code>#{h rev}</code> — )
-        body << %(<strong>#{fmt_n rs.size}</strong> gems surveyed, ranked by downloads in each tier. )
+        body << %(<p class="lede">Which of <strong>#{fmt_n rs.size}</strong> rubygems.org gems )
+        body << %(compile under the Spinel subset as of <code>#{h rev}</code> — the pool that could )
+        body << %(become <a href="https://github.com/matz/spinel/blob/main/docs/spin.md">spin packages</a>, )
+        body << %(ranked by downloads in each tier. )
         body << %(Trust <strong>★ verified</strong> (a behaviour smoke matched CRuby), not )
         body << %(<strong>✓ clean</strong> (a cheap lower bound) or <strong>○ loaded</strong> )
         body << %((require-only differential — logic untested, can still silently miscompile). )
         body << %(Verdicts are forward-compatible: keyed on the Spinel revision, a gem rejected )
-        body << %(today clears the moment the feature it needs lands.</p>\n)
+        body << %(today clears the moment the feature it needs lands — the running measurement of the )
+        body << %(subset's reach and the intended seed for <a href="https://github.com/matz/spin-index">spin-index</a>.</p>\n)
 
         body << %(<div class="filters">\n)
         VERDICT_ORDER.each do |v|

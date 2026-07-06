@@ -160,13 +160,14 @@ get '/' do
   response.etag(built + "|home")
 
   verified_n = V.count_in(counts_csv, "verified")
-  body = "<h1>Dependencies for Spinel projects</h1>\n" +
-    "<p class=lede><a href=\"https://github.com/matz/spinel\">Spinel</a> is a new " +
-    "ahead-of-time Ruby compiler. SpinelGems proposes a plain <code>Gemfile</code> as " +
-    "the way to share Spinel code <em>and</em> to reach into the huge existing Ruby " +
-    "ecosystem. The catch: most gems won't compile under Spinel <em>yet</em> &mdash; its " +
-    "scope is deliberately limited and still growing &mdash; so this catalog tracks what " +
-    "works today, at each engine revision.</p>\n" +
+  body = "<h1>The <a href=\"https://github.com/matz/spinel\">Spinel</a> compatibility catalog</h1>\n" +
+    "<p class=lede>Spinel is an ahead-of-time Ruby compiler that accepts a deliberately-growing " +
+    "<strong>subset</strong> of Ruby. Its package manager is " +
+    "<a href=\"https://github.com/matz/spinel/blob/main/docs/spin.md\"><code>spin</code></a> &mdash; a " +
+    "<code>spin.toml</code> manifest resolved against the serverless " +
+    "<a href=\"https://github.com/matz/spin-index\">spin-index</a>. SpinelGems is the compatibility " +
+    "oracle underneath: which of the ~189k gems on rubygems.org compile under the subset today &mdash; " +
+    "the candidate pool for <em>spin-package</em> ports, and the intended seed for spin-index.</p>\n" +
     "<div class=stat-row>" +
     "<div class=\"stat verified\"><b>" + V.fmt_n(verified_n) + "</b><span>★ behaviour-verified</span></div>" +
     "<div class=stat><b>" + total + "</b><span>gems surveyed</span></div>" +
@@ -195,7 +196,7 @@ get '/' do
     "the feature it needs lands in Spinel. Raw data: " +
     "<a href=\"https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/compat.jsonl\">compat.jsonl</a> &middot; " +
     "<a href=\"https://github.com/OriPekelman/spinelgems/blob/main/survey-193k/report.md\">report.md</a></p>\n"
-  V.page("SpinelGems — dependencies for Spinel projects", body)
+  V.page("SpinelGems — the Spinel compatibility catalog", body)
 end
 
 # ---- the queryable catalog ----

@@ -177,6 +177,19 @@ module Bundler
                 "<a href=\"https://github.com/matz/spinel/issues/1367\">#1367</a> and the #1601 analyze-performance line. " \
                 "The load-bearing blockers (<code>thor</code>/<code>json</code>/<code>logger</code>/<code>redis</code>) " \
                 "still don't clear — fifth confirmation the bulk catalog moves only modestly per wave." },
+        { rev: "42adf886", date: "2026-07-06", commit: "291 commits (≈#1601–#1746): the <a href=\"https://github.com/matz/spinel/issues/1605\">#1605</a> regression burndown (matz + ryanseys) — <code>IO</code> methods on <code>STDOUT</code>/<code>STDERR</code> modelled (<code>tty?</code>/<code>&lt;&lt;</code>/<code>fileno</code>/<code>winsize</code>, 2d7dbb09), <code>#clone</code> via <code>initialize_copy</code> super (feefc370), <code>Hash#merge</code>/<code>SplatNode</code>/<code>EmbeddedStatementsNode</code> interpolation (#1610/#1612/#1611), the <code>Enumerator.new</code> outer-variable proc shape, <code>Array#sort_by!</code> (d06867f7), and <code>module Encoding</code> collisions now reporting CRuby's <code>TypeError</code> at compile time (1dc427ef). Plus the opt-in never-more-permissive-than-CRuby gates — <code>SPINEL_REQUIRE_GATE</code> (over-provided stdlib now needs its <code>require</code>) and <code>SPINEL_GATE_RAISE</code> (the NoMethodError silent-default gate), both <em>default-off</em>. Ecosystem: matz shipped <a href=\"https://github.com/matz/spinel/blob/main/docs/spin.md\"><code>spin</code></a> + <a href=\"https://github.com/matz/spin-index\">spin-index</a>, superseding the #925 Gemfile RFC.",
+          file: "survey-42adf886/compat.jsonl",
+          note: "<strong>Stricter, and more honest.</strong> Net: rejected <strong>+962</strong> (57.2k → 58.2k), " \
+                "clean −957, verified held at <strong>231</strong>. <strong>1,909 improvements</strong> outweighed " \
+                "by <strong>2,873 regressions</strong> (1,786 <code>clean</code>→<code>rejected</code>, 1,086 " \
+                "<code>risky</code>→<code>rejected</code>) — but every regression sampled is a clean compile-time " \
+                "<em>refusal</em>, <strong>not a crash</strong> (0 segfaults in a 69-gem sample; all exit-1 " \
+                "<code>unsupported call</code> diagnostics). It is the <a href=\"https://github.com/matz/spinel/issues/1605\">#1605</a> " \
+                "silent-wrong→loud-refuse campaign at corpus scale: the engine now refuses calls on unresolved-type " \
+                "receivers and gems leaning on stdlib Spinel doesn't provide (<code>uri</code>, <code>csv</code>, " \
+                "<code>socket</code>, …), where before it compiled a silent typed-default that would fail at runtime. " \
+                "The top-line moves backward; compatibility <em>honesty</em> moves forward. Reframed this cycle around " \
+                "<code>spin</code>: the catalog is now the compatibility oracle and the intended seed for spin-index." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

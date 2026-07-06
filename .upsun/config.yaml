@@ -35,8 +35,8 @@ applications:
         #   the prior 8d88ebe for the /catalog FFI-bind path.
         #
         # CATALOG DATA vs SERVE ENGINE are decoupled: the catalog the site
-        # renders comes from survey-193k/compat.jsonl (@ 28c173ce, reprobed
-        # 2026-06-27) via `build-db` under CRuby — independent of the engine the
+        # renders comes from survey-193k/compat.jsonl (@ 42adf886, reprobed
+        # 2026-07-06) via `build-db` under CRuby — independent of the engine the
         # serve binary is compiled with. cc94707 stays the working serve engine;
         # the deploy serves the *current* catalog regardless.
         #

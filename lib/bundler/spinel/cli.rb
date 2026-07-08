@@ -38,6 +38,7 @@ module Bundler
         when "reprobe" then cmd_reprobe(argv)
         when "survey"  then cmd_survey(argv)
         when "enrich"  then cmd_enrich(argv)
+        when "spin-toml" then cmd_spin_toml(argv)
         when nil, "-h", "--help", "help" then usage; 0
         else
           @err.puts "unknown command: #{cmd}"; usage; 2
@@ -396,6 +397,25 @@ module Bundler
         0
       end
 
+      # Project a recorded verdict into the spin-index packages/<name>.toml shape
+      # (name + [[release]] + [[probe]]) that rubys introduced in
+      # matz/spin-index#1/#2. Pure projection over the ledger — the seed of the
+      # catalog -> index generator (spinelgems#6, gated on matz/spinel#1753).
+      def cmd_spin_toml(argv)
+        repo = (i = argv.index("--repo")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
+        ref  = (i = argv.index("--ref")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
+        date = (i = argv.index("--date")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
+        rev  = (i = argv.index("--rev")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
+        strict = !!argv.delete("--strict")
+        name = argv.shift or raise Error, "usage: spinel-compat spin-toml NAME [VERSION] [--repo URL] [--ref SHA] [--date YYYY-MM-DD] [--strict]"
+        version = argv.shift
+        v = ledger_pick(name, version: version, rev: rev) or
+          raise Error, "no ledger entry for #{name}#{version ? " #{version}" : ""}"
+        rec = v.to_h.transform_keys(&:to_s)
+        @out.print SpinProbe.package_toml(rec, repo: repo, ref: ref, date: date, strict: strict)
+        0
+      end
+
       def cmd_ledger(argv)
         rev = (i = argv.index("--rev")) ? argv[i + 1] : nil
         Ledger.new.each do |v|
@@ -501,6 +521,8 @@ module Bundler
             spinel-compat diff REV_A REV_B [--names]  per-gem verdict changes between two revs
             spinel-compat detect-ext GEM_DIR [--out F]  draft spinel-ext.json from a gem's ffi_cflags markers
             spinel-compat reprobe                 re-probe known gems under current rev
+            spinel-compat spin-toml NAME [VERSION]  project a verdict into a spin-index packages/<name>.toml
+                                  [--repo URL] [--ref SHA] [--date YYYY-MM-DD] [--strict]
 
           Verdicts: ✓ clean   ★ verified   ~ risky   ✗ rejected
         USAGE

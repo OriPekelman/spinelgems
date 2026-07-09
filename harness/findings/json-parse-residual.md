@@ -44,7 +44,10 @@ whole-program inference specialization, not a clean standalone bug.)
 
 ## Repro
 
-`json-parse-residual.rb` (this dir); deterministic at `git:bae3dbf2`.
+`json-parse-residual.rb` (this dir); deterministic at `git:bae3dbf2` — and still
+at `git:1709f051` (re-confirmed after a 37-commit ryanseys wave that included
+`c469d50f` "keyword arguments through the instance-method dispatch path" and two
+exception-dispatch commits; none covered these two).
 
 ## Related
 

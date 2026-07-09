@@ -50,6 +50,8 @@ options-hash), and the primary repro above stands alone.
 
 ## Status
 
-Blocks publication of the multi_json mirror (load/decode path). Filing upstream
-at matz/spinel — the fix (resolve `JSON.parse`/`pretty_generate`, or at minimum
-make the unresolved call raise instead of emit 0) unblocks it.
+RESOLVED — filed as matz/spinel#1844, fixed by matz at master (`2707c1d7`):
+`JSON.parse`/`pretty_generate` resolve, and the silent-0 gate is flipped
+default-on (unresolved calls raise, matching CRuby). Verified at engine
+`git:bae3dbf2`. Two *residual* bundled-json bugs surfaced on re-verify — see
+`json-parse-residual.md`.

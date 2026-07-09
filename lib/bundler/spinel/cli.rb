@@ -39,6 +39,7 @@ module Bundler
         when "survey"  then cmd_survey(argv)
         when "enrich"  then cmd_enrich(argv)
         when "spin-toml" then cmd_spin_toml(argv)
+        when "mirror-init" then cmd_mirror_init(argv)
         when nil, "-h", "--help", "help" then usage; 0
         else
           @err.puts "unknown command: #{cmd}"; usage; 2
@@ -416,6 +417,32 @@ module Bundler
         0
       end
 
+      # Scaffold a publish-ready mirror package skeleton for one gem, seeded
+      # from its ledger verdict (the reasons/risks become the exclusion-ledger
+      # TODO rows). Porter tool per matz/spinel#1753 — never opens an index PR.
+      def cmd_mirror_init(argv)
+        version = (i = argv.index("--version")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : "0.1.0"
+        out  = (i = argv.index("--out")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
+        rev  = (i = argv.index("--rev")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
+        force = !!argv.delete("--force")
+        name = argv.shift or raise Error, "usage: spinel-compat mirror-init NAME [GEM_VERSION] [--version PKG_VER] [--out DIR] [--force]"
+        gem_version = argv.shift
+        v = ledger_pick(name, version: gem_version, rev: rev)
+        rec = v && v.to_h.transform_keys(&:to_s)
+        res = Mirror.scaffold(name: name, version: version, gem_version: gem_version,
+                              record: rec, engine_rev: (rec && rec["rev"]) || Engine.new.rev,
+                              out: out, force: force)
+        @out.puts "scaffolded #{res[:dir]}/ (#{res[:files].size} files)"
+        if res[:exclusions].empty?
+          @out.puts "  no probe record for #{name} — exclusion ledger starts empty"
+        else
+          @out.puts "  seeded #{res[:exclusions].size} exclusion-ledger row(s) from the #{rec['verdict']} probe:"
+          res[:exclusions].each { |surface, disp, _| @out.puts "    #{surface} -> #{disp}" }
+        end
+        @out.puts "  next: fill #{name}/core.rb, freeze snapshots, then `bin/verify`"
+        0
+      end
+
       def cmd_ledger(argv)
         rev = (i = argv.index("--rev")) ? argv[i + 1] : nil
         Ledger.new.each do |v|
@@ -523,6 +550,8 @@ module Bundler
             spinel-compat reprobe                 re-probe known gems under current rev
             spinel-compat spin-toml NAME [VERSION]  project a verdict into a spin-index packages/<name>.toml
                                   [--repo URL] [--ref SHA] [--date YYYY-MM-DD] [--strict]
+            spinel-compat mirror-init NAME [GEM_VER]  scaffold a spinel-<name> mirror package (seeded exclusion ledger)
+                                  [--version PKG_VER] [--out DIR] [--force]
 
           Verdicts: ✓ clean   ★ verified   ~ risky   ✗ rejected
         USAGE

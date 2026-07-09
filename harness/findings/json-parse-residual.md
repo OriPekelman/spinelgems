@@ -48,5 +48,5 @@ whole-program inference specialization, not a clean standalone bug.)
 
 ## Related
 
-Follow-on to `json-parse-emits-0.md` / matz/spinel#1844 (resolved). matz invited
-these "with the shape" in his #1844 close.
+Filed as matz/spinel#1853. Follow-on to `json-parse-emits-0.md` / matz/spinel#1844
+(resolved). matz invited these "with the shape" in his #1844 close.

@@ -216,6 +216,9 @@ module Bundler
           #
           # Usage: sh oracle/run.sh          (from the repo root)
           # Needs: ruby with the #{name} gem installed (+ any live service it drives).
+          #
+          # Freeze a snapshot from the mirror (stdout only), once per flow:
+          #   ruby -I . oracle/<flow>.rb > test/<flow>_test.rb.expected
           set -e
           OUTDIR=build/oracle
           mkdir -p "$OUTDIR"
@@ -225,7 +228,10 @@ module Bundler
           # TODO: list each flow whose *_test.rb.expected snapshot is committed.
           for flow in smoke; do
             ran=$((ran + 1))
-            ruby "oracle/$flow.rb" > "$OUTDIR/$flow.out" 2>&1 || true
+            # Compare STDOUT only — the flow's deterministic output is the
+            # contract. stderr (kept in .err for debugging) carries unrelated
+            # rubygems/env warnings that would otherwise fail a valid parity run.
+            ruby "oracle/$flow.rb" > "$OUTDIR/$flow.out" 2> "$OUTDIR/$flow.err" || true
             if diff -u "test/${flow}_test.rb.expected" "$OUTDIR/$flow.out" > "$OUTDIR/$flow.diff" 2>&1; then
               echo "ok   $flow"
               rm -f "$OUTDIR/$flow.diff"

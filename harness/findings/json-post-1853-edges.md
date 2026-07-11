@@ -38,6 +38,12 @@ symbol-keyed hashes through `MultiJson.dump`, so the symbol case returns `0`.
 
 ## Status
 
-Edge A worked around; Edge B is the sole remaining mirror blocker (16/17 compiled,
-oracle 1/1). Both are deterministic at `e6513188`. Repro: `json-post-1853-edges.rb`.
-Filed as matz/spinel#2009. Follow-on to `json-parse-residual.md` / matz/spinel#1853.
+RESOLVED — matz/spinel#2009, fixed at master `65fb6d2d` (6fc17901: "root-anchored
+rescue paths and packed keywords into a poly param"). Edge A: the rescue rebuild now
+walks the whole constant-path parent chain, so `::JSON::ParserError` matches. Edge B:
+root cause was a trailing-keyword collapse (not the JSON writer) — a param fed both a
+string-keyed hash and bare keywords widened to a poly slot the collapse zero-padded,
+so the symbol-keyed `dump(:k => "v")` serialized a boxed int 0; a poly positional now
+receives the packed keywords boxed. Verified at `65fb6d2d`: repro clean, multi_json
+mirror **17/17 compiled + oracle 1/1**. Follow-on to `json-parse-residual.md` /
+matz/spinel#1853.

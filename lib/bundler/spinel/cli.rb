@@ -40,6 +40,7 @@ module Bundler
         when "enrich"  then cmd_enrich(argv)
         when "spin-toml" then cmd_spin_toml(argv)
         when "mirror-init" then cmd_mirror_init(argv)
+        when "port"        then cmd_port(argv)
         when nil, "-h", "--help", "help" then usage; 0
         else
           @err.puts "unknown command: #{cmd}"; usage; 2
@@ -420,6 +421,16 @@ module Bundler
       # Scaffold a publish-ready mirror package skeleton for one gem, seeded
       # from its ledger verdict (the reasons/risks become the exclusion-ledger
       # TODO rows). Porter tool per matz/spinel#1753 — never opens an index PR.
+      # Convert a first-party gem checkout to spin package shape in place
+      # (layout + spin.toml + ext report). Complement of mirror-init.
+      def cmd_port(argv)
+        require_relative "port"
+        dry = !!argv.delete("--dry-run")
+        dir = argv.shift or raise Error, "usage: spinel-compat port DIR [--dry-run]"
+        Port.run(dir, dry: dry, out: @out)
+        0
+      end
+
       def cmd_mirror_init(argv)
         version = (i = argv.index("--version")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : "0.1.0"
         out  = (i = argv.index("--out")) ? argv.delete_at(i + 1).tap { argv.delete_at(i) } : nil
@@ -551,6 +562,7 @@ module Bundler
             spinel-compat spin-toml NAME [VERSION]  project a verdict into a spin-index packages/<name>.toml
                                   [--repo URL] [--ref SHA] [--date YYYY-MM-DD] [--strict]
             spinel-compat mirror-init NAME [GEM_VER]  scaffold a spinel-<name> mirror package (seeded exclusion ledger)
+            spinel-compat port DIR [--dry-run]        convert a first-party gem checkout to spin package shape in place
                                   [--version PKG_VER] [--out DIR] [--force]
 
           Verdicts: ✓ clean   ★ verified   ~ risky   ✗ rejected

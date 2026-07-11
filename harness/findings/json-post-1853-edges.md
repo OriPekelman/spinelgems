@@ -40,5 +40,4 @@ symbol-keyed hashes through `MultiJson.dump`, so the symbol case returns `0`.
 
 Edge A worked around; Edge B is the sole remaining mirror blocker (16/17 compiled,
 oracle 1/1). Both are deterministic at `e6513188`. Repro: `json-post-1853-edges.rb`.
-Follow-on to `json-parse-residual.md` / matz/spinel#1853; matz invited "file
-whatever bounces next."
+Filed as matz/spinel#2009. Follow-on to `json-parse-residual.md` / matz/spinel#1853.

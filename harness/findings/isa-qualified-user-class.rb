@@ -1,5 +1,6 @@
 # Minimal repro: is_a? with a NAMESPACE-QUALIFIED USER class argument on a
 # built-in receiver raises NoMethodError at runtime (should return false).
+# FILED as matz/spinel#3258 (2026-07-22).
 # Residual variant of matz/spinel#2683 (fixed 2026-07-16): that fix covers
 # ::-scoped BUILTIN classes (::Integer, ::String); a qualified USER class
 # (Outer::Thing, a ConstantPathNode) still raises.

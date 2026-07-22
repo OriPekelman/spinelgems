@@ -56,7 +56,7 @@ runtime NoMethodError (residual variant of fixed #2683, which only covered
 
 So the ceiling has LIFTED for operators/massign/kwargs; what remains is the
 builtin-name-shadowing dispatch on union receivers (join) and the qualified
-user-class `is_a?`. Both are now clean minimal repros — filable, unlike the
+user-class `is_a?`. Both FILED 2026-07-22: matz/spinel#3258 (is_a?) and #3259 (join). Both are clean minimal repros — unlike the
 original cluster. addressable can un-pause once those two land (join is the
 only public-surface blocker; `+` already works if it delegates to a
 non-shadowing name).

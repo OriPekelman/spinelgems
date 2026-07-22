@@ -1,7 +1,7 @@
 # Minimal repro: a user method named `join` mis-dispatches when its receiver
 # type is a String-including union — the builtin `join` signature wins and the
 # call's result type collapses to String (ty6), so member access on the result
-# fails to compile:
+# fails to compile. FILED as matz/spinel#3259 (2026-07-22).
 #
 #   join-builtin-shadow-union.rb:17: unsupported puts argument:
 #     node 59 (CallNode `host`) recv=LocalVariableReadNode/ty6 argc=0

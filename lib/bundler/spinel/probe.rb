@@ -230,7 +230,7 @@ module Bundler
         return ["c-extension"] if Dir[File.join(dir, "ext", "**", "*.{c,cpp,cc,h}")].any?
 
         Dir[File.join(dir, "lib", "**", "*.rb")].each do |f|
-          src = code_only(File.read(f))
+          src = code_only(File.read(f).scrub)
           HARD_REJECT_TOKENS.each do |re, reason|
             return ["hard:#{reason}"] if src =~ re
           end
@@ -262,7 +262,7 @@ module Bundler
         risks << "c-extension" if Dir[File.join(dir, "ext", "**", "*.{c,cpp,cc,h}")].any?
 
         Dir[File.join(dir, "lib", "**", "*.rb")].each do |f|
-          src = code_only(File.read(f))
+          src = code_only(File.read(f).scrub)
           RISK_TOKENS.each { |re, reason| risks << reason if src =~ re }
         end
         risks.uniq

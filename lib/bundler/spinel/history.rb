@@ -190,6 +190,23 @@ module Bundler
                 "<code>socket</code>, …), where before it compiled a silent typed-default that would fail at runtime. " \
                 "The top-line moves backward; compatibility <em>honesty</em> moves forward. Reframed this cycle around " \
                 "<code>spin</code>: the catalog is now the compatibility oracle and the intended seed for spin-index." },
+        { rev: "12b757f0", date: "2026-07-22",
+          commit: "981 commits (≈#3148–#3227): the poly-dispatch / inference hardening wave — user-defined operators " \
+                  "(<code>&lt;=&gt;</code> subclass operands, <code>&lt;&lt;</code>, <code>==</code> honored in " \
+                  "<code>Array#include?</code>, user binops on boxed operands), keyword params no longer bound by " \
+                  "position in poly dispatch, destructuring typing, Data/Struct members shadowing builtins, threads " \
+                  "(per-worker string + young-object heaps), <code>IO.copy_stream</code>, shared-mutable strings " \
+                  "phase 1 (#3227), and <code>spin test</code> incremental cache + parallel builds (#3202).",
+          file: "survey-12b757f0/compat.jsonl",
+          note: "<strong>The biggest verified jump yet: ★320 (+89).</strong> The inference wave lands at harness " \
+                "scale — 192 gems earned a first-time mechanical ★, 127 re-earned, 16 lost (13 behaviour " \
+                "build-errors under triage). Pure movement: <strong>2,814 improvements</strong> (1,827 " \
+                "<code>rejected</code>→<code>clean</code>) vs <strong>5,425 regressions</strong> — but 5,418 of those " \
+                "are ONE cluster: the pre-bundler <code>$:.unshift File.dirname(__FILE__)</code> preamble now " \
+                "hard-fails analysis where the old engine compiled it into a runtime line-1 bomb " \
+                "(<code>undefined method 'unshift'</code>). Same stricter-honest shape as #1605: those gems were " \
+                "never actually runnable; now the refusal is loud and at compile time. Net: rejected " \
+                "<strong>+3,238</strong>, clean −1,072, risky −1,811. Buildable 83,957 (−2,545)." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

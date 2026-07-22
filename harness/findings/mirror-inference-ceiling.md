@@ -37,7 +37,35 @@ So the practical guidance for mirror authors today: **prefer thin, functional,
 non-value-class surfaces**; avoid operator overloads, recursion-heavy methods,
 and method names that shadow Array/String builtins, until the inference handles them.
 
-## Status
+## Re-verify at 12b757f0 (2026-07-22, 981 commits after 65fb6d2d)
+
+All three mirrors re-pass `bin/verify` (multi_json 1/1, colorize 1/1 + oracle,
+addressable v0.1 1/1 + oracle). Re-probing the paused constructs in-context:
+
+| construct | at 65fb6d2d | at 12b757f0 |
+|---|---|---|
+| `a, b = x, y` in a class method | (orig: MultiWriteNode error) | **works** (2-target shape; also works at 65fb6d2d) |
+| kwarg constructor, differing call-site subsets | works (kwarg `initialize`, 4 subsets) | **works** |
+| user `+` operator returning the class | **FAIL** (silent wrong dispatch) | **FIXED** (user-binop wave, e.g. 3e376f5b) |
+| user `==` in the rich class | works in current shape | **works** |
+| method named `join` | collapses | **STILL COLLAPSES** — but now REDUCED to 17 lines: `join-builtin-shadow-union.rb`. Two ingredients: builtin-shadowing name + String-including union receiver from an un-narrowed `return uri if uri.is_a?(URI)` guard. No longer "doesn't minimize". |
+
+New in-context bug surfaced en route: `"str".is_a?(Qualified::UserClass)` →
+runtime NoMethodError (residual variant of fixed #2683, which only covered
+::-scoped builtin classes). Repro: `isa-qualified-user-class.rb`.
+
+So the ceiling has LIFTED for operators/massign/kwargs; what remains is the
+builtin-name-shadowing dispatch on union receivers (join) and the qualified
+user-class `is_a?`. Both are now clean minimal repros — filable, unlike the
+original cluster. addressable can un-pause once those two land (join is the
+only public-surface blocker; `+` already works if it delegates to a
+non-shadowing name).
+
+Side observation (colorize, 12b757f0): generated C declares `clr_set`'s param
+`const char *` while call sites pass `sp_String *` — compiles with
+-Wincompatible-pointer-types warnings, output still byte-correct. Watch it.
+
+## Status (original, engine 65fb6d2d — superseded above)
 
 addressable is PAUSED (its read/normalize surface is a clean shippable v0.1 —
 20/20 compiled — but join/`+`/`==` are blocked). Not filed as issues (no minimal

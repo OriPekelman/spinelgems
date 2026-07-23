@@ -14,6 +14,7 @@
 # the #1605 wave. Possibly fallout of the fe08f5ef -> 3131ad6c predefined-
 # globals add/revert cycle.
 #
+# FILED as matz/spinel#3284 (2026-07-23).
 # The upstream ASK is design, not bugfix: no-op the load-path preamble
 # ($: / $LOAD_PATH unshift/push/<<) with a warning, the same way an
 # unresolvable `require` is ignored-with-warning. Load-path manipulation is

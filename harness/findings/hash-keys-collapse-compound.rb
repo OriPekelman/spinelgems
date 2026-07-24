@@ -1,3 +1,4 @@
+# FILED as matz/spinel#3322 (2026-07-24). Still failing at 76cfd099.
 module YarnLockParser
   class Parser
     TOKEN_TYPES = {

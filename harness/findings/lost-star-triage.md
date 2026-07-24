@@ -35,3 +35,11 @@ unfiled. underscore-rails is the sharpest: silently WRONG runtime behavior
 (a `defined?` guard flips), not a loud refusal. 9 are older strictness we
 only now re-measured (harness last ran at 42adf886), 1 was tooling
 (spinel_kit).
+
+## Upstream velocity note (2026-07-24)
+
+All three of the PREVIOUS cycle's filings closed within ~24-48h of filing and
+are verified fixed at 76cfd099: #3258 (68fd45da), #3259, #3284 (10108a62 —
+our design ask implemented verbatim: load-path manipulation in statement
+position warns and no-ops). With #3258+#3259 fixed, the addressable mirror's
+full-surface un-pause is UNBLOCKED.

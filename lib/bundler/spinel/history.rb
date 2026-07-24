@@ -207,6 +207,23 @@ module Bundler
                 "(<code>undefined method 'unshift'</code>). Same stricter-honest shape as #1605: those gems were " \
                 "never actually runnable; now the refusal is loud and at compile time. Net: rejected " \
                 "<strong>+3,238</strong>, clean −1,072, risky −1,811. Buildable 83,957 (−2,545)." },
+        { rev: "76cfd099", date: "2026-07-24",
+          commit: "126 commits (≈#3234–#3293): 10108a62 — <strong>our <a href=\"https://github.com/matz/spinel/issues/3284\">#3284</a> " \
+                  "design ask implemented</strong>: load-path manipulation in statement position warns and no-ops, the " \
+                  "ignored-require symmetry. Plus 68fd45da (namespace-qualified <code>is_a?</code>, our " \
+                  "<a href=\"https://github.com/matz/spinel/issues/3258\">#3258</a>), the " \
+                  "<a href=\"https://github.com/matz/spinel/issues/3259\">#3259</a> builtin-shadow dispatch fix, " \
+                  "always-frozen string literals (91f069f0), <code>Forwardable</code> delegators, and lazy-enumerator " \
+                  "composition work.",
+          file: "survey-76cfd099/compat.jsonl",
+          note: "<strong>The first strongly-positive cycle: 2,379 improvements vs 141 regressions.</strong> " \
+                "The <code>$:</code>-preamble cluster flipped back exactly as projected in #3284 — <strong>2,309 " \
+                "gems recovered</strong> (976 <code>rejected</code>→<code>clean</code>, 1,403 " \
+                "<code>rejected</code>→<code>risky</code>). Net: rejected <strong>−2,236</strong>, clean +907, " \
+                "risky +1,327, ★ held at <strong>320</strong>. Buildable 85,629 (+1,672). The filed→fixed→measured " \
+                "loop closed in 48 hours: this cycle's headline movement IS the previous cycle's bug report. " \
+                "The few true regressions include always-frozen literals biting literal-mutating gems " \
+                "(91f069f0, deliberate upstream semantics) and one new miscompile pair under triage." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

@@ -70,3 +70,13 @@ Side observation (colorize, 12b757f0): generated C declares `clr_set`'s param
 addressable is PAUSED (its read/normalize surface is a clean shippable v0.1 —
 20/20 compiled — but join/`+`/`==` are blocked). Not filed as issues (no minimal
 repros). Related clean finding: `string-inspect-esc.rb` (ESC → `\x1B` vs `\e`).
+
+## UN-PAUSED (2026-07-24, engine 76cfd099)
+
+#3258 and #3259 both fixed upstream within ~24h of filing. addressable v0.2
+restores the full reference-resolution surface — `join` under its real name,
+`+`, the qualified `is_a?` with no workaround — `bin/verify` green: 30/30
+dual-runtime checks + 2/2 oracle flows (new `oracle/join.rb`, 14 join flows
+byte-identical to the real gem; absolute refs deliberately NOT normalized to
+match it). The inference ceiling that named this finding is, for this class
+of mirror, gone.

@@ -225,11 +225,20 @@ module Bundler
       # should run. Covers: no entrypoint (lib/<gem>.rb absent and no
       # lib/*.rb), a C extension (ext/*.c — Spinel doesn't compile C exts),
       # and top-level HARD_REJECT_TOKENS in lib/**/*.rb.
+      # Wall-clock budget for each whole-lib static scan. Pathological gems
+      # exist (too_heavy_gem: 17,577 one-line lib files) where per-file lexing
+      # pins the probe for many minutes; past budget we stop scanning and let
+      # the compile signal (which only follows the entrypoint's require tree)
+      # carry the verdict.
+      STATIC_SCAN_BUDGET = 30 # seconds
+
       def static_hard_reject(dir, gem_name)
         return ["no-entrypoint"] if entrypoints(dir, gem_name).empty?
         return ["c-extension"] if Dir[File.join(dir, "ext", "**", "*.{c,cpp,cc,h}")].any?
 
+        deadline = Time.now + STATIC_SCAN_BUDGET
         Dir[File.join(dir, "lib", "**", "*.rb")].each do |f|
+          break if Time.now > deadline
           src = code_only(File.read(f).scrub)
           HARD_REJECT_TOKENS.each do |re, reason|
             return ["hard:#{reason}"] if src =~ re
@@ -261,7 +270,12 @@ module Bundler
         # C-extension gems can't be compiled by Spinel at all.
         risks << "c-extension" if Dir[File.join(dir, "ext", "**", "*.{c,cpp,cc,h}")].any?
 
+        deadline = Time.now + STATIC_SCAN_BUDGET
         Dir[File.join(dir, "lib", "**", "*.rb")].each do |f|
+          if Time.now > deadline
+            risks << "static-scan-truncated"
+            break
+          end
           src = code_only(File.read(f).scrub)
           RISK_TOKENS.each { |re, reason| risks << reason if src =~ re }
         end

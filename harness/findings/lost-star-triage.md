@@ -31,7 +31,8 @@ promotion.)
 
 Of 13, only **3 are true 12b757f0-window regressions** (dir /
 underscore-rails / yarn_lock_parser) — all three reduced to committed repros,
-unfiled. underscore-rails is the sharpest: silently WRONG runtime behavior
+FILED 2026-07-24 as #3321 / #3320 / #3322 (re-verified still-failing at
+76cfd099 first). underscore-rails is the sharpest: silently WRONG runtime behavior
 (a `defined?` guard flips), not a loud refusal. 9 are older strictness we
 only now re-measured (harness last ran at 42adf886), 1 was tooling
 (spinel_kit).

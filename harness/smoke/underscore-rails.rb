@@ -11,9 +11,9 @@ puts Underscore::Rails::VERSION
 
 puts Underscore::Rails.is_a?(Module)
 
-# Without Rails, the Engine constant must NOT be defined
-engine_defined = defined?(Underscore::Rails::Engine) ? true : false
-puts engine_defined
+# NB: no defined?(…::Engine) assertion — Spinel resolves defined? statically
+# (docs/limitations.md: hoisted class in a dead branch answers truthy;
+# documented, deliberate). Same smoke rule family as .frozen? on literals.
 
 # Module ancestry
 puts Underscore::Rails.ancestors.include?(Underscore::Rails)

@@ -1,4 +1,5 @@
-# FILED as matz/spinel#3322 (2026-07-24). Still failing at 76cfd099.
+# FILED as matz/spinel#3322 (2026-07-24). FIXED upstream same day; verified at
+# 681b08ae — prints ["boolean"]; yarn_lock_parser re-earns ★.
 module YarnLockParser
   class Parser
     TOKEN_TYPES = {

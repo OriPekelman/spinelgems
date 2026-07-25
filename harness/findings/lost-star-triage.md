@@ -44,3 +44,13 @@ are verified fixed at 76cfd099: #3258 (68fd45da), #3259, #3284 (10108a62 —
 our design ask implemented verbatim: load-path manipulation in statement
 position warns and no-ops). With #3258+#3259 fixed, the addressable mirror's
 full-surface un-pause is UNBLOCKED.
+
+## Resolution (2026-07-25, engine 681b08ae)
+
+#3320/#3321/#3322 all closed same-day (13ab61b1 / 79fdd68e / hash-variant
+work). All three repros verified fixed at 681b08ae; dir + yarn_lock_parser
+re-earn ★ outright. underscore-rails surfaced one residual — defined? on a
+hoisted conditionally-defined class answers statically true — which upstream
+DOCUMENTS as deliberate (docs/limitations.md, the #3274 wave). Smoke adjusted
+(rule extended: don't assert defined? on conditionally-defined constants);
+★ re-earned. All three land in the catalog at the next baseline.

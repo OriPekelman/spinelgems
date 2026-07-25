@@ -161,21 +161,45 @@ module Bundler
         src
       end
 
-      # Every .rb under lib/ as require_relative-able paths (no extension),
-      # entrypoint first, the rest sorted for determinism.
+      # Every gem-code .rb as require_relative-able paths (no extension),
+      # entrypoint first, the rest sorted for determinism. Rubygems shape:
+      # lib/**. Spin shape: <entry>.rb + <entry>/** — deliberately NOT the
+      # whole root, which also holds test/, oracle/, examples/.
       def lib_requires(dir, entry)
-        files = Dir[File.join(dir, "lib", "**", "*.rb")]
+        glob = if spin_shape?(dir) && entry
+                 File.join(dir, entry, "**", "*.rb")
+               else
+                 File.join(dir, "lib", "**", "*.rb")
+               end
+        files = Dir[glob]
                 .map { |f| f.sub(%r{\A#{Regexp.escape(dir)}/}, "").sub(/\.rb\z/, "") }
                 .sort
         files.unshift(entry) if entry # already in `files`; uniq keeps it first
         files.uniq
       end
 
-      # The gem's conventional entry file. Try lib/<gem>.rb, then the require path
-      # a dashed name maps to (lib/<a>/<b>.rb for "a-b") — so dashed/nested gems
+      # Spin package shape (matz/spinel docs/spin.md R2): spin.toml at the
+      # root, and the require root IS the package root — <name>.rb beside a
+      # <name>/ tree, no lib/. mirror-init and `spinel-compat port` both emit
+      # this shape, so first-party packages (spinel_kit 0.3.0+, the mirrors)
+      # arrive this way.
+      def spin_shape?(dir)
+        File.exist?(File.join(dir, "spin.toml"))
+      end
+
+      # The gem's conventional entry file. Spin shape: <name>.rb at the root
+      # (spin names are underscored; try the dashed name's underscore form
+      # too). Rubygems shape: lib/<gem>.rb, then the require path a dashed
+      # name maps to (lib/<a>/<b>.rb for "a-b") — so dashed/nested gems
       # like opentelemetry-semantic_conventions actually load, instead of the
       # require-only smoke silently loading nothing and looking like it passed.
       def entrypoint(gem_name, dir)
+        if spin_shape?(dir)
+          [gem_name, gem_name.tr("-", "_")].uniq.each do |cand|
+            return cand if File.exist?(File.join(dir, "#{cand}.rb"))
+          end
+          return nil
+        end
         [gem_name, gem_name.tr("-", "/")].uniq.each do |cand|
           return "lib/#{cand}" if File.exist?(File.join(dir, "lib", "#{cand}.rb"))
         end
@@ -188,7 +212,8 @@ module Bundler
       # *needs* the load path diverges and is correctly rejected, rather than
       # failing under CRuby too and looking like a broken smoke.
       def run_ruby(file, dir)
-        out, err, st = Open3.capture3("ruby", "-I", File.join(dir, "lib"), file)
+        inc = spin_shape?(dir) ? dir : File.join(dir, "lib")
+        out, err, st = Open3.capture3("ruby", "-I", inc, file)
         [out, err, st.success?]
       end
 

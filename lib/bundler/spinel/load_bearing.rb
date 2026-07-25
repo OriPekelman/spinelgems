@@ -13,9 +13,9 @@ module Bundler
       GLYPH = Site::GLYPH
 
       # Buildability snapshot @ 76cfd099 (from harness/load-bearing/buildability.rb).
-      BUILDABLE = 85_629
+      BUILDABLE = 85_631
       BLOCKED   = 45_293
-      REJECTED  = 59_163
+      REJECTED  = 59_161
 
       def initialize(data = DATA) = (@data = data)
 

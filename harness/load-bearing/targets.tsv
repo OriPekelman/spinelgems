@@ -108,6 +108,7 @@ yui-compressor	8	11	0	10835816	rejected	no-entrypoint	compiler	9	215
 ffaker	8	9	0	71589847	rejected	analyze-failed	compiler	2	853
 prometheus-client	8	10	0	61557242	rejected	other	compiler	2	67
 digest-crc	8	12	0	292693130	rejected	no-entrypoint	compiler	29	1371
+posix-spawn	8	25	0	27566467	rejected	c-extension	native	4	380
 rest_client	7	14	0	2638007	rejected	no-entrypoint	compiler	0	0
 memcached	7	8	0	3630765	rejected	c-extension	native	6	552
 asciidoctor	7	19	0	54467660	rejected	analyze-timeout	compiler	1	15
@@ -118,7 +119,6 @@ celluloid-io	7	22	0	131848448	rejected	no-entrypoint	compiler	2	48
 ruby-ole	7	8	0	82600269	rejected	no-entrypoint	compiler	11	1596
 diplomat	7	12	0	25871214	rejected	analyze-failed	compiler	24	1214
 airbrake	7	8	0	49158059	rejected	analyze-failed	compiler	2	80
-posix-spawn	7	25	0	27566467	rejected	c-extension	native	4	380
 json-jwt	7	12	0	103801821	rejected	no-entrypoint	compiler	8	979
 gnuplot	7	11	0	1880248	rejected	analyze-failed	compiler	2	53
 geoip	7	10	0	28830987	rejected	analyze-failed	compiler	0	0

@@ -108,6 +108,7 @@ yui-compressor	8	11	no-entrypoint	compiler	0
 ffaker	8	9	analyze-failed	compiler	0
 prometheus-client	8	10	other	compiler	0
 digest-crc	8	12	no-entrypoint	compiler	0
+posix-spawn	8	25	c-extension	native	0
 rest_client	7	14	no-entrypoint	compiler	0
 memcached	7	8	c-extension	native	0
 asciidoctor	7	19	analyze-timeout	compiler	0
@@ -118,7 +119,6 @@ celluloid-io	7	22	no-entrypoint	compiler	0
 ruby-ole	7	8	no-entrypoint	compiler	0
 diplomat	7	12	analyze-failed	compiler	0
 airbrake	7	8	analyze-failed	compiler	0
-posix-spawn	7	25	c-extension	native	0
 json-jwt	7	12	no-entrypoint	compiler	0
 gnuplot	7	11	analyze-failed	compiler	0
 geoip	7	10	analyze-failed	compiler	0

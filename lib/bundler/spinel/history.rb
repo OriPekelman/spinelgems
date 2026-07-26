@@ -224,6 +224,21 @@ module Bundler
                 "loop closed in 48 hours: this cycle's headline movement IS the previous cycle's bug report. " \
                 "The few true regressions include always-frozen literals biting literal-mutating gems " \
                 "(91f069f0, deliberate upstream semantics) and one new miscompile pair under triage." },
+        { rev: "c51b0a1c", date: "2026-07-26",
+          commit: "102 commits (681b08ae + c51b0a1c windows): same-day fixes for our " \
+                  "<a href=\"https://github.com/matz/spinel/issues/3320\">#3320</a>/" \
+                  "<a href=\"https://github.com/matz/spinel/issues/3321\">#3321</a>/" \
+                  "<a href=\"https://github.com/matz/spinel/issues/3322\">#3322</a> (13ab61b1 <code>defined?(::X)</code> " \
+                  "anchor, 79fdd68e builtin-<code>Dir</code> reopen, hash-variant keys), a bundled <code>pathname</code> " \
+                  "(1f747d86), require-gated <code>Monitor</code>, reader-over-String-method dispatch (5a2127b6), " \
+                  "and a broad regex/poly hardening line.",
+          file: "survey-c51b0a1c/compat.jsonl",
+          note: "<strong>Second consecutive positive cycle, and the first with ZERO ★ attrition:</strong> all 322 " \
+                "prior ★ re-earned, <strong>★337</strong> (+15 — the #3320/#3321/#3322 triage gems return, plus " \
+                "spinel_kit now verifying natively in spin package shape). <strong>925 improvements vs 73 " \
+                "regressions</strong>; rejected <strong>−868</strong>. Buildable 86,393 (+764). Also the first " \
+                "fully-clean sweep: no wedged shards, no lost probes — the UTF-8 scrub, static-scan budget, and " \
+                "spin-shape probing all holding." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

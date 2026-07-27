@@ -239,6 +239,18 @@ module Bundler
                 "regressions</strong>; rejected <strong>−868</strong>. Buildable 86,393 (+764). Also the first " \
                 "fully-clean sweep: no wedged shards, no lost probes — the UTF-8 scrub, static-scan budget, and " \
                 "spin-shape probing all holding." },
+        { rev: "c51b0a1c-refresh", date: "2026-07-27",
+          commit: "Network REFRESH (not a reprobe): the first full re-fetch since before the spin pivot — " \
+                  "195.5k names off the Compact Index, latest-version resolution + fetch for every gem whose " \
+                  "cached version had moved, all probed at engine c51b0a1c. Corpus grows 189,752 → 192,021.",
+          file: "survey-refresh-0727/compat.jsonl",
+          note: "<strong>The corpus caught up with the ecosystem.</strong> 2,278 never-probed gems entered " \
+                "(clean 946 · risky 315 · rejected 1,017 — but ~half the rejects are empty <code>no-entrypoint</code> " \
+                "name placeholders; among new gems that ship real code, ~54% are clean — the post-pivot generation " \
+                "skews friendlier to the subset). First-ever version-bump signal: 163 gems changed verdict purely " \
+                "from a newer release, <strong>60 up vs 103 down</strong> — ecosystem churn slightly outpaces " \
+                "subset-friendliness at the margin. Canonical ★337 · loaded 1,850 · clean 82,233 · risky 48,270 · " \
+                "rejected 59,331. Dependency graph rebuilt (239,803 → 278,807 edges); buildable 87,342." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

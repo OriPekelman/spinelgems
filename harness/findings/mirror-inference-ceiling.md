@@ -80,3 +80,17 @@ dual-runtime checks + 2/2 oracle flows (new `oracle/join.rb`, 14 join flows
 byte-identical to the real gem; absolute refs deliberately NOT normalized to
 match it). The inference ceiling that named this finding is, for this class
 of mirror, gone.
+
+## addressable v0.3 (2026-07-27, engine c51b0a1c)
+
+Percent-encoding surface added: `encode_component` / `unencode_component`,
+RFC 3986 §2.1, byte-oriented (UTF-8 → one %XX/byte, identical under CRuby and
+Spinel). bin/verify green: 39/39 dual-runtime + 3/3 oracle flows (new
+oracle/encode.rb, 16 flows byte-exact vs the real gem). Portability note for
+future mirrors: `String#[]`/`#length` are BYTE-indexed under Spinel but
+CHAR-indexed under CRuby, so encoders must iterate bytes explicitly
+(bytesize/getbyte — all three of bytes/getbyte/each_byte verified byte-exact
+on both), and decoded multi-byte results must be compared via stdout (puts),
+never in-process `==` against a UTF-8 literal (Spinel strings carry no
+encoding tag). Narrowed by choice: custom character-class arg, full-URI
+encode, normalize_component.

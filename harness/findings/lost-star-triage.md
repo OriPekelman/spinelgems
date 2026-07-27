@@ -54,3 +54,14 @@ hoisted conditionally-defined class answers statically true — which upstream
 DOCUMENTS as deliberate (docs/limitations.md, the #3274 wave). Smoke adjusted
 (rule extended: don't assert defined? on conditionally-defined constants);
 ★ re-earned. All three land in the catalog at the next baseline.
+
+## c51b0a1c cycle: the 73 regressions sampled (2026-07-27)
+
+72 of 73 are `analyze-failed`; the 73rd is our own too_heavy_gem
+static-scan-truncated downgrade. 15 sampled with raw stderr: every one is a
+loud compile-time refusal on a genuinely dynamic construct (`self.new` with
+an unresolved arg, untyped ivar in a boolean condition — the new
+"unsupported condition (non-bool)" diagnostic — `instance_variable_set`
+reflection, module-name/expression strictness). Zero segfaults, zero C
+errors, no shared cluster. Same silent→loud family as #1605/the $:-wave;
+nothing filable. DISPOSITION: accepted strictness, no follow-up.

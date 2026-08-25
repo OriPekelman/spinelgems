@@ -251,6 +251,23 @@ module Bundler
                 "from a newer release, <strong>60 up vs 103 down</strong> — ecosystem churn slightly outpaces " \
                 "subset-friendliness at the margin. Canonical ★337 · loaded 1,850 · clean 82,233 · risky 48,270 · " \
                 "rejected 59,331. Dependency graph rebuilt (239,803 → 278,807 edges); buildable 87,342." },
+        { rev: "55638986", date: "2026-08-25",
+          commit: "285 commits (c51b0a1c → 55638986): the <strong>bundled-stdlib require-gate</strong> maturing — " \
+                  "<code>digest</code>/<code>json</code>/<code>erb</code>/<code>csv</code> are bundled packages that " \
+                  "must be explicitly <code>require</code>d (489cbde7 \"a bundled library carries only what it uses\"), " \
+                  "so a program that uses <code>Digest</code> without <code>require \"digest\"</code> now fails to " \
+                  "compile — matching CRuby's documented interface. Plus a broad poly-String / regexp-byte-fidelity / " \
+                  "empty-literal inference line, and our own <a href=\"https://github.com/matz/spinel/issues/3976\">#3976</a> " \
+                  "undefined-constant compile-time warning landing.",
+          file: "survey-55638986/compat.jsonl",
+          note: "<strong>Stricter, and more honest — again.</strong> ★ moves <em>up</em> to <strong>372</strong> " \
+                "(+35, the inference wave lifting the verified tier), while the top line moves back: rejected " \
+                "<strong>+2,073</strong> (59,331 → 61,404). 2,649 improvements (1,504 <code>rejected</code>→" \
+                "<code>clean</code>) vs 4,813 regressions, the latter dominated by the require-gate — gems that " \
+                "leaned on <code>Digest</code>/<code>JSON</code>/<code>ERB</code> being implicitly available now " \
+                "refuse at compile time, exactly as CRuby's interface says they should. No crashes; every sampled " \
+                "regression is a clean compile-time refusal naming the missing <code>require</code>. Buildable " \
+                "86,149. Same silent-wrong→loud-refuse shape as the #1605 wave and the <code>$:</code> preamble." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

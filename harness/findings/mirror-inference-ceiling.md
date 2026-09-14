@@ -37,8 +37,60 @@ So the practical guidance for mirror authors today: **prefer thin, functional,
 non-value-class surfaces**; avoid operator overloads, recursion-heavy methods,
 and method names that shadow Array/String builtins, until the inference handles them.
 
-## Status
+## Re-verify at 12b757f0 (2026-07-22, 981 commits after 65fb6d2d)
+
+All three mirrors re-pass `bin/verify` (multi_json 1/1, colorize 1/1 + oracle,
+addressable v0.1 1/1 + oracle). Re-probing the paused constructs in-context:
+
+| construct | at 65fb6d2d | at 12b757f0 |
+|---|---|---|
+| `a, b = x, y` in a class method | (orig: MultiWriteNode error) | **works** (2-target shape; also works at 65fb6d2d) |
+| kwarg constructor, differing call-site subsets | works (kwarg `initialize`, 4 subsets) | **works** |
+| user `+` operator returning the class | **FAIL** (silent wrong dispatch) | **FIXED** (user-binop wave, e.g. 3e376f5b) |
+| user `==` in the rich class | works in current shape | **works** |
+| method named `join` | collapses | **STILL COLLAPSES** — but now REDUCED to 17 lines: `join-builtin-shadow-union.rb`. Two ingredients: builtin-shadowing name + String-including union receiver from an un-narrowed `return uri if uri.is_a?(URI)` guard. No longer "doesn't minimize". |
+
+New in-context bug surfaced en route: `"str".is_a?(Qualified::UserClass)` →
+runtime NoMethodError (residual variant of fixed #2683, which only covered
+::-scoped builtin classes). Repro: `isa-qualified-user-class.rb`.
+
+So the ceiling has LIFTED for operators/massign/kwargs; what remains is the
+builtin-name-shadowing dispatch on union receivers (join) and the qualified
+user-class `is_a?`. Both FILED 2026-07-22: matz/spinel#3258 (is_a?) and #3259 (join). Both are clean minimal repros — unlike the
+original cluster. addressable can un-pause once those two land (join is the
+only public-surface blocker; `+` already works if it delegates to a
+non-shadowing name).
+
+Side observation (colorize, 12b757f0): generated C declares `clr_set`'s param
+`const char *` while call sites pass `sp_String *` — compiles with
+-Wincompatible-pointer-types warnings, output still byte-correct. Watch it.
+
+## Status (original, engine 65fb6d2d — superseded above)
 
 addressable is PAUSED (its read/normalize surface is a clean shippable v0.1 —
 20/20 compiled — but join/`+`/`==` are blocked). Not filed as issues (no minimal
 repros). Related clean finding: `string-inspect-esc.rb` (ESC → `\x1B` vs `\e`).
+
+## UN-PAUSED (2026-07-24, engine 76cfd099)
+
+#3258 and #3259 both fixed upstream within ~24h of filing. addressable v0.2
+restores the full reference-resolution surface — `join` under its real name,
+`+`, the qualified `is_a?` with no workaround — `bin/verify` green: 30/30
+dual-runtime checks + 2/2 oracle flows (new `oracle/join.rb`, 14 join flows
+byte-identical to the real gem; absolute refs deliberately NOT normalized to
+match it). The inference ceiling that named this finding is, for this class
+of mirror, gone.
+
+## addressable v0.3 (2026-07-27, engine c51b0a1c)
+
+Percent-encoding surface added: `encode_component` / `unencode_component`,
+RFC 3986 §2.1, byte-oriented (UTF-8 → one %XX/byte, identical under CRuby and
+Spinel). bin/verify green: 39/39 dual-runtime + 3/3 oracle flows (new
+oracle/encode.rb, 16 flows byte-exact vs the real gem). Portability note for
+future mirrors: `String#[]`/`#length` are BYTE-indexed under Spinel but
+CHAR-indexed under CRuby, so encoders must iterate bytes explicitly
+(bytesize/getbyte — all three of bytes/getbyte/each_byte verified byte-exact
+on both), and decoded multi-byte results must be compared via stdout (puts),
+never in-process `==` against a UTF-8 literal (Spinel strings carry no
+encoding tag). Narrowed by choice: custom character-class arg, full-URI
+encode, normalize_component.

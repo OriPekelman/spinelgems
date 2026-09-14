@@ -126,7 +126,7 @@ module Bundler
         end
 
         sig = compile_signal(dir, gem_name)
-        risks = static_signal(dir)
+        risks = static_signal(dir, gem_name)
         # Unfollowed requires are notes, not rejections — record them so a human
         # can see when a verdict is entangled with the no-load-path limitation.
         risks += sig[:requires].map { |r| "needs:#{r}" }
@@ -225,17 +225,38 @@ module Bundler
       # should run. Covers: no entrypoint (lib/<gem>.rb absent and no
       # lib/*.rb), a C extension (ext/*.c — Spinel doesn't compile C exts),
       # and top-level HARD_REJECT_TOKENS in lib/**/*.rb.
+      # Wall-clock budget for each whole-lib static scan. Pathological gems
+      # exist (too_heavy_gem: 17,577 one-line lib files) where per-file lexing
+      # pins the probe for many minutes; past budget we stop scanning and let
+      # the compile signal (which only follows the entrypoint's require tree)
+      # carry the verdict.
+      STATIC_SCAN_BUDGET = 30 # seconds
+
       def static_hard_reject(dir, gem_name)
         return ["no-entrypoint"] if entrypoints(dir, gem_name).empty?
         return ["c-extension"] if Dir[File.join(dir, "ext", "**", "*.{c,cpp,cc,h}")].any?
 
-        Dir[File.join(dir, "lib", "**", "*.rb")].each do |f|
-          src = code_only(File.read(f))
+        deadline = Time.now + STATIC_SCAN_BUDGET
+        source_files(dir, gem_name).each do |f|
+          break if Time.now > deadline
+          src = code_only(File.read(f).scrub)
           HARD_REJECT_TOKENS.each do |re, reason|
             return ["hard:#{reason}"] if src =~ re
           end
         end
         nil
+      end
+
+      # The gem's shipped code files for the static scans. Rubygems shape:
+      # lib/**. Spin shape: <name>.rb + <name>/** (test/, oracle/, examples/
+      # at the root are harness legs, not shipped code).
+      def source_files(dir, gem_name)
+        return Dir[File.join(dir, "lib", "**", "*.rb")] unless File.exist?(File.join(dir, "spin.toml"))
+
+        base = [gem_name.to_s.tr("-", "_"), gem_name.to_s].uniq
+               .find { |c| File.exist?(File.join(dir, "#{c}.rb")) }
+        return [] unless base
+        [File.join(dir, "#{base}.rb")] + Dir[File.join(dir, base, "**", "*.rb")]
       end
 
       # Risks from the static source scan (exclude the `needs:` require notes).
@@ -245,8 +266,17 @@ module Bundler
 
       # The gem's conventional require targets: lib/<name>.rb, else top-level
       # lib/*.rb. Spinel inlines their require_relatives, so compiling the entry
-      # pulls in the whole tree.
+      # pulls in the whole tree. Spin package shape (spin.toml at the root):
+      # the require root IS the root — <name>.rb beside <name>/, no lib/.
       def entrypoints(dir, gem_name)
+        if File.exist?(File.join(dir, "spin.toml"))
+          [gem_name.tr("-", "_"), gem_name].uniq.each do |cand|
+            main = File.join(dir, "#{cand}.rb")
+            return [main] if File.exist?(main)
+          end
+          return []
+        end
+
         lib = File.join(dir, "lib")
         return [] unless File.directory?(lib)
 
@@ -256,13 +286,18 @@ module Bundler
         Dir[File.join(lib, "*.rb")]
       end
 
-      def static_signal(dir)
+      def static_signal(dir, gem_name = nil)
         risks = []
         # C-extension gems can't be compiled by Spinel at all.
         risks << "c-extension" if Dir[File.join(dir, "ext", "**", "*.{c,cpp,cc,h}")].any?
 
-        Dir[File.join(dir, "lib", "**", "*.rb")].each do |f|
-          src = code_only(File.read(f))
+        deadline = Time.now + STATIC_SCAN_BUDGET
+        source_files(dir, gem_name).each do |f|
+          if Time.now > deadline
+            risks << "static-scan-truncated"
+            break
+          end
+          src = code_only(File.read(f).scrub)
           RISK_TOKENS.each { |re, reason| risks << reason if src =~ re }
         end
         risks.uniq

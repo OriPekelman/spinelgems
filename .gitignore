@@ -18,3 +18,7 @@ survey-a782696/
 .DS_Store
 survey-9c0a5f0/
 survey-5c9790c/
+survey-*/shards/
+survey-*/spinel-frozen/
+survey-*/candidates.tsv
+survey-*/cached.tsv

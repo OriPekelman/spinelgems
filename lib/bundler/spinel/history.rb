@@ -190,6 +190,84 @@ module Bundler
                 "<code>socket</code>, …), where before it compiled a silent typed-default that would fail at runtime. " \
                 "The top-line moves backward; compatibility <em>honesty</em> moves forward. Reframed this cycle around " \
                 "<code>spin</code>: the catalog is now the compatibility oracle and the intended seed for spin-index." },
+        { rev: "12b757f0", date: "2026-07-22",
+          commit: "981 commits (≈#3148–#3227): the poly-dispatch / inference hardening wave — user-defined operators " \
+                  "(<code>&lt;=&gt;</code> subclass operands, <code>&lt;&lt;</code>, <code>==</code> honored in " \
+                  "<code>Array#include?</code>, user binops on boxed operands), keyword params no longer bound by " \
+                  "position in poly dispatch, destructuring typing, Data/Struct members shadowing builtins, threads " \
+                  "(per-worker string + young-object heaps), <code>IO.copy_stream</code>, shared-mutable strings " \
+                  "phase 1 (#3227), and <code>spin test</code> incremental cache + parallel builds (#3202).",
+          file: "survey-12b757f0/compat.jsonl",
+          note: "<strong>The biggest verified jump yet: ★320 (+89).</strong> The inference wave lands at harness " \
+                "scale — 192 gems earned a first-time mechanical ★, 127 re-earned, 16 lost (13 behaviour " \
+                "build-errors under triage). Pure movement: <strong>2,814 improvements</strong> (1,827 " \
+                "<code>rejected</code>→<code>clean</code>) vs <strong>5,425 regressions</strong> — but 5,418 of those " \
+                "are ONE cluster: the pre-bundler <code>$:.unshift File.dirname(__FILE__)</code> preamble now " \
+                "hard-fails analysis where the old engine compiled it into a runtime line-1 bomb " \
+                "(<code>undefined method 'unshift'</code>). Same stricter-honest shape as #1605: those gems were " \
+                "never actually runnable; now the refusal is loud and at compile time. Net: rejected " \
+                "<strong>+3,238</strong>, clean −1,072, risky −1,811. Buildable 83,957 (−2,545)." },
+        { rev: "76cfd099", date: "2026-07-24",
+          commit: "126 commits (≈#3234–#3293): 10108a62 — <strong>our <a href=\"https://github.com/matz/spinel/issues/3284\">#3284</a> " \
+                  "design ask implemented</strong>: load-path manipulation in statement position warns and no-ops, the " \
+                  "ignored-require symmetry. Plus 68fd45da (namespace-qualified <code>is_a?</code>, our " \
+                  "<a href=\"https://github.com/matz/spinel/issues/3258\">#3258</a>), the " \
+                  "<a href=\"https://github.com/matz/spinel/issues/3259\">#3259</a> builtin-shadow dispatch fix, " \
+                  "always-frozen string literals (91f069f0), <code>Forwardable</code> delegators, and lazy-enumerator " \
+                  "composition work.",
+          file: "survey-76cfd099/compat.jsonl",
+          note: "<strong>The first strongly-positive cycle: 2,379 improvements vs 141 regressions.</strong> " \
+                "The <code>$:</code>-preamble cluster flipped back exactly as projected in #3284 — <strong>2,309 " \
+                "gems recovered</strong> (976 <code>rejected</code>→<code>clean</code>, 1,403 " \
+                "<code>rejected</code>→<code>risky</code>). Net: rejected <strong>−2,236</strong>, clean +907, " \
+                "risky +1,327, ★ held at <strong>320</strong>. Buildable 85,629 (+1,672). The filed→fixed→measured " \
+                "loop closed in 48 hours: this cycle's headline movement IS the previous cycle's bug report. " \
+                "The few true regressions include always-frozen literals biting literal-mutating gems " \
+                "(91f069f0, deliberate upstream semantics) and one new miscompile pair under triage." },
+        { rev: "c51b0a1c", date: "2026-07-26",
+          commit: "102 commits (681b08ae + c51b0a1c windows): same-day fixes for our " \
+                  "<a href=\"https://github.com/matz/spinel/issues/3320\">#3320</a>/" \
+                  "<a href=\"https://github.com/matz/spinel/issues/3321\">#3321</a>/" \
+                  "<a href=\"https://github.com/matz/spinel/issues/3322\">#3322</a> (13ab61b1 <code>defined?(::X)</code> " \
+                  "anchor, 79fdd68e builtin-<code>Dir</code> reopen, hash-variant keys), a bundled <code>pathname</code> " \
+                  "(1f747d86), require-gated <code>Monitor</code>, reader-over-String-method dispatch (5a2127b6), " \
+                  "and a broad regex/poly hardening line.",
+          file: "survey-c51b0a1c/compat.jsonl",
+          note: "<strong>Second consecutive positive cycle, and the first with ZERO ★ attrition:</strong> all 322 " \
+                "prior ★ re-earned, <strong>★337</strong> (+15 — the #3320/#3321/#3322 triage gems return, plus " \
+                "spinel_kit now verifying natively in spin package shape). <strong>925 improvements vs 73 " \
+                "regressions</strong>; rejected <strong>−868</strong>. Buildable 86,393 (+764). Also the first " \
+                "fully-clean sweep: no wedged shards, no lost probes — the UTF-8 scrub, static-scan budget, and " \
+                "spin-shape probing all holding." },
+        { rev: "c51b0a1c-refresh", date: "2026-07-27",
+          commit: "Network REFRESH (not a reprobe): the first full re-fetch since before the spin pivot — " \
+                  "195.5k names off the Compact Index, latest-version resolution + fetch for every gem whose " \
+                  "cached version had moved, all probed at engine c51b0a1c. Corpus grows 189,752 → 192,021.",
+          file: "survey-refresh-0727/compat.jsonl",
+          note: "<strong>The corpus caught up with the ecosystem.</strong> 2,278 never-probed gems entered " \
+                "(clean 946 · risky 315 · rejected 1,017 — but ~half the rejects are empty <code>no-entrypoint</code> " \
+                "name placeholders; among new gems that ship real code, ~54% are clean — the post-pivot generation " \
+                "skews friendlier to the subset). First-ever version-bump signal: 163 gems changed verdict purely " \
+                "from a newer release, <strong>60 up vs 103 down</strong> — ecosystem churn slightly outpaces " \
+                "subset-friendliness at the margin. Canonical ★337 · loaded 1,850 · clean 82,233 · risky 48,270 · " \
+                "rejected 59,331. Dependency graph rebuilt (239,803 → 278,807 edges); buildable 87,342." },
+        { rev: "55638986", date: "2026-08-25",
+          commit: "285 commits (c51b0a1c → 55638986): the <strong>bundled-stdlib require-gate</strong> maturing — " \
+                  "<code>digest</code>/<code>json</code>/<code>erb</code>/<code>csv</code> are bundled packages that " \
+                  "must be explicitly <code>require</code>d (489cbde7 \"a bundled library carries only what it uses\"), " \
+                  "so a program that uses <code>Digest</code> without <code>require \"digest\"</code> now fails to " \
+                  "compile — matching CRuby's documented interface. Plus a broad poly-String / regexp-byte-fidelity / " \
+                  "empty-literal inference line, and our own <a href=\"https://github.com/matz/spinel/issues/3976\">#3976</a> " \
+                  "undefined-constant compile-time warning landing.",
+          file: "survey-55638986/compat.jsonl",
+          note: "<strong>Stricter, and more honest — again.</strong> ★ moves <em>up</em> to <strong>372</strong> " \
+                "(+35, the inference wave lifting the verified tier), while the top line moves back: rejected " \
+                "<strong>+2,073</strong> (59,331 → 61,404). 2,649 improvements (1,504 <code>rejected</code>→" \
+                "<code>clean</code>) vs 4,813 regressions, the latter dominated by the require-gate — gems that " \
+                "leaned on <code>Digest</code>/<code>JSON</code>/<code>ERB</code> being implicitly available now " \
+                "refuse at compile time, exactly as CRuby's interface says they should. No crashes; every sampled " \
+                "regression is a clean compile-time refusal naming the missing <code>require</code>. Buildable " \
+                "86,149. Same silent-wrong→loud-refuse shape as the #1605 wave and the <code>$:</code> preamble." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

@@ -68,30 +68,38 @@ module Bundler
       # Tokens whose mere presence in `lib/**/*.rb` makes the gem a definite
       # Spinel reject — there's no path under which the compile would succeed,
       # so we skip the (expensive) spinel call entirely and record a `rejected`
-      # verdict from the static scan alone. Conservative set: only constructs
-      # Spinel will never support (threads, Mutex, TracePoint). Metaprogramming
-      # tokens like `define_method` stay in RISK_TOKENS below — they degrade
-      # silently, so the compile signal is still the right call there.
-      # Constructs that put a gem outside the AOT closed-world model entirely —
-      # rejected from a static scan, before a compile is even attempted.
-      # Thread/Mutex lived here until matz/spinel#1360 made them *run* (single-
-      # threaded, carrying the block's value): they're now compiled + flagged
-      # `risky` (below), not hard-rejected. TracePoint/set_trace_func stay —
-      # there is no degenerate-but-correct lowering for runtime tracing.
+      # verdict from the static scan alone. Constructs that put a gem outside
+      # the AOT closed-world model entirely. Metaprogramming tokens like
+      # `define_method` stay in RISK_TOKENS below — they degrade silently, so
+      # the compile signal is still the right call there.
+      # Thread/Mutex lived here until matz/spinel#1360 made them *run*, then in
+      # RISK_TOKENS until release 2026.09.12 made threads a true M:N runtime —
+      # they now carry no static flag at all (see RISK_TOKENS below).
+      # TracePoint/set_trace_func stay — there is no degenerate-but-correct
+      # lowering for runtime tracing.
       HARD_REJECT_TOKENS = {
         /\bTracePoint\b/     => "TracePoint",
         /\bset_trace_func\b/ => "set_trace_func"
       }.freeze
 
       # token => reason. Tokens Spinel cannot honour and may silently no-op.
+      #
+      # Thread/Mutex/Mutex_m USED to live here. They were hard-rejects until
+      # matz/spinel#1360 made them *run* (single-threaded, carrying the block's
+      # value), which demoted them to a risk: correct for defensive use, but
+      # degenerate for genuine concurrency. Release 2026.09.12 finished that
+      # migration — `Thread` is a true M:N runtime with no GVL (N OS workers,
+      # real Mutex/Queue/SizedQueue/ConditionVariable, a ~10ms preemption
+      # quantum), so the "degenerate" half of the premise is gone and the flag
+      # with it. Verified at 112bae85 against CRuby 3.4.9: 8 threads summing
+      # through a Mutex plus a Queue producer/consumer are byte-identical, and
+      # 4 threads each sleeping 1s join in under 2s (a single-threaded lowering
+      # takes 4s). The residual caveats need no static token — Monitor#class
+      # reports a name, the FIFO hang is macOS-only (the catalog builds on
+      # Linux), and Fiber/Thread #inspect refuses to COMPILE, which the compile
+      # probe already catches. See harness/findings/
+      # thread-classifier-stale-112bae85.md.
       RISK_TOKENS = {
-        # Thread/Mutex run single-threaded since matz/spinel#1360 — correct for
-        # defensive use (a mutex guarding state, Thread.new for a value), but
-        # degenerate for genuine concurrency: compiles, flagged, fails
-        # `check --strict`. (Demoted from HARD_REJECT after #1360.)
-        /\bThread\.(new|start|fork)\b/ => "thread",
-        /\bMutex\.new\b/               => "mutex",
-        /\bMutex_m\b/                  => "mutex_m",
         /\beval\s*\(/                  => "eval",
         /\binstance_eval\b/            => "instance_eval",
         /\b(class|module)_eval\b/      => "class_eval",

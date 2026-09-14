@@ -268,6 +268,35 @@ module Bundler
                 "refuse at compile time, exactly as CRuby's interface says they should. No crashes; every sampled " \
                 "regression is a clean compile-time refusal naming the missing <code>require</code>. Buildable " \
                 "86,149. Same silent-wrong→loud-refuse shape as the #1605 wave and the <code>$:</code> preamble." },
+        { rev: "112bae85", date: "2026-09-14",
+          commit: "806 commits (55638986 → 112bae85), and the first <strong>dated release</strong>: " \
+                  "<a href=\"https://github.com/matz/spinel/releases/tag/2026.09.12\"><code>2026.09.12</code></a>. " \
+                  "A consolidation wave rather than a subset one — <code>Thread</code> becomes a true " \
+                  "<strong>M:N runtime with no GVL</strong> (N OS workers, real " \
+                  "<code>Mutex</code>/<code>Queue</code>/<code>ConditionVariable</code>, ~10ms preemption), the " \
+                  "generational object mark becomes the default, and seven bundled packages arrive " \
+                  "(<code>net/http</code>, <code>uri</code>, <code>openssl</code>, <code>fileutils</code>, " \
+                  "<code>tmpdir</code>, <code>zlib</code>, <code>securerandom</code>). Plus <code>spin flags</code> " \
+                  "for builds driven from outside spin, declared carried-C (<code>[package] sources</code>), and " \
+                  "<code>promise_diff</code> — a release now says what it promises and what changed.",
+          file: "survey-112bae85/compat.jsonl",
+          note: "<strong>The quietest cycle the catalog has recorded — and the biggest correction came from " \
+                "our own probe.</strong> The compiler moved barely at all: of 192,027 gems common to both revs " \
+                "only <strong>1,400 changed verdict (0.7%)</strong>, 882 improvements against 518 regressions. " \
+                "Eight hundred commits and seven new bundled packages left the blocker histogram almost " \
+                "unchanged — which is what a consolidation release looks like from here. " \
+                "Then the release invalidated one of our own assumptions: the probe still flagged every " \
+                "<code>Thread.new</code> / <code>Mutex.new</code> as risky, on a premise from " \
+                "<a href=\"https://github.com/matz/spinel/issues/1360\">#1360</a> that they ran " \
+                "single-threaded and were &ldquo;degenerate for genuine concurrency&rdquo;. Verified here against " \
+                "CRuby: 8 threads summing through a <code>Mutex</code> plus a <code>Queue</code> " \
+                "producer/consumer are byte-identical, and 4 threads each sleeping 1s join in " \
+                "<strong>under 2s</strong> — a single-threaded lowering takes 4. The flag was retired, and " \
+                "<strong>2,492 gems</strong> whose only blocker it was became <code>clean</code>. " \
+                "Canonical ★394 · loaded 1,838 · clean 83,815 · risky 44,964 · rejected 61,027. " \
+                "Split honestly: the compiler is worth <strong>rejected −377</strong> and ★ +22; the " \
+                "classifier correction is worth <strong>clean +2,449</strong> against risky. Buildable 86,676 " \
+                "(+527; edges unchanged — cache-only reprobe)." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

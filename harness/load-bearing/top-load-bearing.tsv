@@ -19,7 +19,7 @@ rspec	26518	902	clean
 drb	26413	19	risky
 tzinfo	26408	208	rejected
 connection_pool	26400	174	rejected
-zeitwerk	25952	497	risky
+zeitwerk	25952	497	rejected
 minitest	25461	259	rejected
 benchmark	25447	36	clean
 mutex_m	25269	42	rejected
@@ -32,18 +32,18 @@ nokogiri	16207	4399	rejected
 open4	14795	118	risky
 thor	14582	4764	rejected
 mime-types	14257	549	risky
-public_suffix	13349	74	rejected
+public_suffix	13349	74	clean
 addressable	13295	904	risky
 rake	13106	1519	rejected
 activemodel	13087	1195	risky
 reline	12400	25	rejected
 tilt	11148	418	rejected
-timeout	9534	18	risky
+timeout	9534	18	clean
 webrick	9530	102	risky
 psych	9218	97	rejected
 erubis	9107	235	risky
 rack-test	8946	90	rejected
-multipart-post	8728	138	rejected
+multipart-post	8728	138	risky
 ffi	8707	597	rejected
 net-http	8607	40	rejected
 faraday-net_http_persistent	8561	36	rejected
@@ -54,7 +54,7 @@ faraday	8557	3628	risky
 erubi	8540	34	rejected
 arel	8517	54	risky
 activerecord	8490	3030	rejected
-sprockets	8329	293	risky
+sprockets	8329	293	rejected
 method_source	8295	63	rejected
 rbs	8256	28	rejected
 loofah	8242	32	rejected
@@ -74,7 +74,7 @@ polyglot	6114	17	verified
 multi_xml	6102	208	rejected
 treetop	6076	152	risky
 nio4r	5716	26	rejected
-hashie	5508	1324	rejected
+hashie	5508	1324	risky
 digest	5506	22	rejected
 net-smtp	5480	25	rejected
 mail	5460	342	rejected
@@ -113,7 +113,7 @@ jwt	2161	412	clean
 coderay	2039	130	risky
 net-ssh-gateway	1951	52	rejected
 spoon	1898	21	clean
-rb-inotify	1897	36	risky
+rb-inotify	1897	36	clean
 rb-fsevent	1890	49	rejected
 pry	1876	461	rejected
 sshkit	1790	104	rejected
@@ -130,7 +130,7 @@ rchardet	1438	25	rejected
 oauth2	1430	375	rejected
 yajl-ruby	1428	416	rejected
 git	1401	466	risky
-ast	1389	21	rejected
+ast	1389	21	verified
 json_pure	1373	193	rejected
 hpricot	1343	225	rejected
 sass	1323	450	risky
@@ -139,7 +139,7 @@ ruby-progressbar	1293	250	clean
 msgpack	1273	198	rejected
 ruby-hmac	1248	105	rejected
 haml	1238	552	risky
-parser	1223	171	risky
+parser	1223	171	rejected
 execjs	1134	150	risky
 dry-inflector	1103	59	rejected
 typhoeus	1096	954	risky
@@ -154,7 +154,7 @@ omniauth-oauth2	992	891	risky
 faker	975	146	rejected
 yard	971	161	risky
 fluentd	954	951	rejected
-minitar	952	62	clean
+minitar	952	62	rejected
 github_api	930	86	rejected
 aws-sdk-core	929	94	rejected
 clamp	923	143	risky
@@ -191,8 +191,8 @@ timers	777	33	rejected
 gems	759	45	risky
 equalizer	751	40	rejected
 ipaddress	744	74	rejected
-tty-cursor	737	44	rejected
-filesize	736	32	rejected
+tty-cursor	737	44	verified
+filesize	736	32	clean
 daemons	735	216	risky
 uuidtools	734	181	rejected
 tty-reader	722	17	rejected

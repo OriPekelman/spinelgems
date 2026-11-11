@@ -125,7 +125,7 @@ module Bundler
           # Smoke is broken under plain Ruby — can't draw a conclusion.
           return ["risky", ["smoke-error:cruby"]]
         end
-        return ["rejected", ["build-or-run-error"] + spin_err.lines.grep(/error|fatal/i).first(2).map(&:strip)] unless spin_ok
+        return ["rejected", ["build-or-run-error"] + failure_lines(spin_err)] unless spin_ok
 
         if ruby_out == spin_out
           [behavior ? "verified" : "loaded", []]
@@ -235,6 +235,18 @@ module Bundler
         [out, (cerr + err), st.success?]
       ensure
         File.delete(bin) if bin && File.exist?(bin)
+      end
+
+      # The lines that say WHY the build/run failed. Besides C `error:`/`fatal`
+      # lines, keep Spinel's own compile-time refusals (`spinel: <file>:<line>:
+      # unsupported …`) — they carry no "error" word, so 21 of 25 rejections at
+      # 2026.10.25 were recorded as a bare `build-or-run-error` with no cause.
+      # The `N refusal(s), nothing written` trailer is a count, not a cause.
+      def failure_lines(spin_err)
+        spin_err.lines
+                .select { |l| l =~ /error|fatal/i || l.start_with?("spinel: ") }
+                .reject { |l| l =~ /\Aspinel: \d+ refusals?, nothing written/ }
+                .first(2).map(&:strip)
       end
 
       def first_diff(a, b)

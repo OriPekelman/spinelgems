@@ -22,3 +22,4 @@ survey-*/shards/
 survey-*/spinel-frozen/
 survey-*/candidates.tsv
 survey-*/cached.tsv
+survey-*/ledger-names.txt

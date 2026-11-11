@@ -62,7 +62,12 @@ module Bundler
         return ref if ref =~ /\A[0-9a-f]{7,40}\z/
 
         @out.puts "resolving spinel ref '#{ref}' ..."
-        line = capture("git", "ls-remote", REPO, ref)
+        # Ask for the peeled form too: an ANNOTATED tag (Spinel's dated releases,
+        # e.g. 2026.10.25) lists the tag OBJECT's sha under its own name and the
+        # commit only under `<ref>^{}`. Keying the cache on the tag object named
+        # the dir after a sha no checkout ever reports as HEAD.
+        lines = capture("git", "ls-remote", REPO, ref, "#{ref}^{}").to_s.lines
+        line = lines.find { |l| l.strip.end_with?("^{}") } || lines.first
         sha = line.to_s.split(/\s+/).first
         raise Error, "could not resolve spinel ref '#{ref}' on #{REPO}" unless sha && !sha.empty?
         sha[0, 7]

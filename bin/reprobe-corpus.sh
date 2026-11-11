@@ -116,5 +116,11 @@ cat "$TSV" | xargs -P "$SHARDS" -d'\n' -I{} bash -c '
 ' "$CLI" {} || true
 
 # Aggregate report (pure ledger aggregation — no probes, no network).
-"$CLI" survey --list "$LIST" --jobs 1 --out "$OUT/report.md" || true
+# Drive it from the names the ledger actually holds, NOT the corpus list: a
+# corpus name with no cached source makes `survey` network-fetch it, which
+# wedged the 112bae85 run for 3.5h on ~3.5k uncached names.
+NAMES="$OUT/ledger-names.txt"
+ruby -rjson -e 'seen = {}; File.foreach(ARGV[0]) { |l| g = (JSON.parse(l)["gem"] rescue nil); seen[g] = true if g }; puts seen.keys' \
+  "$SPINEL_COMPAT_LEDGER" > "$NAMES"
+"$CLI" survey --list "$NAMES" --jobs 1 --out "$OUT/report.md" || true
 echo "[reprobe] done -> $SPINEL_COMPAT_LEDGER  (+ $OUT/report.md)"

@@ -297,6 +297,37 @@ module Bundler
                 "Split honestly: the compiler is worth <strong>rejected −377</strong> and ★ +22; the " \
                 "classifier correction is worth <strong>clean +2,449</strong> against risky. Buildable 86,676 " \
                 "(+527; edges unchanged — cache-only reprobe)." },
+        { rev: "2814693f", date: "2026-11-11",
+          commit: "12,858 commits (112bae85 → 2814693f), the second dated release: " \
+                  "<a href=\"https://github.com/matz/spinel/releases/tag/2026.10.25\"><code>2026.10.25</code></a>. " \
+                  "Six weeks, sixteen times the volume of the previous cycle, and a much wider contributor base. " \
+                  "The compiler now <strong>refuses at compile time, with a named reason</strong>, a long list of " \
+                  "constructs it used to accept and get wrong or skip: a stdlib constant used without its " \
+                  "<code>require</code>, a class method no class in the program defines, non-literal " \
+                  "<code>define_method</code> / <code>def_delegators</code>, mixins named by an expression, " \
+                  "<code>Object#extend</code>, refinements. A computed <code>require</code> " \
+                  "(<code>require File.dirname(__FILE__) + '/x'</code>) is now a run-time <code>LoadError</code> " \
+                  "where it used to be silently dropped.",
+          file: "survey-2814693f/compat.jsonl",
+          note: "<strong>The biggest movement in both directions since the catalog began — and almost all of the " \
+                "losses are the compiler getting more honest.</strong> Of 192,038 gems, " \
+                "<strong>14,540 changed verdict (7.6%)</strong>, against 0.7% last cycle: 8,276 improved, 6,264 " \
+                "got worse. 8,272 gems left <code>rejected</code>; 6,261 entered it. ★ jumps " \
+                "<strong>394 → 572</strong> (204 smokes that used to fail now match CRuby byte for byte; 25 lost). " \
+                "We recompiled all 6,170 newly rejected static verdicts to read the compiler's own message: " \
+                "2,124 are explicit documented refusals of unsupported constructs, 1,766 are names the program " \
+                "never defines (a dependency that is not vendored in a single-gem probe), 1,113 are stdlib used " \
+                "without its <code>require</code>, and 833 are generic unsupported-node refusals " \
+                "(mostly <code>class_eval</code> / <code>module_eval</code> / <code>autoload</code>) that we have " \
+                "not read one by one. Three gems crash the compiler outright. On the behaviour side, 34 gems we had " \
+                "listed as <code>loaded</code> never were: the old engine skipped their computed requires, so the " \
+                "smoke printed its line without loading the library. Three real bugs came out of the triage and " \
+                "were filed: " \
+                "<a href=\"https://github.com/matz/spinel/issues/11624\">#11624</a>, " \
+                "<a href=\"https://github.com/matz/spinel/issues/11625\">#11625</a>, " \
+                "<a href=\"https://github.com/matz/spinel/issues/11626\">#11626</a>. " \
+                "Canonical ★572 · loaded 1,780 · clean 85,250 · risky 45,420 · rejected 59,016. Buildable 88,126 " \
+                "(+1,450; edges unchanged — cache-only reprobe)." },
       ].freeze
 
       ORDER = %w[clean risky rejected].freeze

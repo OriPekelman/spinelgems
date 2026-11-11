@@ -12,10 +12,10 @@ module Bundler
       DATA = File.expand_path("../../../harness/load-bearing/targets.tsv", __dir__)
       GLYPH = Site::GLYPH
 
-      # Buildability snapshot @ 112bae85 / release 2026.09.12 (192,038 corpus).
-      BUILDABLE = 86_676
-      BLOCKED   = 44_681
-      REJECTED  = 61_027
+      # Buildability snapshot @ 2814693f / release 2026.10.25 (192,038 corpus).
+      BUILDABLE = 88_126
+      BLOCKED   = 45_242
+      REJECTED  = 59_016
 
       def initialize(data = DATA) = (@data = data)
 

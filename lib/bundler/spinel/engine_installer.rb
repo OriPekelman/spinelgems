@@ -17,7 +17,7 @@ module Bundler
       REPO = "https://github.com/matz/spinel.git"
       # Known-good default when no rev is given and no SPINEL_PIN file is present.
       # Overridable by arg, a ./SPINEL_PIN file, or the SPINEL_REV env var.
-      DEFAULT_REV = "60070a6".freeze
+      DEFAULT_REV = "2814693f".freeze # release 2026.10.25 (the catalog baseline)
 
       def self.cache_root
         File.expand_path(ENV["SPINEL_CACHE"] || "~/.cache/spinel")
@@ -160,11 +160,19 @@ module Bundler
     # with the engine marker + a framework gem, a hello entrypoint, and a
     # bin/build that provisions the engine, vendors deps, and compiles.
     module Scaffold
+      # The engine a scaffolded project pins. Deliberately NOT
+      # EngineInstaller::DEFAULT_REV: the scaffold compiles the *released* tep
+      # gem, and spinel + tep only work as a verified pair. Released tep
+      # (0.11.5, 0.11.7) builds a working app at 60070a6 but at 2026.10.25 the
+      # binary is just tep.rb CRuby guard ("tep is a Spinel-AOT framework...").
+      # tep main is pinned to 2026.10.25; move this once that is released.
+      ENGINE_REV = "60070a6".freeze
+
       module_function
 
       def init(dir, out: $stdout, rev: nil)
         FileUtils.mkdir_p(dir)
-        engine_rev = rev || EngineInstaller::DEFAULT_REV
+        engine_rev = rev || ENGINE_REV
         write(out, File.join(dir, "Gemfile"), gemfile)
         # The engine revision is a git SHA — NOT a valid `engine_version:` (bundler
         # parses that as a Gem version requirement and `bundle lock` errors on a

@@ -6,6 +6,18 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
+### Fixed
+- **Scaffold `bin/build` no longer passes `spinel-flags` to `tep build` on the
+  command line.** No tep release accepts engine flags there, so a fresh
+  `spinel-compat init` project died with `tep: unknown option: --rbs` as soon
+  as a vendored gem shipped `sig/`. `tep build` (>= 0.12) reads
+  `vendor/spinel/spinel-flags` itself; older tep builds without them.
+
+### Changed
+- **`install-engine` defaults to Spinel release 2026.10.25** (`2814693f`).
+  Scaffolded projects still pin `60070a6`, the engine the released tep gem
+  is known to build a working app with.
+
 ### Added
 - **Vendor emits `vendor/spinel/spinel-flags`** — the engine flags a compile
   must pass to use what `vendor` produced (today the aggregated `--rbs

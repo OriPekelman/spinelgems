@@ -251,10 +251,10 @@ module Bundler
           export SPINEL="${SPINEL:-$HOME/.cache/spinel/current/spinel}"  # tell tep where the engine is
           spinel-compat vendor                                # place deps where Spinel follows them
           # vendor writes vendor/spinel/spinel-flags (e.g. `--rbs vendor/spinel/sig`
-          # for the aggregated sig type roots, spinelgems#13) so the compile uses
-          # what vendor produced with no hand-wiring.
-          SPINEL_FLAGS="$(cat vendor/spinel/spinel-flags 2>/dev/null || true)"
-          tep build app.rb $SPINEL_FLAGS -o app               # compile -> ./app
+          # for the aggregated sig type roots, spinelgems#13). `tep build` >= 0.12
+          # reads that file itself; do NOT pass the flags on the command line —
+          # no tep release accepts them there ("tep: unknown option: --rbs").
+          tep build app.rb -o app                             # compile -> ./app
           echo "built ./app — run it with: ./app -p 4567"
         SH
       end

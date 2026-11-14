@@ -44,7 +44,12 @@ end
 
 # lib_files / lib_loc from the most recent cached version of each blocker.
 def lib_stats(cache, gem)
-  dir = Dir[File.join(cache, "#{gem}-*")].max_by { |d| File.basename(d) }
+  # Only "<gem>-<version>": a bare "<gem>-*" also matches sibling gems such as thor-zsh_completion.
+  vers = Dir[File.join(cache, "#{gem}-*")].filter_map do |d|
+    v = File.basename(d).delete_prefix("#{gem}-")
+    [d, Gem::Version.new(v)] if v.match?(/\A\d/) && Gem::Version.correct?(v)
+  end
+  dir = vers.max_by(&:last)&.first
   return [0, 0] unless dir && File.directory?(File.join(dir, "lib"))
   files = Dir[File.join(dir, "lib", "**", "*.rb")]
   loc = files.sum { |f| File.foreach(f).count { |ln| ln !~ /\A\s*(#|\z)/ } rescue 0 }

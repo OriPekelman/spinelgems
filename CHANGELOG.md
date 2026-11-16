@@ -19,6 +19,12 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   is known to build a working app with.
 
 ### Added
+- **The static probe records the compiler's first refusal line** as an
+  optional `detail` field on the ledger verdict (e.g. `spinel: lib/g.rb:2:
+  unsupported expression: node 15 (ReturnNode)`). Every such refusal used to
+  collapse to a bare `analyze-failed`, so reading them meant re-compiling
+  each gem. Warnings and the `N refusals, nothing written` trailer are
+  skipped; the key is omitted when there is no refusal line.
 - **Vendor emits `vendor/spinel/spinel-flags`** — the engine flags a compile
   must pass to use what `vendor` produced (today the aggregated `--rbs
   <into>/sig` type root, #13), so a build step auto-applies them

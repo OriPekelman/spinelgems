@@ -199,6 +199,55 @@ get '/' do
   V.page("SpinelGems — the Spinel compatibility catalog", body)
 end
 
+# ---- one gem: its verdict, the recorded reasons, and the compiler's own line ----
+# /gem?name=<gem> (a query param, like /catalog, rather than a path capture).
+# `detail` is the first `spinel:` refusal line the static probe recorded; it is
+# empty for gems probed before the probe kept it.
+get '/gem' do
+  name = params["name"]
+  db = Tep::SQLite.new
+  db.open(DB_PATH)
+  built = db.first_str("SELECT value FROM catalog_meta WHERE key = ?", "built_at")
+  rev = db.first_str("SELECT value FROM catalog_meta WHERE key = ?", "rev")
+  response.cache_control("public, max-age=120")
+  response.etag(built + "|gem|" + name)
+
+  found = 0
+  ver = ""; vd = ""; info = ""; upd = ""; home = ""; notes = ""
+  hum = 0; tst = 0; rub = ""; dlf = ""; detail = ""
+  db.prepare("SELECT version, verdict, info, updated, homepage, notes, human, tests, rubric, downloads_fmt, detail FROM catalog WHERE gem = ?")
+  db.bind_str(1, name)
+  if db.step == 1
+    found = 1
+    ver = db.col_str(0); vd = db.col_str(1); info = db.col_str(2); upd = db.col_str(3)
+    home = db.col_str(4); notes = db.col_str(5)
+    hum = db.col_int(6); tst = db.col_int(7); rub = db.col_str(8); dlf = db.col_str(9)
+    detail = db.col_str(10)
+  end
+  db.finalize
+  db.close
+
+  body = "<p class=meta><a href=\"/catalog\">&larr; catalog</a></p>\n"
+  if found == 0
+    body = body + "<h1>No such gem</h1>\n<p class=note>The catalog has no verdict for <code>" + Tep.h(name) + "</code>.</p>\n"
+  else
+    body = body + "<h1>" + Tep.h(name) + " <span class=muted>" + Tep.h(ver) + "</span></h1>\n"
+    body = body + "<p class=lede>" + Tep.h(info) + "</p>\n" if info.length > 0
+    t = "<table class=ladder>" +
+      "<tr><td>verdict</td><td><span class=\"v " + vd + "\">" + V.glyph(vd) + " " + vd + "</span></td></tr>"
+    sig = V.signals(hum, tst, rub)
+    t = t + "<tr><td>signals</td><td>" + sig + "</td></tr>" if sig.length > 0
+    t = t + "<tr><td>reasons</td><td><code>" + Tep.h(notes) + "</code></td></tr>" if notes.length > 0
+    t = t + "<tr><td>compiler says</td><td><code>" + Tep.h(detail) + "</code></td></tr>" if detail.length > 0
+    t = t + "<tr><td>downloads</td><td>" + dlf + "</td></tr>"
+    t = t + "<tr><td>updated</td><td>" + Tep.h(upd[0,10]) + "</td></tr>" if upd.length > 0
+    t = t + "<tr><td>homepage</td><td><a href=\"" + Tep.h(home) + "\" rel=\"noopener nofollow\">" + Tep.h(home) + "</a></td></tr>" if home.length > 0
+    body = body + t + "</table>\n" +
+      "<p class=meta>Verdict as of <code>" + Tep.h(rev) + "</code>.</p>\n"
+  end
+  V.page(name + " — SpinelGems", body)
+end
+
 # ---- the queryable catalog ----
 # Branchless: one fixed filter SQL with empty params as no-ops via
 # `(? = '' OR col = ?)`, always binding the same positions. Keeping the SQL +
@@ -281,7 +330,7 @@ get '/catalog' do
     hum = db.col_int(6); tst = db.col_int(7); rub = db.col_str(8); dlf = db.col_str(9)
     gcell = Tep.h(g)
     gcell = "<a href=\"" + Tep.h(home) + "\" rel=\"noopener nofollow\">" + Tep.h(g) + "</a>" if home.length > 0
-    rows = rows + "<tr><td class=\"v " + vd + "\">" + V.glyph(vd) + " " + vd + "</td>" +
+    rows = rows + "<tr><td class=\"v " + vd + "\"><a href=\"/gem?name=" + Tep.h(g) + "\">" + V.glyph(vd) + " " + vd + "</a></td>" +
       "<td class=sig>" + V.signals(hum, tst, rub) + "</td>" +
       "<td class=g>" + gcell + " <span class=ver>" + Tep.h(ver) + "</span></td>" +
       "<td class=num>" + dlf + "</td>" +

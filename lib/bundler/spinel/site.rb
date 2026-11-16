@@ -60,7 +60,7 @@ module Bundler
       }.freeze
 
       Row = Struct.new(:gem, :version, :verdict, :notes, :downloads, :info,
-                       :updated, :homepage, :human, :tests, :rubric, keyword_init: true)
+                       :updated, :homepage, :human, :tests, :rubric, :detail, keyword_init: true)
 
       # Composable signal badges layered on top of the verdict (spinelgems#4/#6).
       # The verdict is the *rank* (how far the gem compiled/ran); badges are
@@ -153,7 +153,7 @@ module Bundler
                        r.downloads.to_i, clean.(r.info), clean.(r.updated),
                        clean.(r.homepage), clean.(r.notes),
                        r.human ? 1 : 0, r.tests ? 1 : 0, clean.(r.rubric),
-                       fmt_n(r.downloads)].join(us) + rs_)
+                       fmt_n(r.downloads), clean.(r.detail)].join(us) + rs_)
           end
           tsv.flush
           FileUtils.rm_f(db_path)
@@ -173,7 +173,10 @@ module Bundler
               -- (bundler's 3.4B showed as -867M). ORDER BY / filtering still use
               -- the 64-bit `downloads` column SQL-side; only the display string
               -- comes from here, so the truncation never reaches the page.
-              downloads_fmt TEXT
+              downloads_fmt TEXT,
+              -- the compiler's own first refusal line (Probe's `detail`), shown
+              -- on the /gem page; empty for gems probed before it was recorded.
+              detail TEXT
             );
             .mode ascii
             .import #{tsv.path} catalog
@@ -394,7 +397,11 @@ module Bundler
                   downloads: md["downloads"].to_i, info: md["info"],
                   updated: md["updated"], homepage: md["homepage"],
                   human: human, tests: tests,
-                  rubric: (eff_verdict == "verified" ? nil : rubric))
+                  rubric: (eff_verdict == "verified" ? nil : rubric),
+                  # The compiler's refusal line belongs to a rejection only: a
+                  # gem lifted to ★ by the harness/attestation is not explained
+                  # by the static probe's complaint.
+                  detail: (eff_verdict == "rejected" ? (v.detail || vs.filter_map(&:detail).first) : nil))
         end.sort_by { |r| [-r.downloads, r.gem.downcase] }
       end
 

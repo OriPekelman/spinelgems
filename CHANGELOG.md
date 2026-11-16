@@ -26,6 +26,10 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   each gem. Warnings and the `N refusals, nothing written` trailer are
   skipped; the key is omitted when there is no refusal line.
   `spinel-compat why` prints it as a `compiler says` line.
+- **The site has a per-gem page**, `/gem?name=<gem>`: verdict, signals, the
+  recorded reasons and — for a rejection — the compiler's refusal line
+  (`build-db` now writes a `detail` column). Each verdict cell in `/catalog`
+  links to it.
 - **Vendor emits `vendor/spinel/spinel-flags`** — the engine flags a compile
   must pass to use what `vendor` produced (today the aggregated `--rbs
   <into>/sig` type root, #13), so a build step auto-applies them

@@ -116,6 +116,10 @@ module Bundler
         else
           negative(v)
         end
+        # The compiler's own first refusal line, when the static probe kept one
+        # (Probe records it as the verdict's `detail`). Shown verbatim: for a
+        # bare `analyze-failed` it is the only statement of the actual cause.
+        line "compiler says", v.detail if v.detail && !v.detail.empty?
         @out.puts
         v
       end

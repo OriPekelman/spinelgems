@@ -66,5 +66,13 @@ check(out.include?("method_missing"), "unsupported: lists the unresolved calls")
 out = report_for(verdict: "risky", risks: ["define_method"])
 check(out.include?("define_method"), "risky: surfaces the dynamic construct")
 
+puts "\ncompiler detail line"
+io = StringIO.new
+dv = V.new(gem: "x", version: "1.0", rev: "rtest", verdict: "rejected", reasons: ["analyze-failed"], risks: [], probe: "p",
+           detail: "spinel: lib/x.rb:2: unsupported expression: node 15 (ReturnNode)")
+Bundler::Spinel::Why.new(out: io).report(dv)
+check(io.string =~ /compiler says\s+spinel: lib\/x\.rb:2: unsupported expression/, "detail shown verbatim")
+check(report_for(verdict: "rejected", reasons: ["analyze-failed"]) !~ /compiler says/, "no line without a detail")
+
 puts(@fails.zero? ? "\nALL PASS" : "\n#{@fails} FAILURE(S)")
 exit(@fails.zero? ? 0 : 1)

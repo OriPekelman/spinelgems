@@ -25,6 +25,7 @@ project aims to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   collapse to a bare `analyze-failed`, so reading them meant re-compiling
   each gem. Warnings and the `N refusals, nothing written` trailer are
   skipped; the key is omitted when there is no refusal line.
+  `spinel-compat why` prints it as a `compiler says` line.
 - **Vendor emits `vendor/spinel/spinel-flags`** — the engine flags a compile
   must pass to use what `vendor` produced (today the aggregated `--rbs
   <into>/sig` type root, #13), so a build step auto-applies them

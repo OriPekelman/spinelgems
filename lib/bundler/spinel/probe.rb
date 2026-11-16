@@ -65,6 +65,16 @@ module Bundler
       # blow up the analyzer). Override with SPINEL_COMPILE_TIMEOUT (seconds).
       COMPILE_TIMEOUT = Integer(ENV.fetch("SPINEL_COMPILE_TIMEOUT", "60"))
 
+      # The compiler's own refusal lines: `spinel: <file>:<line>: unsupported …`.
+      # The first one is recorded verbatim as the verdict's `detail`, because
+      # the reason vocabulary collapses every such refusal to `analyze-failed`
+      # — reading the 833 generic refusals at 2026.10.25 meant re-compiling
+      # each gem just to see the message. Warnings are not refusals, and the
+      # `N refusal(s), nothing written` trailer is a count, not a cause.
+      SPINEL_LINE = /\Aspinel: /.freeze
+      SPINEL_NOISE = /\Aspinel: (?:\S+:\d+: warning:|\d+ refusals?, nothing written)/.freeze
+      DETAIL_MAX = 300
+
       # Tokens whose mere presence in `lib/**/*.rb` makes the gem a definite
       # Spinel reject — there's no path under which the compile would succeed,
       # so we skip the (expensive) spinel call entirely and record a `rejected`
@@ -163,7 +173,8 @@ module Bundler
 
         @ledger.record(@ledger.build(
           gem: gem_name, version: version, rev: @engine.rev,
-          verdict: verdict, reasons: reasons.uniq, risks: risks.uniq, probe: "compile+scan"
+          verdict: verdict, reasons: reasons.uniq, risks: risks.uniq, probe: "compile+scan",
+          detail: sig[:detail]
         ))
       end
 
@@ -172,7 +183,7 @@ module Bundler
       # Compile the gem's lib entrypoints as a Spinel program; classify stderr.
       def compile_signal(dir, gem_name)
         entries = entrypoints(dir, gem_name)
-        return { calls: [], requires: [], analyze_failed: true, exit_ok: false, timed_out: false } if entries.empty?
+        return { calls: [], requires: [], analyze_failed: true, exit_ok: false, timed_out: false, detail: nil } if entries.empty?
 
         calls = []
         requires = []
@@ -181,6 +192,7 @@ module Bundler
         timed_out = false
         require_fail = false   # saw the new unresolvable-require hard-fail form
         hard_error = false     # saw a genuine codegen/analyzer failure
+        detail = nil           # the first `spinel:` refusal line, verbatim
         Dir.mktmpdir do |tmp|
           entries.each do |f|
             out, ok, hit_timeout = run_spinel(f, File.join(tmp, "out.c"))
@@ -191,6 +203,7 @@ module Bundler
             hard_error ||= out =~ HARD_COMPILE_ERROR ? true : false
             out.scan(UNRESOLVED_CALL) { |m| calls << m[0] }
             out.scan(UNRESOLVED_REQUIRE) { |m| requires << m[0] }
+            detail ||= first_spinel_line(out, dir)
           end
         end
         # A compile that failed ONLY because a plain `require` is unresolvable
@@ -199,7 +212,20 @@ module Bundler
         require_only_fail = !exit_ok && !timed_out && require_fail && !hard_error && calls.empty?
         { calls: calls.uniq, requires: requires.uniq,
           analyze_failed: analyze_failed, exit_ok: exit_ok, timed_out: timed_out,
-          require_only_fail: require_only_fail }
+          require_only_fail: require_only_fail, detail: detail }
+      end
+
+      # First compiler refusal line in `out`, or nil. Paths are shortened so
+      # the record doesn't depend on where the gem was unpacked or the engine
+      # installed: the gem dir prefix is dropped, and a bundled-stdlib path
+      # becomes `packages/…`.
+      def first_spinel_line(out, dir)
+        line = out.scrub.each_line.find { |l| l =~ SPINEL_LINE && l !~ SPINEL_NOISE }
+        return nil unless line
+
+        line.strip
+            .sub("#{File.expand_path(dir)}/", "").sub("#{dir}/", "")
+            .sub(%r{\S*/packages/}, "packages/")[0, DETAIL_MAX]
       end
 
       # Run `spinel -c FILE -o OUT_C` with a wall-clock cap. Returns

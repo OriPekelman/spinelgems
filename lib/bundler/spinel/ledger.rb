@@ -16,6 +16,7 @@ module Bundler
     class Ledger
       Verdict = Struct.new(
         :gem, :version, :rev, :verdict, :reasons, :risks, :probe, :at,
+        :detail,
         keyword_init: true
       ) do
         # Hard no: will not compile, or compiles to silent no-ops we detected.
@@ -35,7 +36,9 @@ module Bundler
         # platform badge — catches the silent miscompiles `loaded` can't.
         def verified? = verdict == "verified"
 
-        def to_line = JSON.generate(to_h.transform_keys(&:to_s))
+        # `detail` is optional (the compiler's own first refusal line, when the
+        # static probe saw one) — omitted when absent so lines stay unchanged.
+        def to_line = JSON.generate(to_h.compact.transform_keys(&:to_s))
       end
 
       DEFAULT_PATH = File.expand_path("../../../ledger/compat.jsonl", __dir__)
@@ -86,16 +89,17 @@ module Bundler
           yield Verdict.new(
             gem: h["gem"], version: h["version"], rev: h["rev"],
             verdict: h["verdict"], reasons: h["reasons"] || [],
-            risks: h["risks"] || [], probe: h["probe"], at: h["at"]
+            risks: h["risks"] || [], probe: h["probe"], at: h["at"],
+            detail: h["detail"]
           )
         end
       end
 
-      def build(gem:, version:, rev:, verdict:, reasons: [], risks: [], probe: "compile")
+      def build(gem:, version:, rev:, verdict:, reasons: [], risks: [], probe: "compile", detail: nil)
         Verdict.new(
           gem: gem, version: version, rev: rev, verdict: verdict,
           reasons: reasons, risks: risks, probe: probe,
-          at: Time.now.utc.iso8601
+          at: Time.now.utc.iso8601, detail: detail
         )
       end
     end

@@ -76,5 +76,17 @@ puts "\nclean compile (exit 0, no diagnostics) -> clean"
 v = verdict_for("", 0)
 check(v["verdict"] == "clean", "clean (got #{v["verdict"]})")
 
+puts "\nfirst `spinel:` refusal line is recorded as detail (warnings + trailer skipped)"
+v = verdict_for(["spinel: /x/lib/g.rb:1: warning: uninitialized constant A",
+                 "spinel: /x/lib/g.rb:2: unsupported expression: node 15 (ReturnNode)",
+                 "spinel: /x/lib/g.rb:9: unsupported equality: node 9",
+                 "spinel: 2 refusals, nothing written"].join("\n"), 1)
+check(v["detail"] == "spinel: /x/lib/g.rb:2: unsupported expression: node 15 (ReturnNode)", "detail = first refusal (#{v["detail"].inspect})")
+check(v["verdict"] == "rejected", "still rejected (got #{v["verdict"]})")
+
+puts "\nno refusal line -> no detail key at all"
+v = verdict_for("spinel: /x/lib/g.rb:1: warning: uninitialized constant A", 0)
+check(!v.key?("detail"), "detail absent (#{v.inspect})")
+
 puts(@fails.zero? ? "\nall checks passed" : "\n#{@fails} check(s) FAILED")
 exit(@fails.zero? ? 0 : 1)
